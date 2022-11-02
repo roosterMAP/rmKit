@@ -98,11 +98,13 @@ class MESH_OT_targetweld( bpy.types.Operator ):
 				#weld open edges
 				target_chain_is_sorted = chain_is_sorted( target_chain )
 				if chain_is_boundary( target_chain ):
+					print( 'source is open' )
 					for i, chain in enumerate( chains ):
 						if i in skip_idxs:
 							continue
 						if chain_is_boundary( chain ):
 							if target_chain_is_sorted and chain_is_sorted( chain ):
+								print( 'target is open' )
 								chain = chain[::-1]
 							for i in range( len( target_chain ) ):
 								try:

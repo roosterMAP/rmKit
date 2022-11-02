@@ -77,7 +77,11 @@ class MESH_OT_rm_copy( bpy.types.Operator ):
 				context.object.data.is_editmode )
 		
 	def execute( self, context ):
-		copy( context, self.cut )
+		sel_mode = context.tool_settings.mesh_select_mode[:]
+		if sel_mode[1]:
+			bpy.ops.mesh.rm_connectedge('INVOKE_DEFAULT')
+		elif sel_mode[2]:
+			copy( context, self.cut )
 		return { 'FINISHED' }
 	
 
@@ -100,11 +104,15 @@ class MESH_OT_rm_paste( bpy.types.Operator ):
 	
 
 def register():
+	print( 'register :: {}'.format( MESH_OT_rm_copy.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_rm_paste.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_rm_copy )
 	bpy.utils.register_class( MESH_OT_rm_paste )
 	
 
 def unregister():
+	print( 'unregister :: {}'.format( MESH_OT_rm_copy.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_rm_paste.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_rm_copy )
 	bpy.utils.unregister_class( MESH_OT_rm_paste )
 	

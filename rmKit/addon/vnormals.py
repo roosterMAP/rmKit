@@ -72,9 +72,9 @@ class MESH_OT_setvnormselset( bpy.types.Operator ):
 		items=[ ( "SELSET1", "SETSET1", "", 1 ),
 				( "SELSET2", "SELSET2", "", 2 ),
 				( "SELSET3", "SELSET3", "", 3 ),
-				( "", "NONE", "", 4 ) ],
+				( "CLEAR", "CLEAR", "", 4 ) ],
 		name="Selection Set",
-		default=""
+		default="CLEAR"
 	)
 
 	def __init__( self ):
@@ -110,7 +110,7 @@ class MESH_OT_setvnormselset( bpy.types.Operator ):
 			else:
 				polys = rmlib.rmPolygonSet.from_selection( rmmesh )
 				
-			if self.selset == '':
+			if self.selset == 'CLEAR':
 				ClearSelSet( rmmesh.bm, polys, CUSTOM_VNORM_LAYERNAME )
 			else:
 				AddSelSet( rmmesh.bm, polys, CUSTOM_VNORM_LAYERNAME, self.selset )
@@ -335,34 +335,42 @@ class VIEW3D_PT_VNORMS( bpy.types.Panel ):
 	bl_label = "VNormal Kit"
 	bl_region_type = "UI"
 	bl_space_type = "VIEW_3D"
+	bl_options = {'DEFAULT_CLOSED'}
 
 	def draw( self, context ):
 		layout = self.layout
 
-		row_selset1 = layout.row()
+		box = layout.box()
+
+		row_selset1 = box.row()
 		row_selset1.operator( MESH_OT_selectvnormselset.bl_idname, text='SELSET1' ).selset = 'SELSET1'
 		row_selset1.operator( MESH_OT_setvnormselset.bl_idname, text='+' ).selset = 'SELSET1'
 		row_selset1.operator( MESH_OT_removevnormselset.bl_idname, text='-' ).selset = 'SELSET1'
 		row_selset1.operator( MESH_OT_applyvnorms.bl_idname, text='Apply' ).selset = 'SELSET1'
 
-		row_selset2 = layout.row()
+		row_selset2 = box.row()
 		row_selset2.operator( MESH_OT_selectvnormselset.bl_idname, text='SELSET2' ).selset = 'SELSET2'
 		row_selset2.operator( MESH_OT_setvnormselset.bl_idname, text='+' ).selset = 'SELSET2'
 		row_selset2.operator( MESH_OT_removevnormselset.bl_idname, text='-' ).selset = 'SELSET2'
 		row_selset2.operator( MESH_OT_applyvnorms.bl_idname, text='Apply' ).selset = 'SELSET2'
 
-		row_selset3 = layout.row()
+		row_selset3 = box.row()
 		row_selset3.operator( MESH_OT_selectvnormselset.bl_idname, text='SELSET3' ).selset = 'SELSET3'
 		row_selset3.operator( MESH_OT_setvnormselset.bl_idname, text='+' ).selset = 'SELSET3'
 		row_selset3.operator( MESH_OT_removevnormselset.bl_idname, text='-' ).selset = 'SELSET3'
 		row_selset3.operator( MESH_OT_applyvnorms.bl_idname, text='Apply' ).selset = 'SELSET3'
 
-		row_applyall = layout.row()
+		row_applyall = box.row()
 		row_applyall.operator( MESH_OT_applyall.bl_idname, text='ALL' )
 		row_applyall.alignment = 'RIGHT'
 	
 	
 def register():
+	print( 'register :: {}'.format( MESH_OT_setvnormselset.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_removevnormselset.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_selectvnormselset.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_applyvnorms.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_applyall.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_setvnormselset )
 	bpy.utils.register_class( MESH_OT_removevnormselset )
 	bpy.utils.register_class( MESH_OT_selectvnormselset )
@@ -393,6 +401,11 @@ def register():
 	
 
 def unregister():
+	print( 'unregister :: {}'.format( MESH_OT_setvnormselset.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_removevnormselset.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_selectvnormselset.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_applyvnorms.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_applyall.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_setvnormselset )
 	bpy.utils.unregister_class( MESH_OT_removevnormselset )
 	bpy.utils.unregister_class( MESH_OT_selectvnormselset )

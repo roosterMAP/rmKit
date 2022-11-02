@@ -62,19 +62,17 @@ class MESH_OT_knifescreeninternal( bpy.types.Operator ):
 			geom = []
 			geom.extend( active_polys.edges )
 			geom.extend( active_polys )
-
-			#get axis aligned slice dir
-			dir_idx, cam_dir_vec, grid_dir_vec = rm_vp.get_nearest_direction_vector( self.str_dir, rm_wp.matrix )
 			
 			#in vert mode, slice active polys horizontally or vertically
 			if sel_mode[0]:
 				selected_vertices = rmlib.rmVertexSet.from_selection( rmmesh )
 				if len( selected_vertices ) < 1:
 					return { 'CANCELLED' }
-					
+
 				for v in selected_vertices:
 					plane_pos = v.co
 					if self.alignment == 'topology':
+						dir_idx, cam_dir_vec, grid_dir_vec = rm_vp.get_nearest_direction_vector( self.str_dir, rm_wp.matrix )
 						plane_nml = grid_dir_vec.cross( v.normal )
 					elif self.alignment == 'grid':
 						dir_idx, cam_dir_vec, plane_nml = rm_vp.get_nearest_direction_vector( 'up', rm_wp.matrix )

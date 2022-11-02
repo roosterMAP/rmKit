@@ -341,7 +341,7 @@ class MESH_OT_connect_edge( bpy.types.Operator ):
 	
 	level: bpy.props.IntProperty(
 		name='Level',
-		default=5,
+		default=1,
 		min=1,
 		max=64
 	)
@@ -390,6 +390,9 @@ class MESH_OT_connect_edge( bpy.types.Operator ):
 		return bm
 		
 	def execute( self, context ):
+		if self.bmesh is None:
+			return { 'CANCELLED' }
+
 		bpy.ops.object.mode_set( mode='OBJECT', toggle=False )
 
 		bm = self.LocalizeNewBMesh()
@@ -413,6 +416,14 @@ class MESH_OT_connect_edge( bpy.types.Operator ):
 		bpy.ops.object.mode_set( mode='EDIT', toggle=False )
 
 		return { 'FINISHED' }
+
+	def modal( self, context, event ):
+		if event.type == 'LEFTMOUSE':
+			return { 'FINISHED' }
+		elif event.type == 'ESC':
+			return { 'CANCELLED' }
+
+		return { 'RUNNING_MODAL' }
 
 	def invoke( self, context, event ):
 		if context.object is None or context.mode == 'OBJECT':
@@ -466,10 +477,14 @@ class MESH_OT_connect_edge( bpy.types.Operator ):
 
 				self.bmesh = rmmesh.bmesh.copy()
 				
-		return self.execute( context )
+		context.window_manager.modal_handler_add( self )
+		self.execute( context )
+		return { 'RUNNING_MODAL' }
 
 def register():
+	print( 'register :: {}'.format( MESH_OT_connect_edge.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_connect_edge )
 	
 def unregister():
+	print( 'unregister :: {}'.format( MESH_OT_connect_edge.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_connect_edge )

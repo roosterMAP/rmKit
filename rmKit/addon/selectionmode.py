@@ -3,35 +3,24 @@ import rmKit.rmlib as rmlib
 
 BACKGROUND_LAYERNAME = 'rm_background'
 
-def SetSelsetMembership( bm, elems, layername ):
-	if len( elems ) < 1:
-		return
-	if isinstance( elems[0], bmesh.types.BMVert ):
+def SetSelsetMembership( bm, type, elems, layername ):	
+	if type == 'VERT':
 		intlayers = bm.verts.layers.int
 		selset = intlayers.get( layername, None )
-		if selset is None:
-			selset = intlayers.new( layername )
 		for v in bm.verts:
-			v[selset] = 0
-	elif isinstance( elems[0], bmesh.types.BMEdge ):
+			v[selset] = v in elems
+	elif type == 'EDGE':
 		intlayers = bm.edges.layers.int
 		selset = intlayers.get( layername, None )
-		if selset is None:
-			selset = intlayers.new( layername )
 		for e in bm.edges:
-			e[selset] = 0
-	elif isinstance( elems[0], bmesh.types.BMFace ):
+			e[selset] = e in elems
+	elif type == 'FACE':
 		intlayers = bm.faces.layers.int
 		selset = intlayers.get( layername, None )
-		if selset is None:
-			selset = intlayers.new( layername )
 		for f in bm.faces:
-			f[selset] = 0
+			f[selset] = f in elems
 	else:
 		return
-
-	for e in elems:
-		e[selset] = 1
 		
 def GetSelsetMembership( bm, type, layername):
 	if type == 'VERT':
@@ -80,43 +69,142 @@ class MESH_OT_changetomode( bpy.types.Operator ):
 			return { 'CANCELLED' }
 		
 		if context.object.type == 'MESH':
+			rmmesh = rmlib.rmMesh.GetActive( context )
+			with rmmesh as rmmesh:
+				intlayers_v = rmmesh.bmesh.verts.layers.int
+				selset = intlayers_v.get( BACKGROUND_LAYERNAME, None )
+				if selset is None:
+					selset = intlayers_v.new( BACKGROUND_LAYERNAME )
+
+				intlayers_e = rmmesh.bmesh.edges.layers.int
+				selset = intlayers_e.get( BACKGROUND_LAYERNAME, None )
+				if selset is None:
+					selset = intlayers_e.new( BACKGROUND_LAYERNAME )
+
+				intlayers_f = rmmesh.bmesh.faces.layers.int
+				selset = intlayers_f.get( BACKGROUND_LAYERNAME, None )
+				if selset is None:
+					selset = intlayers_f.new( BACKGROUND_LAYERNAME )
+
 			sel_mode = context.tool_settings.mesh_select_mode[:]
+			if context.mode != 'OBJECT':
+				if ( sel_mode[0] and self.mode_to == 'VERT' ) or ( sel_mode[1] and self.mode_to == 'EDGE' ) or ( sel_mode[2] and self.mode_to == 'FACE' ):
+					return { 'FINISHED' }
 
 			if sel_mode[0]:
 				rmmesh = rmlib.rmMesh.GetActive( context )
 				with rmmesh as rmmesh:
 					verts = rmlib.rmVertexSet.from_selection( rmmesh )
-					SetSelsetMembership( rmmesh.bmesh, verts, BACKGROUND_LAYERNAME )
+					SetSelsetMembership( rmmesh.bmesh, 'VERT', verts, BACKGROUND_LAYERNAME )
 
 			elif sel_mode[1]:
 				rmmesh = rmlib.rmMesh.GetActive( context )
 				with rmmesh as rmmesh:
 					edges = rmlib.rmEdgeSet.from_selection( rmmesh )
-					SetSelsetMembership( rmmesh.bmesh, edges, BACKGROUND_LAYERNAME )
+					SetSelsetMembership( rmmesh.bmesh, 'EDGE', edges, BACKGROUND_LAYERNAME )
 
-			else:
+			elif sel_mode[2]:
 				rmmesh = rmlib.rmMesh.GetActive( context )
 				with rmmesh as rmmesh:
 					faces = rmlib.rmPolygonSet.from_selection( rmmesh )
-					SetSelsetMembership( rmmesh.bmesh, faces, BACKGROUND_LAYERNAME )
+					SetSelsetMembership( rmmesh.bmesh, 'FACE', faces, BACKGROUND_LAYERNAME )
 
+		if context.mode == 'OBJECT':
+			bpy.ops.object.editmode_toggle()
 		bpy.ops.mesh.select_mode( type=self.mode_to )
 
 		bpy.ops.mesh.select_all( action='DESELECT' )
 
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		with rmmesh as rmmesh:
-			rmmesh.readonly = True
+			#rmmesh.readonly = True
 			for elem in GetSelsetMembership( rmmesh.bmesh, self.mode_to, BACKGROUND_LAYERNAME ):
+				print( elem )
 				elem.select = True
+				
+		return { 'FINISHED' }
+
+
+class MESH_OT_convertmodeto( bpy.types.Operator ):
+	bl_idname = 'mesh.rm_convertmodeto'
+	bl_label = 'Convert Mode To'
+	bl_options = { 'UNDO' } #tell blender that we support the undo/redo pannel
+	
+	mode_to: bpy.props.EnumProperty(
+		items=[ ( "VERT", "Vertex", "", 1 ),
+				( "EDGE", "Edge", "", 2 ),
+				( "FACE", "Face", "", 3 ) ],
+		name="Selection Mode",
+		default="VERT"
+	)
+	
+	@classmethod
+	def poll( cls, context ):
+		#used by blender to test if operator can show up in a menu or as a button in the UI
+		return ( context.area.type == 'VIEW_3D' and
+				context.object is not None and
+				context.object.type == 'MESH' and
+				context.object.data.is_editmode )
+		
+	def execute( self, context ):
+		#get the selection mode
+		if context.object is None or context.mode == 'OBJECT':
+			return { 'CANCELLED' }		
+
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		if rmmesh is None:
+			return { 'CANCELLED' }
+
+		with rmmesh as rmmesh:
+			sel_mode = context.tool_settings.mesh_select_mode[:]
+			if ( sel_mode[0] and self.mode_to == 'VERT' ) or ( sel_mode[1] and self.mode_to == 'EDGE' ) or ( sel_mode[2] and self.mode_to == 'FACE' ):
+				return { 'FINISHED' }
+
+			if sel_mode[0]:
+				verts = rmlib.rmVertexSet.from_selection( rmmesh )
+				bpy.ops.mesh.rm_changemodeto( mode_to=self.mode_to )
+				bpy.ops.mesh.select_all( action='DESELECT' )
+				if self.mode_to == 'EDGE':
+					for e in verts.edges:
+						e.select = True
+				elif self.mode_to == 'FACE':
+					for f in verts.polygons:
+						f.select = True
+
+			elif sel_mode[1]:
+				edges = rmlib.rmEdgeSet.from_selection( rmmesh )
+				bpy.ops.mesh.rm_changemodeto( mode_to=self.mode_to )
+				bpy.ops.mesh.select_all( action='DESELECT' )
+				if self.mode_to == 'VERT':
+					for v in edges.vertices:
+						v.select = True
+				elif self.mode_to == 'FACE':
+					for f in edges.polygons:
+						f.select = True
+
+			elif sel_mode[2]:
+				faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+				bpy.ops.mesh.rm_changemodeto( mode_to=self.mode_to )
+				bpy.ops.mesh.select_all( action='DESELECT' )
+				if self.mode_to == 'VERT':
+					for v in faces.vertices:
+						v.select = True
+				elif self.mode_to == 'EDGE':
+					for e in faces.edges:
+						e.select = True
 				
 		return { 'FINISHED' }
 
 
 def register():
 	print( 'register :: {}'.format( MESH_OT_changetomode.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_changetomode.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_changetomode )
+	bpy.utils.register_class( MESH_OT_convertmodeto )
+
 	
 def unregister():
 	print( 'unregister :: {}'.format( MESH_OT_changetomode.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_changetomode.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_changetomode )
+	bpy.utils.unregister_class( MESH_OT_convertmodeto )

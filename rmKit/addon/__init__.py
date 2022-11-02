@@ -23,6 +23,9 @@ from . import arcadjust
 from . import targetweld
 from . import createtube
 from . import vnormals
+from . import copypaste
+from . import workplane
+from . import selectionmode
 
 def register():
 	bpy.utils.register_class( rmKitPannel )
@@ -38,6 +41,9 @@ def register():
 	targetweld.register()
 	createtube.register()
 	vnormals.register()
+	copypaste.register()
+	workplane.register()
+	selectionmode.register()
 
 def unregister():
 	bpy.utils.unregister_class( rmKitPannel )
@@ -53,3 +59,6 @@ def unregister():
 	targetweld.unregister()
 	createtube.unregister()
 	vnormals.unregister()
+	copypaste.unregister()
+	workplane.unregister()
+	selectionmode.unregister()

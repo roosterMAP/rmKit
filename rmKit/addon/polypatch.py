@@ -90,7 +90,7 @@ class MESH_OT_polypatch( bpy.types.Operator ):
 						for loop in open_loops:
 							loop.select( False )
 						bpy.ops.mesh.edge_face_add()
-					
+						
 				#closed edges get rotated
 				if len( closed_edges ) > 0:
 					closed_edges.select( True )
