@@ -420,6 +420,22 @@ class MESH_OT_connect_edge( bpy.types.Operator ):
 	def modal( self, context, event ):
 		if event.type == 'LEFTMOUSE':
 			return { 'FINISHED' }
+		elif event.type == 'MOUSEMOVE':
+			delta_x = float( event.mouse_x - event.mouse_prev_press_x ) / context.region.width
+			delta_y = float( event.mouse_y - event.mouse_prev_press_y ) / context.region.height
+			if event.ctrl:
+				if delta_x > delta_y:
+					self.pinch = 1.0 + ( delta_x * 2.0 )
+				else:
+					self.slide = 1.0 + ( delta_y * 2.0 )
+			else:
+				self.pinch = 1.0 + ( delta_x * 2.0 )
+				self.slide = 1.0 + ( delta_y * 2.0 )
+			self.execute( context )
+		elif event.type == 'WHEELUPMOUSE':
+			self.level = min( self.level + 1, 64 )
+		elif event.type == 'WHEELDOWNMOUSE':
+			self.level = max( self.level - 1, 1 )
 		elif event.type == 'ESC':
 			return { 'CANCELLED' }
 
@@ -478,7 +494,6 @@ class MESH_OT_connect_edge( bpy.types.Operator ):
 				self.bmesh = rmmesh.bmesh.copy()
 				
 		context.window_manager.modal_handler_add( self )
-		self.execute( context )
 		return { 'RUNNING_MODAL' }
 
 def register():

@@ -26,6 +26,7 @@ from . import vnormals
 from . import copypaste
 from . import workplane
 from . import selectionmode
+from . import push
 
 def register():
 	bpy.utils.register_class( rmKitPannel )
@@ -44,6 +45,7 @@ def register():
 	copypaste.register()
 	workplane.register()
 	selectionmode.register()
+	push.register()
 
 def unregister():
 	bpy.utils.unregister_class( rmKitPannel )
@@ -62,3 +64,4 @@ def unregister():
 	copypaste.unregister()
 	workplane.unregister()
 	selectionmode.unregister()
+	push.unregister()

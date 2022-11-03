@@ -153,6 +153,22 @@ class MESH_OT_createtube( bpy.types.Operator ):
 		bpy.ops.object.mode_set( mode='EDIT', toggle=False )
 		
 		return { 'FINISHED' }
+
+	def modal( self, context, event ):
+		if event.type == 'LEFTMOUSE':
+			return { 'FINISHED' }
+		elif event.type == 'MOUSEMOVE':
+			delta_x = float( event.mouse_prev_press_x - event.mouse_x ) / context.region.width
+			self.radius = 0.1 + ( delta_x * self.bbox_dist * 10.0 )
+			self.execute( context )
+		elif event.type == 'WHEELUPMOUSE':
+			self.level = min( self.level + 1, 128 )
+		elif event.type == 'WHEELDOWNMOUSE':
+			self.level = max( self.level - 1, 3 )	
+		elif event.type == 'ESC':
+			return { 'CANCELLED' }
+
+		return { 'RUNNING_MODAL' }
 	
 	def invoke( self, context, event ):
 		#ensure a mesh is selected and in edit mode
@@ -280,7 +296,8 @@ class MESH_OT_createtube( bpy.types.Operator ):
 		if len( self._tubes ) < 1:
 			return { 'CANCELLED' }
 			
-		return self.execute( context )
+		context.window_manager.modal_handler_add( self )
+		return { 'RUNNING_MODAL' }
 
 
 def register():

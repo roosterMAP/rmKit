@@ -59,11 +59,9 @@ class MESH_OT_arcadjust( bpy.types.Operator ):
 
 			verts = rmlib.rmVertexSet( [ pair[0] for pair in chain[1:] ] )
 			for v in verts:
-				print( v.co )
 				pos = v.co - c
 				pos = s @ pos
 				v.co = pos + c
-				print( pos )
 
 			if abs( self.scale ) <= 0.0000001:
 				bmesh.ops.remove_doubles( bm, verts=verts, dist=0.00001 )
@@ -77,6 +75,19 @@ class MESH_OT_arcadjust( bpy.types.Operator ):
 		bpy.ops.object.mode_set( mode='EDIT', toggle=False )
 		
 		return { 'FINISHED' }
+
+	def modal( self, context, event ):
+		if event.type == 'LEFTMOUSE':
+			return { 'FINISHED' }
+		elif event.type == 'MOUSEMOVE':
+			delta_x = float( event.mouse_x - event.mouse_prev_press_x ) / context.region.width
+			#delta_y = float( event.mouse_prev_press_y - event.mouse_y ) / context.region.height
+			self.scale = 1.0 + ( delta_x * 4.0 )
+			self.execute( context )			
+		elif event.type == 'ESC':
+			return { 'CANCELLED' }
+
+		return { 'RUNNING_MODAL' }
 	
 	def invoke( self, context, event ):
 		if context.object is None or context.mode == 'OBJECT':
@@ -95,11 +106,14 @@ class MESH_OT_arcadjust( bpy.types.Operator ):
 				rmmesh.readme = True
 				self.bmesh = rmmesh.bmesh.copy()
 				
-		return self.execute( context )
+		context.window_manager.modal_handler_add( self )
+		return { 'RUNNING_MODAL' }
 
 
 def register():
+	print( 'register :: {}'.format( MESH_OT_arcadjust.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_arcadjust )
 	
 def unregister():
+	print( 'unregister :: {}'.format( MESH_OT_arcadjust.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_arcadjust )
