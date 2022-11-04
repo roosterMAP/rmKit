@@ -1,5 +1,5 @@
 import bpy
-import bpy_extras
+from bpy_extras import view3d_utils
 from rmKit.rmlib import util
 import mathutils
 
@@ -55,8 +55,8 @@ class rmPolygonSet( list ):
 		m_x, m_y = event.mouse_region_x, event.mouse_region_y
 		mouse_pos = mathutils.Vector( ( float( m_x ), float( m_y ) ) )
 
-		look_pos = bpy_extras.view3d_utils.region_2d_to_origin_3d( context.region, context.region_data, mouse_pos )
-		look_vec = bpy_extras.view3d_utils.region_2d_to_vector_3d( context.region, context.region_data, mouse_pos )
+		look_pos = view3d_utils.region_2d_to_origin_3d( context.region, context.region_data, mouse_pos )
+		look_vec = view3d_utils.region_2d_to_vector_3d( context.region, context.region_data, mouse_pos )
 
 		mos_polygons = cls()
 		world_transform_inv = rmmesh.world_transform.inverted()
@@ -201,8 +201,8 @@ class rmEdgeSet( list ):
 				continue
 			pos1_wld = ept1.co @ rmmesh.world_transform
 			pos2_wld = ept2.co @ rmmesh.world_transform
-			sp1 = bpy_extras.view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=pos1_wld )
-			sp2 = bpy_extras.view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=pos2_wld )
+			sp1 = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=pos1_wld )
+			sp2 = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=pos2_wld )
 			if util.line2_dist( mathutils.Vector( sp1 ), mathutils.Vector( sp2 ), mathutils.Vector( mouse_pos ) ) <= float( pixel_radius ):
 				mos_edges.append( e )
 
@@ -393,7 +393,7 @@ class rmVertexSet( list ):
 			if ignore_backfacing and v.normal.dot( look_vec ) > 0.0:
 				continue
 			pos_wld = v.co @ rmmesh.world_transform
-			sp = bpy_extras.view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=pos_wld )
+			sp = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=pos_wld )
 			if ( sp - mouse_pos ).length <= float( pixel_radius ):
 				mos_verts.append( v )
 
