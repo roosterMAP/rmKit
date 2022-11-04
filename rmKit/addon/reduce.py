@@ -37,8 +37,6 @@ class MESH_OT_reduce( bpy.types.Operator ):
 
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 
-		print( self.reduce_mode )
-
 		with rmmesh as rmmesh:
 			if sel_mode[0]: #vert mode
 				sel_verts = rmlib.rmVertexSet.from_selection( rmmesh )

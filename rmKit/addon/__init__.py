@@ -27,6 +27,8 @@ from . import copypaste
 from . import workplane
 from . import selectionmode
 from . import push
+from . import radial_align
+from . import slide
 
 def register():
 	bpy.utils.register_class( rmKitPannel )
@@ -46,6 +48,8 @@ def register():
 	workplane.register()
 	selectionmode.register()
 	push.register()
+	radial_align.register()
+	slide.register()
 
 def unregister():
 	bpy.utils.unregister_class( rmKitPannel )
@@ -65,3 +69,5 @@ def unregister():
 	workplane.unregister()
 	selectionmode.unregister()
 	push.unregister()
+	radial_align.register()
+	slide.register()
