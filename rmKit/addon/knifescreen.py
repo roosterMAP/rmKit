@@ -10,13 +10,12 @@ def GetSelsetPolygons( bm, layername ):
 	if selset is None:
 		return rmlib.rmPolygonSet()
 	return rmlib.rmPolygonSet( [ f for f in bm.faces if bool( f[selset] ) ] )
-	
 
-class MESH_OT_knifescreeninternal( bpy.types.Operator ):
-	"""Slice visible geo based on current selection and selection mode."""
-	bl_idname = 'mesh.rm_knifescreeninternal'
+
+class MESH_OT_knifescreen( bpy.types.Operator ):
+	bl_idname = 'mesh.rm_knifescreen'
 	bl_label = 'KnifeScreen'
-	bl_options = { 'UNDO', 'INTERNAL' }
+	bl_options = { 'UNDO' }
 	
 	str_dir: bpy.props.EnumProperty(
 		items=[ ( "horizontal", "Horizontal", "", 1 ),
@@ -91,11 +90,7 @@ class MESH_OT_knifescreeninternal( bpy.types.Operator ):
 						
 					#slice op
 					d = bmesh.ops.bisect_plane( rmmesh.bmesh, geom=geom, dist=0.00001, plane_co=plane_pos, plane_no=plane_nml, use_snap_center=False, clear_outer=False, clear_inner=False )
-					
-					#set resulting selection
-					for v in d['geom_cut']:
-						if isinstance( v, bmesh.types.BMVert ):
-							v.select = True
+					geom = d['geom']
 
 			#in edge mode, slice active polys along edges	
 			elif sel_mode[1]:
@@ -122,11 +117,7 @@ class MESH_OT_knifescreeninternal( bpy.types.Operator ):
 						
 					#slice op
 					d = bmesh.ops.bisect_plane( rmmesh.bmesh, geom=geom, dist=0.00001, plane_co=plane_pos, plane_no=plane_nml, use_snap_center=False, clear_outer=False, clear_inner=False )
-					
-					#set resulting selection
-					for e in d['geom_cut']:
-						if isinstance( e, bmesh.types.BMEdge ):
-							e.select = True
+					geom = d['geom']
 		
 		return { 'FINISHED' }
 
@@ -147,39 +138,39 @@ class VIEW3D_MT_knifescreen( bpy.types.Menu ):
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 		
 		if sel_mode[0]:
-			op_vht = layout.operator( MESH_OT_knifescreeninternal.bl_idname, text='Vertex :: Topo :: Horizontal' )
+			op_vht = layout.operator( MESH_OT_knifescreen.bl_idname, text='Vertex :: Topo :: Horizontal' )
 			op_vht.str_dir = 'horizontal'
 			op_vht.alignment = context.object.ks_alignment_topo
 			
-			op_vhg = layout.operator( MESH_OT_knifescreeninternal.bl_idname, text='Vertex :: Grid :: Horizontal' )
+			op_vhg = layout.operator( MESH_OT_knifescreen.bl_idname, text='Vertex :: Grid :: Horizontal' )
 			op_vhg.str_dir = 'horizontal'
 			op_vhg.alignment = context.object.ks_alignment_grid
 			
 			layout.separator()
 			
-			op_vvt = layout.operator( MESH_OT_knifescreeninternal.bl_idname, text='Vertex :: Topo :: Vertical' )
+			op_vvt = layout.operator( MESH_OT_knifescreen.bl_idname, text='Vertex :: Topo :: Vertical' )
 			op_vvt.str_dir = 'vertical'
 			op_vvt.alignment = context.object.ks_alignment_topo
 			
-			op_vvg = layout.operator( MESH_OT_knifescreeninternal.bl_idname, text='Vertex :: Grid :: Vertical' )
+			op_vvg = layout.operator( MESH_OT_knifescreen.bl_idname, text='Vertex :: Grid :: Vertical' )
 			op_vvg.str_dir = 'vertical'
 			op_vvg.alignment = context.object.ks_alignment_grid
 					
 		elif sel_mode[1]:
-			op_et = layout.operator( MESH_OT_knifescreeninternal.bl_idname, text='Edge :: Topo' )
+			op_et = layout.operator( MESH_OT_knifescreen.bl_idname, text='Edge :: Topo' )
 			op_et.alignment = context.object.ks_alignment_topo
 			
-			op_eg = layout.operator( MESH_OT_knifescreeninternal.bl_idname, text='Edge :: Grid' )
+			op_eg = layout.operator( MESH_OT_knifescreen.bl_idname, text='Edge :: Grid' )
 			op_eg.alignment = context.object.ks_alignment_grid
 			
-			op_eg = layout.operator( MESH_OT_knifescreeninternal.bl_idname, text='Edge :: Screen' )
+			op_eg = layout.operator( MESH_OT_knifescreen.bl_idname, text='Edge :: Screen' )
 			op_eg.alignment = context.object.ks_alignment_screen
 			
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_knifescreeninternal.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_knifescreen.bl_idname ) )
 	print( 'register :: {}'.format( VIEW3D_MT_knifescreen.bl_idname ) )
-	bpy.utils.register_class( MESH_OT_knifescreeninternal )
+	bpy.utils.register_class( MESH_OT_knifescreen )
 	bpy.utils.register_class( VIEW3D_MT_knifescreen )
 	bpy.types.Object.ks_alignment_topo = bpy.props.EnumProperty(
 		items=[ ( "topology", "Topology", "", 1 ),
@@ -207,7 +198,7 @@ def register():
 def unregister():
 	print( 'unregister :: {}'.format( VIEW3D_MT_knifescreen.bl_idname ) )
 	print( 'unregister :: {}'.format( VIEW3D_MT_knifescreen.bl_idname ) )
-	bpy.utils.unregister_class( MESH_OT_knifescreeninternal )
+	bpy.utils.unregister_class( MESH_OT_knifescreen )
 	bpy.utils.unregister_class( VIEW3D_MT_knifescreen )
 	del bpy.types.Object.ks_alignment_topo
 	del bpy.types.Object.ks_alignment_grid
