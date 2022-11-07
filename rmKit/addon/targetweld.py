@@ -36,9 +36,6 @@ class MESH_OT_targetweld( bpy.types.Operator ):
 		
 		if context.object.type != 'MESH':
 			return { 'CANCELLED' }
-		
-		rm_vp = rmlib.rmViewport( context )
-		rm_wp = rmlib.rmCustomOrientation.from_selection( context )
 
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 		if sel_mode[2]:
@@ -56,7 +53,8 @@ class MESH_OT_targetweld( bpy.types.Operator ):
 				target_vert = verts.pop( verts.index( active_vert ) )
 				for v in verts:
 					v.co = target_vert.co
-				bmesh.ops.remove_doubles( rmmesh.bmesh, verts=verts, dist=0.000001 )
+				verts.append( active_vert )
+				bmesh.ops.remove_doubles( rmmesh.bmesh, verts=verts, dist=0.00001 )
 			
 			elif sel_mode[1]:
 				edges = rmlib.rmEdgeSet.from_selection( rmmesh )
@@ -112,7 +110,7 @@ class MESH_OT_targetweld( bpy.types.Operator ):
 								except IndexError:
 									break
 
-				bmesh.ops.remove_doubles( rmmesh.bmesh, verts=edges.vertices, dist=0.000001 )
+				bmesh.ops.remove_doubles( rmmesh.bmesh, verts=edges.vertices, dist=0.0001 )
 
 
 		return { 'FINISHED' }

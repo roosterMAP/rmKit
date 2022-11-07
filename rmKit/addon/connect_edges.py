@@ -40,7 +40,7 @@ class CEEdge( object ):
 			self.__subverts = list( self.verts )
 			return
 		
-		if not self.slide_switch:
+		if self.slide_switch:
 			slide *= -1.0
 			
 		pos1 = self.ept1.co
@@ -125,23 +125,30 @@ class CEPoly( object ):
 		cep = cls( seed_poly )
 		
 		if seed_edge is not None:
+			seed_edge.slide_switch = not seed_edge.slide_switch
 			for i, cee in enumerate( cep.ceEdges ):
 				if cee.index == seed_edge.index:
 					break
 			ceEdges = cep.ceEdges[i:] + cep.ceEdges[:i]
-			switch = not seed_edge.slide_switch
 		else:
-			ceEdges = cep.ceEdges
-			switch = cep.ceEdges[0].slide_switch
+			for i, cee in enumerate( cep.ceEdges ):
+				if cee.select:
+					break
+			if len( cep.eidx_list ) == 1:
+				cee.edge.tag = True
+				for p in cee.edge.link_faces:
+					if p.tag or p.index in CEPoly.JointCEPolygonIndexes:
+						continue
+					cls.AccumulateCEElem( p, cee )
+					return
+			ceEdges = cep.ceEdges[i:] + cep.ceEdges[:i]
 		
-		for i, cee in enumerate( ceEdges ):
-			if cee.edge.tag:
-				if cee.edge.select:
-					switch = cee.slide_switch
+		for i in range( 1, len( ceEdges ) ):
+			cee = ceEdges[i]
+			if cee.edge.tag and cee.edge.select:
 				continue
 			cee.edge.tag = True
 			if cee.edge.select:
-				cee.slide_switch = switch
 				for p in cee.edge.link_faces:
 					if p.tag or p.index in CEPoly.JointCEPolygonIndexes:
 						continue
@@ -422,15 +429,11 @@ class MESH_OT_connect_edge( bpy.types.Operator ):
 			return { 'FINISHED' }
 		elif event.type == 'MOUSEMOVE':
 			delta_x = float( event.mouse_x - event.mouse_prev_press_x ) / context.region.width
-			delta_y = float( event.mouse_y - event.mouse_prev_press_y ) / context.region.height
+			#delta_y = float( event.mouse_y - event.mouse_prev_press_y ) / context.region.height
 			if event.ctrl:
-				if delta_x > delta_y:
-					self.pinch = 1.0 + ( delta_x * 2.0 )
-				else:
-					self.slide = 1.0 + ( delta_y * 2.0 )
-			else:
 				self.pinch = 1.0 + ( delta_x * 2.0 )
-				self.slide = 1.0 + ( delta_y * 2.0 )
+			if event.shift:
+				self.slide = delta_x * 2.0
 			self.execute( context )
 		elif event.type == 'WHEELUPMOUSE':
 			self.level = min( self.level + 1, 64 )
@@ -494,6 +497,7 @@ class MESH_OT_connect_edge( bpy.types.Operator ):
 				self.bmesh = rmmesh.bmesh.copy()
 				
 		context.window_manager.modal_handler_add( self )
+		self.execute( context )
 		return { 'RUNNING_MODAL' }
 
 def register():

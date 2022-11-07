@@ -156,7 +156,7 @@ class MESH_OT_setreflectioncenter( bpy.types.Operator ):
 				center *= 1.0 / len( polys )
 
 			center = rmmesh.world_transform @ center
-			REFLECT_CENTER = center
+		REFLECT_CENTER = center
 
 		return { 'FINISHED' }
 

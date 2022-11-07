@@ -2,6 +2,7 @@ import bpy
 import bgl
 import gpu
 from gpu_extras.batch import batch_for_shader
+from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
 import math, time
 import mathutils
 import rmKit.rmlib as rmlib
@@ -28,19 +29,65 @@ class GridRenderManager:
 	handle = None
 	active = False
 	matrix = mathutils.Matrix.Identity( 4 )
+	scale = 1.0
 
-	def __init__( self ):
-		GridRenderManager.coords = []
-		GridRenderManager.colors = []
+	def __init__( self, context ):
+		GridRenderManager.shader = gpu.shader.from_builtin( '3D_SMOOTH_COLOR' )
+		self.update_scale( context )
+
+	def update_scale( self, context ):
+		a = context.area
+		if a is None:
+			return
+		cam_pos = a.spaces.active.region_3d.view_matrix.inverted().translation
+
+		width = context.region.width
+		height = context.region.height
+		top = ( width * 0.5, height )
+		left = ( 0.0, height * 0.5 )
+		right = ( width, height * 0.5 )
+		bottom = ( width * 0.5, 0.0 )
+		center = ( width * 0.5, height * 0.5 )
+		screen_pts = ( top, left, right, bottom, center )
+
+		hit_list = []
+		pp = GridRenderManager.matrix.to_translation()
+		pn = GridRenderManager.matrix.to_3x3().col[2]
+		for pt in screen_pts:
+			dir = region_2d_to_vector_3d( context.region, context.region_data, pt ) 
+			pos = region_2d_to_location_3d( context.region, context.region_data, pt, dir )
+			a = pos
+			b = a + ( dir * 1000.0 )
+			a = a - ( dir * 1000.0 )
+			hit_pos = mathutils.geometry.intersect_line_plane( a, b, pp, pn )
+			if hit_pos is None:
+				continue
+			hit_list.append( hit_pos )
+
+		min_dist = 500
+		for p in hit_list[:-1]:
+			d = ( p - hit_list[-1] ).length
+			min_dist = min( d, min_dist )
+
+		scale_idx = math.floor( math.log2( min_dist ) )
+		GridRenderManager.scale = math.pow( 2, scale_idx - 2 )
+		print( scale_idx, GridRenderManager.scale )
+
+		self.shader_batch()
+
+	def shader_batch( self ):
+		GridRenderManager.coords.clear()
+		GridRenderManager.colors.clear()
 		n = 1.0
-		m = 10
-		for i in range( -m, m+1 ):
-			GridRenderManager.coords.append( ( n * i, -m, 0.0 ) )
-			GridRenderManager.coords.append( ( n * i, m, 0.0 ) )
-			GridRenderManager.coords.append( ( -m, n * i, 0.0 ) )
-			GridRenderManager.coords.append( ( m, n * i, 0.0 ) )
+		s = GridRenderManager.scale
 
-			if m == 0:
+		for i in range( -10, 10 + 1 ):
+			GridRenderManager.coords.append( ( n * i * s, -10.0 * s, 0.0 ) )
+			GridRenderManager.coords.append( ( n * i * s, 10.0 * s, 0.0 ) )
+			GridRenderManager.coords.append( ( -10.0 * s, n * i * s, 0.0 ) )
+			GridRenderManager.coords.append( ( 10.0 * s, n * i * s, 0.0 ) )
+
+			if i == 0:
 				GridRenderManager.colors.append( ( 1.0, 0.0, 0.0, 0.5 ) )
 				GridRenderManager.colors.append( ( 1.0, 0.0, 0.0, 0.5 ) )
 				GridRenderManager.colors.append( ( 0.0, 1.0, 0.0, 0.5 ) )
@@ -50,8 +97,7 @@ class GridRenderManager:
 				GridRenderManager.colors.append( ( 0.5, 0.5, 0.5, 0.5 ) )
 				GridRenderManager.colors.append( ( 0.5, 0.5, 0.5, 0.5 ) )
 				GridRenderManager.colors.append( ( 0.5, 0.5, 0.5, 0.5 ) )
-		
-		GridRenderManager.shader = gpu.shader.from_builtin( '3D_SMOOTH_COLOR' )
+				
 		content = { 'pos' : GridRenderManager.coords, 'color' : GridRenderManager.colors }
 		GridRenderManager.batch = batch_for_shader( GridRenderManager.shader, 'LINES', content )
 
@@ -63,9 +109,7 @@ class GridRenderManager:
 			bgl.glLineWidth( 2 )
 			
 			gpu.matrix.push()
-			gpu.matrix.load_matrix( GridRenderManager.matrix )
-			print( 'DRAW :: {}'.format( GridRenderManager.matrix ) )
-			
+			gpu.matrix.load_matrix( GridRenderManager.matrix )			
 			gpu.matrix.push_projection()    
 			gpu.matrix.load_projection_matrix( bpy.context.region_data.perspective_matrix )
 			
@@ -80,7 +124,6 @@ class GridRenderManager:
 			bgl.glDisable( bgl.GL_DEPTH_TEST )
 			bgl.glDisable( bgl.GL_LINE_SMOOTH )
 			bgl.glLineWidth( 1 )
-
 
 	def doDraw( self ):
 		GridRenderManager.handle = bpy.types.SpaceView3D.draw_handler_add( self.draw, (), 'WINDOW', 'POST_VIEW' )
@@ -127,9 +170,14 @@ class MESH_OT_workplane( bpy.types.Operator ):
 
 		#check if user manually left workplane transform orientation mode
 		if event.type == 'TIMER':
+			GRID_RENDER.update_scale( context )
+
 			if not context.scene.transform_orientation_slots[0].type == 'WORKPLANE':
 				print( 'NO LONGER WORKPLANE!!!' )
 				GRID_RENDER.stopDraw( context )
+				bpy.context.space_data.overlay.show_floor = True
+				bpy.context.space_data.overlay.show_axis_x = True
+				bpy.context.space_data.overlay.show_axis_y = True
 				
 				selected_type = context.scene.transform_orientation_slots[0].type
 				try:
@@ -146,7 +194,7 @@ class MESH_OT_workplane( bpy.types.Operator ):
 	def execute(self, context):
 		global GRID_RENDER
 		if GRID_RENDER is None:
-			GRID_RENDER = GridRenderManager()
+			GRID_RENDER = GridRenderManager( context )
 
 		if not GridRenderManager.active and context.mode == 'EDIT_MESH':
 			sel_mode = context.tool_settings.mesh_select_mode[:]
@@ -220,15 +268,43 @@ class MESH_OT_workplane( bpy.types.Operator ):
 
 		return { 'FINISHED' }
 
+
+class MESH_OT_togglegrid( bpy.types.Operator ):
+	bl_idname = 'view3d.rm_togglegrid'
+	bl_label = 'Toggle Grid'
+	bl_options = { 'UNDO' }
+	
+	@classmethod
+	def poll( cls, context ):
+		#used by blender to test if operator can show up in a menu or as a button in the UI
+		return ( context.area.type == 'VIEW_3D' )
+		
+	def execute( self, context ):
+		b1 = bpy.context.space_data.overlay.show_floor
+		b2 = bpy.context.space_data.overlay.show_axis_x
+		b3 = bpy.context.space_data.overlay.show_axis_y
+
+		if b1 and b2 and b3:
+			bpy.context.space_data.overlay.show_floor = False
+			bpy.context.space_data.overlay.show_axis_x = False
+			bpy.context.space_data.overlay.show_axis_y = False
+		else:
+			bpy.context.space_data.overlay.show_floor = True
+			bpy.context.space_data.overlay.show_axis_x = True
+			bpy.context.space_data.overlay.show_axis_y = True
+				
+		return { 'FINISHED' }
+
 	
 def register():
 	print( 'register :: {}'.format( MESH_OT_workplane.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_togglegrid.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_workplane )
+	bpy.utils.register_class( MESH_OT_togglegrid )
 	
 	
 def unregister():
 	print( 'unregister :: {}'.format( MESH_OT_workplane.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_togglegrid.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_workplane )
-	
-if __name__ == '__main__':
-	register()
+	bpy.utils.unregister_class( MESH_OT_togglegrid )

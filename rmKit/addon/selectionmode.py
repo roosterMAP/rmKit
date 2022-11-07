@@ -119,7 +119,6 @@ class MESH_OT_changetomode( bpy.types.Operator ):
 		with rmmesh as rmmesh:
 			#rmmesh.readonly = True
 			for elem in GetSelsetMembership( rmmesh.bmesh, self.mode_to, BACKGROUND_LAYERNAME ):
-				print( elem )
 				elem.select = True
 				
 		return { 'FINISHED' }
@@ -196,15 +195,72 @@ class MESH_OT_convertmodeto( bpy.types.Operator ):
 		return { 'FINISHED' }
 
 
+class MESH_OT_invertcontinuouse( bpy.types.Operator ):
+	bl_idname = 'mesh.rm_invertcontinuous'
+	bl_label = 'Invert Continuous'
+	bl_options = { 'UNDO' }
+	
+	@classmethod
+	def poll( cls, context ):
+		#used by blender to test if operator can show up in a menu or as a button in the UI
+		return ( context.area.type == 'VIEW_3D' and
+				context.object is not None and
+				context.object.type == 'MESH' and
+				context.object.data.is_editmode )
+		
+	def execute( self, context ):
+		#get the selection mode
+		if context.object is None or context.mode == 'OBJECT':
+			return { 'CANCELLED' }		
+
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		if rmmesh is None:
+			return { 'CANCELLED' }
+
+		with rmmesh as rmmesh:
+			sel_mode = context.tool_settings.mesh_select_mode[:]
+
+			if sel_mode[0]:
+				verts = rmlib.rmVertexSet.from_selection( rmmesh )
+				allverts = rmlib.rmVertexSet()
+				for g in verts.group( element=True ):
+					allverts += g
+				for v in allverts:
+					v.select = v not in verts
+
+
+			elif sel_mode[1]:
+				edges = rmlib.rmEdgeSet.from_selection( rmmesh )
+				alledges = rmlib.rmEdgeSet()
+				for g in edges.group( element=True ):
+					alledges += g
+				for e in alledges:
+					e.select = e not in edges
+
+			elif sel_mode[2]:
+				faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+				allfaces = rmlib.rmPolygonSet()
+				for g in faces.group( element=True ):
+					allfaces += g
+				for f in allfaces:
+					f.select = f not in faces
+				
+		return { 'FINISHED' }
+
+
 def register():
 	print( 'register :: {}'.format( MESH_OT_changetomode.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_changetomode.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_convertmodeto.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_invertcontinuouse.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_changetomode )
 	bpy.utils.register_class( MESH_OT_convertmodeto )
+	bpy.utils.register_class( MESH_OT_invertcontinuouse )
 
 	
 def unregister():
 	print( 'unregister :: {}'.format( MESH_OT_changetomode.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_changetomode.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_convertmodeto.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_invertcontinuouse.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_changetomode )
 	bpy.utils.unregister_class( MESH_OT_convertmodeto )
+	bpy.utils.unregister_class( MESH_OT_invertcontinuouse )

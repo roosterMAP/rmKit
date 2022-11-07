@@ -33,7 +33,6 @@ class rmMesh():
 		if self.__bmesh.is_wrapped:
 			bmesh.update_edit_mesh( self.__mesh, loop_triangles=( not self.__readonly ), destructive=( not self.__readonly ) )
 			self.__bmesh.select_flush_mode()
-			print( 'update_edit_mesh :: loop_triangles={} destructive={}'.format( not self.__readonly, not self.__readonly ) )
 		else:
 			self.__bmesh.to_mesh( self.__mesh )
 			if not self.__readonly:

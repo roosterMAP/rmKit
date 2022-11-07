@@ -1,6 +1,6 @@
 import bpy
 import mathutils
-import bpy_extras
+from bpy_extras import view3d_utils
 import math
 
 class rmCustomOrientation():
@@ -29,7 +29,10 @@ class rmCustomOrientation():
 
 class rmViewport():
 	def __init__( self, context ):
-		self.__space = context.area.spaces.active
+		a = context.area
+		if a is None:
+			return None
+		self.__space = a.spaces.active
 
 	@property
 	def cam_pos( self ):
@@ -40,8 +43,8 @@ class rmViewport():
 		return self.__space.region_3d.view_rotation @ mathutils.Vector( ( 0.0, 0.0, -1.0 ) )
 
 	def cursor_to_ray( self, context, mouse_pos ):
-		ray_origin = bpy_extras.view3d_utils.region_2d_to_origin_3d( context.region, context.region_data, mouse_pos )
-		ray_dir = bpy_extras.view3d_utils.region_2d_to_vector_3d( context.region, context.region_data, mouse_pos )
+		ray_origin = view3d_utils.region_2d_to_origin_3d( context.region, context.region_data, mouse_pos )
+		ray_dir = view3d_utils.region_2d_to_vector_3d( context.region, context.region_data, mouse_pos )
 		return ( ray_origin, ray_dir )
 
 	def is_view3d( self ):

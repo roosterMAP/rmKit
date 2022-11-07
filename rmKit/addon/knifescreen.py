@@ -84,9 +84,9 @@ class MESH_OT_knifescreen( bpy.types.Operator ):
 						dir_idx, cam_dir_vec, grid_dir_vec = rm_vp.get_nearest_direction_vector( self.str_dir, rm_wp.matrix )
 						plane_nml = grid_dir_vec.cross( v.normal )
 					elif self.alignment == 'grid':
-						dir_idx, cam_dir_vec, plane_nml = rm_vp.get_nearest_direction_vector( 'up', rm_wp.matrix )
+						dir_idx, cam_dir_vec, plane_nml = rm_vp.get_nearest_direction_vector( self.str_dir, rm_wp.matrix )
 					else:
-						dir_idx, plane_nml, grid_dir_vec = rm_vp.get_nearest_direction_vector( 'up', rm_wp.matrix )
+						dir_idx, plane_nml, grid_dir_vec = rm_vp.get_nearest_direction_vector( self.str_dir, rm_wp.matrix )
 						
 					#slice op
 					d = bmesh.ops.bisect_plane( rmmesh.bmesh, geom=geom, dist=0.00001, plane_co=plane_pos, plane_no=plane_nml, use_snap_center=False, clear_outer=False, clear_inner=False )
@@ -138,23 +138,23 @@ class VIEW3D_MT_knifescreen( bpy.types.Menu ):
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 		
 		if sel_mode[0]:
-			op_vht = layout.operator( MESH_OT_knifescreen.bl_idname, text='Vertex :: Topo :: Horizontal' )
-			op_vht.str_dir = 'horizontal'
-			op_vht.alignment = context.object.ks_alignment_topo
-			
 			op_vhg = layout.operator( MESH_OT_knifescreen.bl_idname, text='Vertex :: Grid :: Horizontal' )
 			op_vhg.str_dir = 'horizontal'
 			op_vhg.alignment = context.object.ks_alignment_grid
+
+			op_vht = layout.operator( MESH_OT_knifescreen.bl_idname, text='Vertex :: Screen :: Horizontal' )
+			op_vht.str_dir = 'horizontal'
+			op_vht.alignment = context.object.ks_alignment_screen
 			
 			layout.separator()
-			
-			op_vvt = layout.operator( MESH_OT_knifescreen.bl_idname, text='Vertex :: Topo :: Vertical' )
-			op_vvt.str_dir = 'vertical'
-			op_vvt.alignment = context.object.ks_alignment_topo
-			
+
 			op_vvg = layout.operator( MESH_OT_knifescreen.bl_idname, text='Vertex :: Grid :: Vertical' )
 			op_vvg.str_dir = 'vertical'
 			op_vvg.alignment = context.object.ks_alignment_grid
+			
+			op_vvt = layout.operator( MESH_OT_knifescreen.bl_idname, text='Vertex :: Screen :: Vertical' )
+			op_vvt.str_dir = 'vertical'
+			op_vvt.alignment = context.object.ks_alignment_screen
 					
 		elif sel_mode[1]:
 			op_et = layout.operator( MESH_OT_knifescreen.bl_idname, text='Edge :: Topo' )
