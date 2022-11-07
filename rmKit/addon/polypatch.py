@@ -24,7 +24,7 @@ class MESH_OT_polypatch( bpy.types.Operator ):
 				context.object is not None and
 				context.object.type == 'MESH' and
 				context.object.data.is_editmode )
-		
+						
 	def execute( self, context ):
 		#get the selection mode
 		if context.object is None or context.mode == 'OBJECT':
@@ -36,15 +36,19 @@ class MESH_OT_polypatch( bpy.types.Operator ):
 
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 		rmmesh = rmlib.rmMesh.GetActive( context )
-		with rmmesh as rmmesh:
-			rmmesh.readonly = True
+		if rmmesh is None:
+			return { 'CANCELLED' }		
 
-			if sel_mode[0]:
+		if sel_mode[0]:
+			with rmmesh as rmmesh:
 				sel_verts = rmlib.rmVertexSet.from_selection( rmmesh )
-				if len( sel_verts ) > 0:
-					bpy.ops.mesh.edge_face_add()
+				if len( sel_verts ) < 2:
+					return { 'CANCELLED' }							
+				slice_edges = bmesh.ops.connect_verts( rmmesh.bmesh, verts=sel_verts, check_degenerate=False )
 
-			elif sel_mode[1]:
+		elif sel_mode[1]:
+			with rmmesh as rmmesh:
+				rmmesh.readonly = True
 				sel_edges = rmlib.rmEdgeSet.from_selection( rmmesh )				
 				open_edges = rmlib.rmEdgeSet()
 				closed_edges = rmlib.rmEdgeSet()
@@ -95,8 +99,10 @@ class MESH_OT_polypatch( bpy.types.Operator ):
 				if len( closed_edges ) > 0:
 					closed_edges.select( True )
 					bpy.ops.mesh.edge_rotate( use_ccw=True )
-		
-			elif sel_mode[2]:
+	
+		elif sel_mode[2]:
+			with rmmesh as rmmesh:
+				rmmesh.readonly = True
 				sel_polys = rmlib.rmPolygonSet.from_selection( rmmesh )				
 				groups = sel_polys.group()
 				if len( groups ) == 2:
