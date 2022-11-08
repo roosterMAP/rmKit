@@ -84,8 +84,14 @@ class MESH_OT_knifescreen( bpy.types.Operator ):
 						dir_idx, cam_dir_vec, grid_dir_vec = rm_vp.get_nearest_direction_vector( self.str_dir, rm_wp.matrix )
 						plane_nml = grid_dir_vec.cross( v.normal )
 					elif self.alignment == 'grid':
-						dir_idx, cam_dir_vec, plane_nml = rm_vp.get_nearest_direction_vector( self.str_dir, rm_wp.matrix )
+						strdir = 'horizontal'
+						if self.str_dir == 'horizontal':
+							strdir = 'vertical'
+						dir_idx, cam_dir_vec, plane_nml = rm_vp.get_nearest_direction_vector( strdir, rm_wp.matrix )
 					else:
+						strdir = 'horizontal'
+						if self.str_dir == 'horizontal':
+							strdir = 'vertical'
 						dir_idx, plane_nml, grid_dir_vec = rm_vp.get_nearest_direction_vector( self.str_dir, rm_wp.matrix )
 						
 					#slice op

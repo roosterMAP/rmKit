@@ -29,6 +29,9 @@ from . import selectionmode
 from . import push
 from . import radial_align
 from . import slide
+from . import edgeweight
+from . import grabapplymat
+from . import extend
 
 def register():
 	bpy.utils.register_class( rmKitPannel )
@@ -50,6 +53,9 @@ def register():
 	push.register()
 	radial_align.register()
 	slide.register()
+	edgeweight.register()
+	grabapplymat.register()
+	extend.register()
 
 def unregister():
 	bpy.utils.unregister_class( rmKitPannel )
@@ -69,5 +75,8 @@ def unregister():
 	workplane.unregister()
 	selectionmode.unregister()
 	push.unregister()
-	radial_align.register()
-	slide.register()
+	radial_align.unregister()
+	slide.unregister()
+	edgeweight.unregister()
+	grabapplymat.unregister()
+	extend.unregister()

@@ -3,62 +3,45 @@ import rmKit.rmlib as rmlib
 
 CUSTOM_VNORM_LAYERNAME = 'rm_vnorm'
 
-def AddSelSet( bm, polys, layername, value ):
-	strlayers = bm.faces.layers.string
-	selset = strlayers.get( layername, None )
-	if selset is None:
-		selset = strlayers.new( layername )
+def AddSelSet( polys, selset, value ):
 	for p in polys:
 		current_value = p[selset].decode( 'utf-8' ).strip()
-		value += ';'
-		if value not in current_value:
-			strlist = current_value.split( ';' )
-			for s in strlist:
-				if s == '':
-					continue
-				value += s + ';'
-		p[selset] = bytes( value, 'utf-8' )
+		contained_selsets = current_value.split( ';' )
+		if value in contained_selsets:
+			continue
+		contained_selsets.append( value )
+		new_value = ''
+		for ss in contained_selsets:
+			if ss == '':
+				continue
+			new_value += ss + ';'
+		p[selset] = bytes( new_value, 'utf-8' )
 		
-def RemoveSelSet( bm, polys, layername, value ):
-	strlayers = bm.faces.layers.string
-	selset = strlayers.get( layername, None )
-	if selset is None:
-		selset = strlayers.new( layername )
+def RemoveSelSet( polys, selset, value ):
 	for p in polys:
 		current_value = p[selset].decode( 'utf-8' ).strip()
-		value += ';'
+		contained_selsets = current_value.split( ';' )
+		if value not in contained_selsets:
+			continue
+		new_value = ''
+		for ss in contained_selsets:
+			if ss == '' or ss == value:
+				continue
+			new_value += ss + ';'
 		if value in current_value:
-			p[selset] = bytes( current_value.replace( value, '' ), 'utf-8' )
+			p[selset] = bytes( new_value, 'utf-8' )
 		
-def ClearSelSet( bm, polys, layername ):
-	strlayers = bm.faces.layers.string
-	selset = strlayers.get( layername, None )
-	if selset is None:
-		selset = strlayers.new( layername )
+def ClearSelSet( polys, selset ):
 	for p in polys:
 		p[selset] = bytes( '', 'utf-8' )
 		
-def GetSelSetValues( bm, polys, layername ):
-	strlayers = bm.faces.layers.string
-	selset = strlayers.get( layername, None )
-	if selset is None:
-		selset = strlayers.new( layername )
-	for p in polys:
-		current_value = p[selset].decode( 'utf-8' ).strip()
-		if ';' in current_value:
-			return current_value.split( ';' )
-		
-def GetPolysBySelSet( bm, layername, value ):
-	strlayers = bm.faces.layers.string
-	selset = strlayers.get( layername, None )
-	if selset is None:
-		selset = strlayers.new( layername )
+def GetPolysBySelSet( bm, selset, value ):
 	value += ';'
 	member_polys = rmlib.rmPolygonSet()
 	for p in bm.faces:
 		current_value = p[selset].decode( 'utf-8' ).strip()
 		if value in current_value:
-			member_polys.append( value )
+			member_polys.append( p )
 	return member_polys
 	
 
@@ -87,10 +70,6 @@ class MESH_OT_setvnormselset( bpy.types.Operator ):
 				context.object is not None and
 				context.object.type == 'MESH' and
 				context.object.data.is_editmode )
-
-	def invoke( self, event, context ):
-		self.override = event.ctrl
-		return { 'FINISHED' }
 		
 	def execute( self, context ):
 		if context.object is None or context.mode == 'OBJECT':
@@ -105,15 +84,22 @@ class MESH_OT_setvnormselset( bpy.types.Operator ):
 
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		with rmmesh as rmmesh:
+
+			strlayers = rmmesh.bmesh.faces.layers.string
+			selset = strlayers.get( CUSTOM_VNORM_LAYERNAME, None )
+			if selset is None:
+				selset = strlayers.new( CUSTOM_VNORM_LAYERNAME )
+			rmmesh.bmesh.faces.ensure_lookup_table()
+
 			if self.override:
 				polys = rmlib.rmPolygonSet.from_mesh( rmmesh, filter_hidden=True )
 			else:
 				polys = rmlib.rmPolygonSet.from_selection( rmmesh )
 				
 			if self.selset == 'CLEAR':
-				ClearSelSet( rmmesh.bm, polys, CUSTOM_VNORM_LAYERNAME )
+				ClearSelSet( polys, selset )
 			else:
-				AddSelSet( rmmesh.bm, polys, CUSTOM_VNORM_LAYERNAME, self.selset )
+				AddSelSet( polys, selset, self.selset )
 			
 		return { 'FINISHED' }
 	
@@ -153,9 +139,15 @@ class MESH_OT_removevnormselset( bpy.types.Operator ):
 
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		with rmmesh as rmmesh:
+			strlayers = rmmesh.bmesh.faces.layers.string
+			selset = strlayers.get( CUSTOM_VNORM_LAYERNAME, None )
+			if selset is None:
+				selset = strlayers.new( CUSTOM_VNORM_LAYERNAME )
+			rmmesh.bmesh.faces.ensure_lookup_table()
+
 			polys = rmlib.rmPolygonSet.from_selection( rmmesh )
 				
-			RemoveSelSet( rmmesh.bm, polys, CUSTOM_VNORM_LAYERNAME, self.selset )
+			RemoveSelSet( polys, selset, self.selset )
 			
 		return { 'FINISHED' }
 	
@@ -196,10 +188,16 @@ class MESH_OT_selectvnormselset( bpy.types.Operator ):
 		with rmmesh as rmmesh:
 			for f in rmmesh.bmesh.faces:
 				f.select = False
+
+			strlayers = rmmesh.bmesh.faces.layers.string
+			selset = strlayers.get( CUSTOM_VNORM_LAYERNAME, None )
+			if selset is None:
+				selset = strlayers.new( CUSTOM_VNORM_LAYERNAME )
+			rmmesh.bmesh.faces.ensure_lookup_table()
 				
-			polys = GetPolysBySelSet( rmmesh.bm, CUSTOM_VNORM_LAYERNAME, self.selset )
+			polys = GetPolysBySelSet( rmmesh.bmesh, selset, self.selset )
 			for p in polys:
-				p.selet = True
+				p.select = True
 			
 		return { 'FINISHED' }
 
@@ -221,6 +219,12 @@ class MESH_OT_applyall( bpy.types.Operator ):
 		bpy.ops.mesh.rm_applyvnorms( selset='SELSET2' )
 		bpy.ops.mesh.rm_applyvnorms( selset='SELSET3' )
 		return { 'FINISHED' }
+
+
+def GetLoops( vert, face ):
+	vlist = list( face.verts )
+	idx = vlist.index( vert )
+
 	
 	
 class MESH_OT_applyvnorms( bpy.types.Operator ):
@@ -263,17 +267,21 @@ class MESH_OT_applyvnorms( bpy.types.Operator ):
 		with rmmesh as rmmesh:
 			rmmesh.readonly = True
 			
+			#get selset layer
 			str_layer = rmmesh.mesh.polygon_layers_string.get( CUSTOM_VNORM_LAYERNAME, None )
 			if str_layer is None:
 				bpy.ops.object.mode_set( mode='EDIT', toggle=False )
 				return { 'CANCELLED' }
 			
+			#set smoothing on mesh object to make custom vnorms visible
 			rmmesh.mesh.polygons.foreach_set( 'use_smooth', [False] * len( rmmesh.mesh.polygons ) )
 			rmmesh.mesh.use_auto_smooth = True
 			
-			for l in rmmesh.mesh.loops:
-				vnorms.append( mathutils.Vector( l.normal ) )
-			
+			#load all existing vnorms
+			rmmesh.mesh.calc_normals_split()
+			vnorms = [ mathutils.Vector( loop.normal ) for loop in rmmesh.mesh.loops ]
+				
+			#store all pidxs and vertices for this selset
 			vertices = set()
 			selset_pidxs = set()
 			for p in rmmesh.bmesh.faces:
@@ -282,45 +290,74 @@ class MESH_OT_applyvnorms( bpy.types.Operator ):
 					vertices |= set( p.verts )
 					selset_pidxs.add( p.index )
 			
+			
 			for v in vertices:
-				loops = v.link_loops
-				faces = v.link_faces
+				#sort loops such that they wind around v in a clockwise order
+				loops = []
+				unsorted_loops = list( v.link_loops )
+				unsorted_faces = list( v.link_faces )
+				while len( unsorted_faces ) > 0:
+					current_face = unsorted_faces.pop( 0 )
+
+					while( current_face is not None ):
+						for i in range( len( unsorted_loops ) ):
+							if unsorted_loops[i].face == current_face:
+								current_loop = unsorted_loops.pop( i )
+								loops.append( current_loop )
+								break
+						
+						prev_face = current_face
+						current_face = None
+						for f in current_loop.edge.link_faces:
+							if f != prev_face:
+								try:
+									unsorted_faces.remove( f )
+								except ValueError:
+									try:
+										loops.append( unsorted_loops[0] )
+									except IndexError:
+										break
+								current_face = f
+								break
 				
 				#get the index of the first loop with a sharp edge
 				startIdx = 0
-				lcount = len( loops )			
+				lcount = len( loops )
 				for i in range( lcount ):
-					e = loops[startIdx].edge
-					if not e.smooth:
+					if not loops[i].edge.smooth:
 						break
-					startIdx += 1		
+					startIdx += 1
 					
+				#compute the vnorm for this poly group.
+				#a group is all polys that link a vert broken up by sharp edges
 				loop_group = []
-				current_normal = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
+				last_loop_group = []
 				for i in range( lcount ):
 					idx = ( startIdx + i ) % lcount
-					loop_group.append( loops[idx] )		
-					e = loops[idx].edge	
-								
-					p = v.link_faces[idx]
-					if p.index in selset_pidxs:
-						nml = p.normal.copy()
-						if self.weighted:
-							nml *= p.area
-						current_normal += nml
-									
-					if i > 0 and not e.smooth:
-						for l in loop_group:
-							vnorms[l.index] = current_normal.normalized()
-						current_normal = mathutils.Vector( 0.0, 0.0, 0.0 )
-						loop_group.clear()
-						continue
+					l = loops[idx]
 
-				if len( loop_group ) > 0:
-					for l in loop_group:
-						vnorms[l.index] = current_normal.normalized()
+					loop_group.append( l )
+
+					if not l.edge.smooth:
+						if i == 0:
+							last_loop_group = [ l for l in loop_group ]
+							loop_group.clear()
+							continue
+
+						nml = loopgroupnormal( loop_group, self.weighted, selset_pidxs )
+						for l in loop_group:
+							vnorms[l.index] = nml
+
+						loop_group.clear()
+
+				#store the computed normal into vnorms list
+				last_loop_group += loop_group
+				if len( last_loop_group ) > 0:
+					nml = loopgroupnormal( last_loop_group, self.weighted, selset_pidxs )
+					for l in last_loop_group:
+						vnorms[l.index] = nml
 					
-		#since split normals can only be set through mesh interface...	
+		#since split normals can only be set through the old mesh interface which is pretty lame
 		mesh = context.active_object.data
 		mesh.normals_split_custom_set( vnorms )
 		mesh.update()
@@ -328,6 +365,18 @@ class MESH_OT_applyvnorms( bpy.types.Operator ):
 		bpy.ops.object.mode_set( mode='EDIT', toggle=False )
 		
 		return { 'FINISHED' }
+
+def loopgroupnormal( loops, weighted, member_pidxs ):
+	avg = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
+	for l in loops:
+		f = l.face
+		if f.index not in member_pidxs:
+			continue
+		if weighted:
+			avg += f.normal.copy() * f.area
+		else:
+			avg += f.normal.copy()
+	return avg.normalized()
 
 
 class VIEW3D_PT_VNORMS( bpy.types.Panel ):
