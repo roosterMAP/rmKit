@@ -4,6 +4,7 @@ import rmKit.rmlib as rmlib
 class MESH_OT_cursortoselection( bpy.types.Operator ):
 	bl_idname = 'view3d.rm_cursor_to_selection'
 	bl_label = 'Move and Orient 3D Cursor to Selection'
+	bl_options = { 'UNDO' }
 	
 	@classmethod
 	def poll( cls, context ):
@@ -82,6 +83,7 @@ class MESH_OT_cursortoselection( bpy.types.Operator ):
 class MESH_OT_origintocursor( bpy.types.Operator ):
 	bl_idname = 'view3d.rm_origin_to_cursor'
 	bl_label = 'Pivot to Cursor'
+	bl_options = { 'UNDO' }
 	
 	@classmethod
 	def poll( cls, context ):
@@ -103,21 +105,34 @@ class MESH_OT_origintocursor( bpy.types.Operator ):
 			if obj.data not in unique_meshes:
 				unique_meshes.add( obj.data )
 				unique_objects.append( obj )
-				unique_initial_positions.append( obj.location )
+				unique_initial_positions.append( obj.location.copy() )
 
 		if len( unique_objects ) < 1:
 			return { 'CANCELLED' }
 
-		bpy.ops.object.origin_set( type='ORIGIN_CURSOR', center='MEDIAN' )
+		#move pivot for all unique objects
+		cursor_location = mathutils.Vector( context.scene.cursor.location )
+		obj_spc_offsets = []
+		for obj in unique_objects:
+			if obj.type != 'MESH':
+				continue
+			obj_mat_inv = obj.matrix_world.inverted( mathutils.Matrix.Identity( 4 ) )
+			obj_spc_cursor_loc = obj_mat_inv @ cursor_location
+			obj_spc_offsets.append( obj_spc_cursor_loc )
+			rmmesh = rmlib.rmMesh( obj )
+			with rmmesh as rmmesh:
+				for v in rmmesh.bmesh.verts:
+					v.co -= obj_spc_cursor_loc
+			wld_spc_offset = obj.matrix_world.to_3x3() @ obj_spc_cursor_loc
+			obj.location += wld_spc_offset
 
+		#compensate for change in positions of linked objects
 		for i, obj in enumerate( unique_objects ):
 			for link_obj in context.scene.objects:
 				if obj == link_obj or link_obj.type != 'MESH' or link_obj.data != obj.data:
 					continue
-				offset = unique_initial_positions[i] - mathutils.Vector( context.scene.cursor.location )
-				obj_mat = link_obj.matrix_world.to_3x3()
-				offset = obj_mat.inverted( mathutils.Matrix.Identity( 4 ) ) @ offset
-				link_obj.location += offset
+				wld_spc_offset = link_obj.matrix_world.to_3x3() @ obj_spc_offsets[i]
+				link_obj.location += wld_spc_offset
 
 		bpy.ops.object.mode_set( mode=prev_mode, toggle=False )
 

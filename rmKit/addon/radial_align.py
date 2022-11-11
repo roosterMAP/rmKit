@@ -4,51 +4,7 @@ import rmKit.rmlib as rmlib
 import mathutils
 import math
 
-def lookat_from_edge( e ):
-	e_n = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
-	for p in e.link_faces:
-		e_n += p.normal
-	if e_n.length < 0.00000001:
-		mathutils.Vector( ( 0.0, 0.0001, 1.0 ) )
-	e_n.normalize()
-
-	v1, v2 = e.verts
-	e_t = v2.co - v1.co
-	e_t = e_n.cross( e_t.normalized() )
-
-	e_p = ( v1.co + v2.co ) * 0.5
-	
-	return rmlib.util.LookAt( e_n, e_t, e_p )
-
-def circularize( vert_loop, context ):
-	
-	test_edges = set()
-	for v in vert_loop:
-		for e in v.link_edges:
-			if e.other_vert( v ) in vert_loop:
-				continue
-			test_edges.add( e )
-			
-	co = context.scene.transform_orientation_slots[0].custom_orientation
-	grid_matrix = mathutils.Matrix.Identity( 3 )
-	if co is not None:
-		grid_matrix = mathutils.Matrix( co.matrix ).to_3x3()
-	
-	min_dot = 1.0
-	min_idx = -1
-	for idx, e in enumerate( test_edges ):
-		vec = ( e.verts[0].co - e.verts[1].co ).normalized()
-		dot = 1.0
-		for i in range( 3 ):
-			dot = max( dot, abs( vec.dot( grid_matrix[i] ) ) )
-		if dot <= min_dot:
-			min_dot = dot
-			min_idx = idx
-			
-	print( min_dot )
-			
-	vert_loop = vert_loop[min_idx:] + vert_loop[:min_idx]
-
+def circularize( vert_loop, workplane ):
 	vcount = len( vert_loop )
 	pos_loop = [ v.co.copy() for v in vert_loop ]
 	
@@ -69,6 +25,20 @@ def circularize( vert_loop, context ):
 				break
 	rot_axis.normalize()
 	center *= 1.0 / float( vcount )
+
+	#sort verts such that the first rotation occurs on one most aligned with an axis
+	m = workplane.matrix
+	max_dot = -1.0
+	start_idx = 0
+	for i in range( vcount ):
+		vec = ( pos_loop[i] - center ).normalized()
+		for j in range( 3 ):
+			dot = abs( vec.dot( m[j] ) )
+			if dot > max_dot:
+				max_dot = dot
+				start_idx = i
+	vert_loop = vert_loop[start_idx:] + vert_loop[:start_idx]
+	pos_loop = pos_loop[start_idx:] + pos_loop[:start_idx]
 	
 	#compute radius of circle
 	radius = 0.0
@@ -80,10 +50,11 @@ def circularize( vert_loop, context ):
 	new_pos_loop = []
 	rot_quat = mathutils.Quaternion( rot_axis, math.pi * 2.0 / vcount )
 	v = ( pos_loop[0] - center ).normalized()
-	for i in range( vcount ):
+	vert_loop[0].co = center + v * radius
+	for i in range( 1, vcount ):
 		v.rotate( rot_quat )
-		new_pos_loop.append( center + ( v * radius ) )
-		vert_loop[i].co = new_pos_loop[-1]
+		vert_loop[i].co = center + v * radius	
+	
 
 class MESH_OT_radialalign( bpy.types.Operator ):
 	bl_idname = 'mesh.rm_radialalign'
@@ -103,6 +74,7 @@ class MESH_OT_radialalign( bpy.types.Operator ):
 		if sel_mode[0]:
 			return { 'CANCELLED' }
 			
+		rm_wp = rmlib.rmCustomOrientation.from_selection( context )
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		with rmmesh as rmmesh:
 			if sel_mode[1]:
@@ -126,7 +98,7 @@ class MESH_OT_radialalign( bpy.types.Operator ):
 					continue
 
 				vert_loop = [ pair[0] for pair in chain ]
-				circularize( vert_loop, context )
+				circularize( vert_loop, rm_wp.matrix )
 
 		return { 'FINISHED' }
 	
