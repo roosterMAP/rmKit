@@ -1,24 +1,49 @@
 import bpy, bmesh
 import rmKit.rmlib as rmlib
 
-def SetEdgeCrease( rmmesh, weight ):
-	clyr = None
+def GetEdges( bmesh, sel_mode ):
+	if sel_mode[1]:
+		return rmlib.rmEdgeSet( [ e for e in bmesh.edges if e.select ] )
+	elif sel_mode[2]:
+		edges = set()
+		polys = rmlib.rmPolygonSet( [ f for f in bmesh.faces if f.select ] )
+		for e in polys.edges:
+			for p in e.link_faces:
+				if p not in polys:
+					edges.add( e )
+					break
+		return rmlib.rmEdgeSet( edges )
+	return rmlib.rmEdgeSet()
+
+def SetEdgeCrease( context, weight ):
+	sel_mode = context.tool_settings.mesh_select_mode[:]
+	rmmesh = rmlib.rmMesh.GetActive( context )	
 	with rmmesh as rmmesh:
+		rmmesh.skipchecks = True
 		c_layers = rmmesh.bmesh.edges.layers.crease
 		clyr = c_layers.verify()
-	with rmmesh as rmmesh:
-		for e in rmlib.rmEdgeSet.from_selection( rmmesh ):
+		for e in GetEdges( rmmesh.bmesh, sel_mode ):
 			e[clyr] = weight
 
 
-def SetEdgeBevelWeight( rmmesh, weight ):
-	blyr = None
+def SetEdgeBevelWeight( context, weight ):
+	sel_mode = context.tool_settings.mesh_select_mode[:]
+	rmmesh = rmlib.rmMesh.GetActive( context )	
 	with rmmesh as rmmesh:
+		rmmesh.skipchecks = True
 		b_layers = rmmesh.bmesh.edges.layers.bevel_weight
 		blyr = b_layers.verify()
-	with rmmesh as rmmesh:
-		for e in rmlib.rmEdgeSet.from_selection( rmmesh ):
+		for e in GetEdges( rmmesh.bmesh, sel_mode ):
 			e[blyr] = weight
+
+
+def SetEdgeSharp( context, weight ):
+	sel_mode = context.tool_settings.mesh_select_mode[:]
+	rmmesh = rmlib.rmMesh.GetActive( context )	
+	with rmmesh as rmmesh:
+		rmmesh.skipchecks = True
+		for e in GetEdges( rmmesh.bmesh, sel_mode ):
+			e.smooth = not bool( round( weight ) )
 			
 
 class MESH_OT_setedgeweight( bpy.types.Operator ):
@@ -28,7 +53,8 @@ class MESH_OT_setedgeweight( bpy.types.Operator ):
 	
 	weight_type: bpy.props.EnumProperty(
 		items=[ ( "crease", "Crease", "", 1 ),
-				( "bevel_weight", "Bevel Weight", "", 2 ) ],
+				( "bevel_weight", "Bevel Weight", "", 2 ),
+				( "sharp", "Sharp", "", 3 ) ],
 		name="Weight Type",
 		default="crease"
 	)
@@ -48,24 +74,14 @@ class MESH_OT_setedgeweight( bpy.types.Operator ):
 		
 	def execute( self, context ):
 		if context.object is None or context.mode == 'OBJECT':
-			return { 'CANCELLED' }		
-
-		rmmesh = rmlib.rmMesh.GetActive( context )
-		if rmmesh is None:
-			return { 'CANCELLED' }
-
-		sel_mode = context.tool_settings.mesh_select_mode[:]
-		if not sel_mode[1]:
-			return { 'CANCELLED' }
-
-		rmmesh = rmlib.rmMesh.GetActive( context )
-		if rmmesh is None:
 			return { 'CANCELLED' }
 
 		if self.weight_type == 'crease':
-			SetEdgeCrease( rmmesh, self.weight )
+			SetEdgeCrease( context, self.weight )
+		elif self.weight_type == 'bevel_weight':
+			SetEdgeBevelWeight( context, self.weight )
 		else:
-			SetEdgeBevelWeight( rmmesh, self.weight )
+			SetEdgeSharp( context, self.weight )
 
 		return { 'FINISHED' }
 
@@ -159,13 +175,15 @@ def register():
 	bpy.utils.register_class( VIEW3D_MT_PIE_setedgeweight_bevel )
 	bpy.types.Object.ew_weight_type_crease = bpy.props.EnumProperty(
 		items=[ ( "crease", "Crease", "", 1 ),
-				( "bevel_weight", "Bevel Weight", "", 2 ) ],
+				( "bevel_weight", "Bevel Weight", "", 2 ),
+				( "sharp", "Sharp", "", 3 ) ],
 		name="Weight Type",
 		default="crease"
 	)
 	bpy.types.Object.ew_weight_type_bevel_weight = bpy.props.EnumProperty(
 		items=[ ( "crease", "Crease", "", 1 ),
-				( "bevel_weight", "Bevel Weight", "", 2 ) ],
+				( "bevel_weight", "Bevel Weight", "", 2 ),
+				( "sharp", "Sharp", "", 3 ) ],
 		name="Weight Type",
 		default="bevel_weight"
 	)

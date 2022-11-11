@@ -81,14 +81,15 @@ class MESH_OT_quickmaterial( bpy.types.Operator ):
 		depsgraph = context.evaluated_depsgraph_get()
 		depsgraph.update()
 		hit, loc, nml, idx, obj, mat = context.scene.ray_cast( depsgraph, look_pos, look_vec )
-		if hit:
+		set_defaults = True
+		if hit and len( obj.data.materials ) > 0:
 			source_poly = obj.data.polygons[idx]
 			material = obj.data.materials[source_poly.material_index]
 			bpy.context.scene.quickmatprops["prop_mat"] = material
 			bpy.context.scene.quickmatprops["prop_col"] = material.diffuse_color
 			bpy.context.scene.quickmatprops["prop_met"] = material.metallic
 			bpy.context.scene.quickmatprops["prop_rog"] = material.roughness
-		else:
+		else:			
 			bpy.context.scene.quickmatprops["prop_mat"] = None
 			bpy.context.scene.quickmatprops["prop_col"] = ( 0.5, 0.5, 0.5, 1.0 )
 			bpy.context.scene.quickmatprops["prop_met"] = 0.0

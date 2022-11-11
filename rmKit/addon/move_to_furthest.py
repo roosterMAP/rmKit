@@ -122,7 +122,7 @@ class MESH_OT_movetofurthest( bpy.types.Operator ):
 				if len( selected_edges ) < 1:
 					return { 'CANCELLED' }
 				if self.local:
-					vert_groups = selected_edges.vertices.group()
+					vert_groups = [ g.vertices for g in selected_edges.group() ]
 				else:
 					vert_groups = [ selected_edges.vertices ]
 			elif sel_mode[2]:
@@ -130,7 +130,7 @@ class MESH_OT_movetofurthest( bpy.types.Operator ):
 				if len( selected_polys ) < 1:
 					return { 'CANCELLED' }
 				if self.local:
-					vert_groups = selected_polys.vertices.group()
+					vert_groups = [ g.vertices for g in selected_polys.group() ]
 				else:
 					vert_groups = [ selected_polys.vertices ]					
 			else:
@@ -176,12 +176,12 @@ class VIEW3D_MT_PIE_movetofurthest( bpy.types.Menu ):
 		pie.operator( 'wm.call_menu_pie', text='Local' ).name = 'VIEW3D_MT_PIE_movetofurthest_local'
 		
 		op_h = pie.operator( 'mesh.rm_movetofurthest', text='Horizontal' )
-		op_h.str_dir = 'horizontal'
+		op_h.str_dir = 'vertical'
 		op_h.local = context.object.mtf_prop_off
 		op_h.constrain = context.object.mtf_prop_off
 				
 		op_v = pie.operator( 'mesh.rm_movetofurthest', text='Vertical' )
-		op_v.str_dir = 'vertical'
+		op_v.str_dir = 'horizontal'
 		op_v.local = context.object.mtf_prop_off
 		op_v.constrain = context.object.mtf_prop_off
 		
@@ -219,12 +219,12 @@ class VIEW3D_MT_PIE_movetofurthest_local( bpy.types.Menu ):
 		pie.separator()
 		
 		op_h = pie.operator( 'mesh.rm_movetofurthest', text='Horizontal' )
-		op_h.str_dir = 'horizontal'
+		op_h.str_dir = 'vertical'
 		op_h.local = context.object.mtf_prop_on
 		op_h.constrain = context.object.mtf_prop_off
 				
 		op_v = pie.operator( 'mesh.rm_movetofurthest', text='Vertical' )
-		op_v.str_dir = 'vertical'
+		op_v.str_dir = 'horizontal'
 		op_v.local = context.object.mtf_prop_on
 		op_v.constrain = context.object.mtf_prop_off
 		
@@ -262,12 +262,12 @@ class VIEW3D_MT_PIE_movetofurthest_constrain( bpy.types.Menu ):
 		pie.operator( 'wm.call_menu_pie', text='Local' ).name = 'VIEW3D_MT_PIE_movetofurthest_both'
 		
 		op_h = pie.operator( 'mesh.rm_movetofurthest', text='Horizontal' )
-		op_h.str_dir = 'horizontal'
+		op_h.str_dir = 'vertical'
 		op_h.local = context.object.mtf_prop_off
 		op_h.constrain = context.object.mtf_prop_on
 				
 		op_v = pie.operator( 'mesh.rm_movetofurthest', text='Vertical' )
-		op_v.str_dir = 'vertical'
+		op_v.str_dir = 'horizontal'
 		op_v.local = context.object.mtf_prop_off
 		op_v.constrain = context.object.mtf_prop_on
 		
@@ -305,12 +305,12 @@ class VIEW3D_MT_PIE_movetofurthest_both( bpy.types.Menu ):
 		pie.separator()
 		
 		op_h = pie.operator( 'mesh.rm_movetofurthest', text='Horizontal' )
-		op_h.str_dir = 'horizontal'
+		op_h.str_dir = 'vertical'
 		op_h.local = context.object.mtf_prop_on
 		op_h.constrain = context.object.mtf_prop_on
 				
 		op_v = pie.operator( 'mesh.rm_movetofurthest', text='Vertical' )
-		op_v.str_dir = 'vertical'
+		op_v.str_dir = 'horizontal'
 		op_v.local = context.object.mtf_prop_on
 		op_v.constrain = context.object.mtf_prop_on
 

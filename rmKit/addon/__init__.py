@@ -32,6 +32,8 @@ from . import slide
 from . import edgeweight
 from . import grabapplymat
 from . import extend
+from . import quickmaterial
+from . import cursor
 
 def register():
 	bpy.utils.register_class( rmKitPannel )
@@ -56,6 +58,8 @@ def register():
 	edgeweight.register()
 	grabapplymat.register()
 	extend.register()
+	quickmaterial.register()
+	cursor.register()
 
 def unregister():
 	bpy.utils.unregister_class( rmKitPannel )
@@ -80,3 +84,5 @@ def unregister():
 	edgeweight.unregister()
 	grabapplymat.unregister()
 	extend.unregister()
+	quickmaterial.unregister()
+	cursor.register()

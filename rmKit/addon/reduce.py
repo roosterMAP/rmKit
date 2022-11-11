@@ -37,8 +37,10 @@ class MESH_OT_reduce( bpy.types.Operator ):
 
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 
-		with rmmesh as rmmesh:
-			if sel_mode[0]: #vert mode
+		
+		if sel_mode[0]: #vert mode
+			with rmmesh as rmmesh:
+				rmmesh.readonly = True
 				sel_verts = rmlib.rmVertexSet.from_selection( rmmesh )
 				if len( sel_verts ) > 0:
 					if self.reduce_mode == 'DEL':
@@ -48,11 +50,14 @@ class MESH_OT_reduce( bpy.types.Operator ):
 					else:
 						bpy.ops.mesh.dissolve_verts()
 
-			if sel_mode[1]: #edge mode
+		if sel_mode[1]: #edge mode
+			with rmmesh as rmmesh:
+				rmmesh.readonly = True
 				sel_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
 				if len( sel_edges ) > 0:
 					if self.reduce_mode == 'DEL':
-						bpy.ops.mesh.delete( type='EDGE' )
+						rmmesh.readonly = False
+						bmesh.ops.delete( rmmesh.bmesh, geom=sel_edges.polygons, context='FACES' )
 					elif self.reduce_mode == 'COL':
 						bpy.ops.mesh.edge_collapse()
 					elif self.reduce_mode == 'DIS':
@@ -60,7 +65,9 @@ class MESH_OT_reduce( bpy.types.Operator ):
 					else:
 						bpy.ops.mesh.dissolve_edges( use_verts=True, use_face_split=False )
 
-			if sel_mode[2]: #poly mode
+		if sel_mode[2]: #poly mode
+			with rmmesh as rmmesh:
+				rmmesh.readonly = True
 				sel_polys = rmlib.rmPolygonSet.from_selection( rmmesh )
 				if len( sel_polys ) > 0:
 					if self.reduce_mode == 'COL':

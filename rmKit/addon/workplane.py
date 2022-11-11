@@ -7,17 +7,6 @@ import math, time
 import mathutils
 import rmKit.rmlib as rmlib
 
-def LookAt( look, up, pos ):	
-	d = look.normalized()
-	u = up.normalized()
-	r = d.cross( u ).normalized()
-
-	R = mathutils.Matrix( ( r, u, -d ) )
-	R.transpose()
-	
-	return mathutils.Matrix.LocRotScale( pos, R, None )
-
-
 GRID_RENDER = None
 
 
@@ -71,7 +60,6 @@ class GridRenderManager:
 
 		scale_idx = math.floor( math.log2( min_dist ) )
 		GridRenderManager.scale = math.pow( 2, scale_idx - 2 )
-		print( scale_idx, GridRenderManager.scale )
 
 		self.shader_batch()
 
@@ -173,7 +161,6 @@ class MESH_OT_workplane( bpy.types.Operator ):
 			GRID_RENDER.update_scale( context )
 
 			if not context.scene.transform_orientation_slots[0].type == 'WORKPLANE':
-				print( 'NO LONGER WORKPLANE!!!' )
 				GRID_RENDER.stopDraw( context )
 				bpy.context.space_data.overlay.show_floor = True
 				bpy.context.space_data.overlay.show_axis_x = True
@@ -214,7 +201,7 @@ class MESH_OT_workplane( bpy.types.Operator ):
 							v_t = v2.co - v1.co
 							v_t = v_n.cross( v_t.normalized() )
 						
-						GridRenderManager.matrix = LookAt( v_n, v_t, v.co )
+						GridRenderManager.matrix = rmlib.util.LookAt( v_n, v_t, v.co )
 
 				elif sel_mode[1]:
 					sel_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
@@ -234,15 +221,14 @@ class MESH_OT_workplane( bpy.types.Operator ):
 
 						e_p = ( v1.co + v2.co ) * 0.5
 						
-						GridRenderManager.matrix = LookAt( e_n, e_t, e_p )
-						print( 'EXECUTE :: {}'.format( GRID_RENDER.matrix ) )
+						GridRenderManager.matrix = rmlib.util.LookAt( e_n, e_t, e_p )
 
 				elif sel_mode[2]:
 					sel_polys = rmlib.rmPolygonSet.from_selection( rmmesh )
 					if len( sel_polys ) > 0:
 						p = sel_polys[0]
 						
-						GridRenderManager.matrix = LookAt( p.normal, p.calc_tangent_edge_pair(), p.calc_center_median() )
+						GridRenderManager.matrix = rmlib.util.LookAt( p.normal, p.calc_tangent_edge_pair(), p.calc_center_median() )
 
 		elif not GridRenderManager.active and context.mode != 'OBJECT' and context.object is not None:
 			GridRenderManager.matrix = mathutils.Matrix( context.object.matrix_world )

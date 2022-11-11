@@ -60,8 +60,10 @@ class MESH_OT_setvnormselset( bpy.types.Operator ):
 		default="CLEAR"
 	)
 
-	def __init__( self ):
-		self.override = False
+	override: bpy.props.BoolProperty(
+		name="Override",
+		default=False
+	)
 	
 	@classmethod
 	def poll( cls, context ):
@@ -92,9 +94,10 @@ class MESH_OT_setvnormselset( bpy.types.Operator ):
 			rmmesh.bmesh.faces.ensure_lookup_table()
 
 			if self.override:
-				polys = rmlib.rmPolygonSet.from_mesh( rmmesh, filter_hidden=True )
-			else:
-				polys = rmlib.rmPolygonSet.from_selection( rmmesh )
+				overridden_polys = rmlib.rmPolygonSet.from_mesh( rmmesh, filter_hidden=True )
+				RemoveSelSet( overridden_polys, selset, self.selset )
+			
+			polys = rmlib.rmPolygonSet.from_selection( rmmesh )
 				
 			if self.selset == 'CLEAR':
 				ClearSelSet( polys, selset )
@@ -391,27 +394,46 @@ class VIEW3D_PT_VNORMS( bpy.types.Panel ):
 
 		box = layout.box()
 
+		row_override = box.row()
+		row_override.prop( context.scene, 'vn_selsetweighted', toggle=1 )
+		row_override.alignment = 'LEFT'
+
 		row_selset1 = box.row()
-		row_selset1.operator( MESH_OT_selectvnormselset.bl_idname, text='SELSET1' ).selset = 'SELSET1'
-		row_selset1.operator( MESH_OT_setvnormselset.bl_idname, text='+' ).selset = 'SELSET1'
+		row_selset1.operator( MESH_OT_selectvnormselset.bl_idname, text='SEL1' ).selset = 'SELSET1'
+		op = row_selset1.operator( MESH_OT_setvnormselset.bl_idname, text='+' )
+		op.selset = 'SELSET1'
+		op.override = False
+		op = row_selset1.operator( MESH_OT_setvnormselset.bl_idname, text='++' )
+		op.selset = 'SELSET1'
+		op.override = True
 		row_selset1.operator( MESH_OT_removevnormselset.bl_idname, text='-' ).selset = 'SELSET1'
 		row_selset1.operator( MESH_OT_applyvnorms.bl_idname, text='Apply' ).selset = 'SELSET1'
 
 		row_selset2 = box.row()
-		row_selset2.operator( MESH_OT_selectvnormselset.bl_idname, text='SELSET2' ).selset = 'SELSET2'
-		row_selset2.operator( MESH_OT_setvnormselset.bl_idname, text='+' ).selset = 'SELSET2'
+		row_selset2.operator( MESH_OT_selectvnormselset.bl_idname, text='SEL2' ).selset = 'SELSET2'
+		op = row_selset2.operator( MESH_OT_setvnormselset.bl_idname, text='+' )
+		op.selset = 'SELSET2'
+		op.override = False
+		op = row_selset2.operator( MESH_OT_setvnormselset.bl_idname, text='++' )
+		op.selset = 'SELSET2'
+		op.override = True
 		row_selset2.operator( MESH_OT_removevnormselset.bl_idname, text='-' ).selset = 'SELSET2'
 		row_selset2.operator( MESH_OT_applyvnorms.bl_idname, text='Apply' ).selset = 'SELSET2'
 
 		row_selset3 = box.row()
-		row_selset3.operator( MESH_OT_selectvnormselset.bl_idname, text='SELSET3' ).selset = 'SELSET3'
-		row_selset3.operator( MESH_OT_setvnormselset.bl_idname, text='+' ).selset = 'SELSET3'
+		row_selset3.operator( MESH_OT_selectvnormselset.bl_idname, text='SEL3' ).selset = 'SELSET3'
+		op = row_selset3.operator( MESH_OT_setvnormselset.bl_idname, text='+' )
+		op.selset = 'SELSET3'
+		op.override = False
+		op = row_selset3.operator( MESH_OT_setvnormselset.bl_idname, text='++' )
+		op.selset = 'SELSET3'
+		op.override = True
 		row_selset3.operator( MESH_OT_removevnormselset.bl_idname, text='-' ).selset = 'SELSET3'
 		row_selset3.operator( MESH_OT_applyvnorms.bl_idname, text='Apply' ).selset = 'SELSET3'
 
 		row_applyall = box.row()
 		row_applyall.operator( MESH_OT_applyall.bl_idname, text='ALL' )
-		row_applyall.alignment = 'RIGHT'
+		row_applyall.alignment = 'EXPAND'
 	
 	
 def register():
@@ -425,26 +447,9 @@ def register():
 	bpy.utils.register_class( MESH_OT_selectvnormselset )
 	bpy.utils.register_class( MESH_OT_applyvnorms )
 	bpy.utils.register_class( MESH_OT_applyall )
-	bpy.types.Scene.vn_selset1enum = bpy.props.EnumProperty(
-		items=[ ( "SELSET1", "SETSET1", "", 1 ),
-				( "SELSET2", "SELSET2", "", 2 ),
-				( "SELSET3", "SELSET3", "", 3 ) ],
-		name="Selection Set",
-		default="SELSET1"
-	)
-	bpy.types.Scene.vn_selset2enum = bpy.props.EnumProperty(
-		items=[ ( "SELSET1", "SETSET1", "", 1 ),
-				( "SELSET2", "SELSET2", "", 2 ),
-				( "SELSET3", "SELSET3", "", 3 ) ],
-		name="Selection Set",
-		default="SELSET2"
-	)
-	bpy.types.Scene.vn_selset3enum = bpy.props.EnumProperty(
-		items=[ ( "SELSET1", "SETSET1", "", 1 ),
-				( "SELSET2", "SELSET2", "", 2 ),
-				( "SELSET3", "SELSET3", "", 3 ) ],
-		name="Selection Set",
-		default="SELSET3"
+	bpy.types.Scene.vn_selsetweighted = bpy.props.BoolProperty(
+		name="Area Weights",
+		default=False
 	)
 	bpy.utils.register_class( VIEW3D_PT_VNORMS )
 	
@@ -460,9 +465,7 @@ def unregister():
 	bpy.utils.unregister_class( MESH_OT_selectvnormselset )
 	bpy.utils.unregister_class( MESH_OT_applyvnorms )
 	bpy.utils.unregister_class( MESH_OT_applyall )
-	del bpy.types.Scene.vn_selset1enum
-	del bpy.types.Scene.vn_selset2enum
-	del bpy.types.Scene.vn_selset3enum
+	del bpy.types.Scene.vn_selsetweighted
 	bpy.utils.unregister_class( VIEW3D_PT_VNORMS )
 
 

@@ -23,17 +23,7 @@ class MESH_OT_contextbevel( bpy.types.Operator ):
 			with rmmesh as rmmesh:
 				rmmesh.readonly = True
 				sel_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
-				open_edges = rmlib.rmEdgeSet()
-				closed_edges = rmlib.rmEdgeSet()
-				for e in sel_edges:
-					if e.is_boundary:
-						open_edges.append( e )
-					elif e.is_contiguous:
-						closed_edges.append( e )
-				if len( open_edges ) > 0:
-					open_edges.select( replace=True )
-					bpy.ops.mesh.extrude_edges_move( 'INVOKE_DEFAULT' )
-				elif len( closed_edges ) > 0:
+				if len( sel_edges ) > 0:
 					bpy.ops.mesh.bevel( 'INVOKE_DEFAULT', affect='EDGES' )
 				else:
 					return { 'CANCELLED' }
