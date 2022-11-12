@@ -4,7 +4,7 @@ import rmKit.rmlib as rmlib
 import mathutils
 import math
 
-def circularize( vert_loop, workplane ):
+def circularize( vert_loop, matrix ):
 	vcount = len( vert_loop )
 	pos_loop = [ v.co.copy() for v in vert_loop ]
 	
@@ -26,19 +26,28 @@ def circularize( vert_loop, workplane ):
 	rot_axis.normalize()
 	center *= 1.0 / float( vcount )
 
-	#sort verts such that the first rotation occurs on one most aligned with an axis
-	m = workplane.matrix
+	#find an incident vector for the loop that most closely aligns with an axis.
+	#This vector is called delta.
+	angle_epsilon = math.cos( math.radians( 0.5 ) )
 	max_dot = -1.0
-	start_idx = 0
+	delta_vec_before_first_rot = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
+	delta_vec_verts = []
 	for i in range( vcount ):
-		vec = ( pos_loop[i] - center ).normalized()
+		vec_in = ( pos_loop[i] - center ).normalized()
+		vec_out = ( pos_loop[i-1] - pos_loop[i] ).normalized()
+		vec_out = vec_out.cross( rot_axis ).normalized()
 		for j in range( 3 ):
-			dot = abs( vec.dot( m[j] ) )
-			if dot > max_dot:
-				max_dot = dot
-				start_idx = i
-	vert_loop = vert_loop[start_idx:] + vert_loop[:start_idx]
-	pos_loop = pos_loop[start_idx:] + pos_loop[:start_idx]
+			dot_in = abs( vec_in.dot( matrix[j] ) )
+			dot_out = abs( vec_out.dot( matrix[j] ) )
+			if dot_in > max_dot and dot_out > max_dot:
+				if dot_in > dot_out or abs( dot_in - dot_out ) <= angle_epsilon:
+					max_dot = dot_in
+					delta_vec_verts = [vert_loop[i]]
+					delta_vec_before_first_rot = vec_in
+				else:
+					max_dot = dot_out
+					delta_vec_verts = [vert_loop[i-1], vert_loop[i]]
+					delta_vec_before_first_rot = vec_out
 	
 	#compute radius of circle
 	radius = 0.0
@@ -47,13 +56,28 @@ def circularize( vert_loop, workplane ):
 	radius *= 1.0 / float( vcount )
 	
 	#set new vert positions
-	new_pos_loop = []
 	rot_quat = mathutils.Quaternion( rot_axis, math.pi * 2.0 / vcount )
 	v = ( pos_loop[0] - center ).normalized()
 	vert_loop[0].co = center + v * radius
 	for i in range( 1, vcount ):
 		v.rotate( rot_quat )
-		vert_loop[i].co = center + v * radius	
+		vert_loop[i].co = center + v * radius
+	
+	#get the value of delta vec after initial rotation
+	delta_vec_after_first_rot = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
+	if len( delta_vec_verts ) == 1:
+		delta_vec_after_first_rot = ( delta_vec_verts[0].co - center ).normalized()
+	else:
+		delta_vec_after_first_rot = ( delta_vec_verts[0].co - delta_vec_verts[1].co ).normalized()
+		delta_vec_after_first_rot = delta_vec_after_first_rot.cross( rot_axis ).normalized()
+		
+	#apply rotation from delta_vec to all verts to axis align the loop
+	theta = rmlib.util.Angle2( delta_vec_before_first_rot, delta_vec_after_first_rot, rot_axis )
+	rot_quat = mathutils.Quaternion( rot_axis, theta )
+	for i in range( vcount ):
+		v = ( vert_loop[i].co - center ).normalized()
+		v.rotate( rot_quat )
+		vert_loop[i].co = center + v * radius
 	
 
 class MESH_OT_radialalign( bpy.types.Operator ):

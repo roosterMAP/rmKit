@@ -158,6 +158,8 @@ class VIEW3D_MT_PIE_cursor( bpy.types.Menu ):
 
 		pie.operator( 'view3d.rm_origin_to_cursor', text='Object Pivot to Cursor' )
 
+		pie.operator( 'view3d.snap_cursor_to_center', text='Cursor to Origin' )
+
 	
 def register():
 	print( 'register :: {}'.format( MESH_OT_cursortoselection.bl_idname ) )

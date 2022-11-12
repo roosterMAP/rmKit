@@ -25,10 +25,8 @@ class GridRenderManager:
 		self.update_scale( context )
 
 	def update_scale( self, context ):
-		a = context.area
-		if a is None:
+		if context.area is None:
 			return
-		cam_pos = a.spaces.active.region_3d.view_matrix.inverted().translation
 
 		width = context.region.width
 		height = context.region.height

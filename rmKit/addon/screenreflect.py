@@ -61,13 +61,14 @@ class MESH_OT_screenreflect( bpy.types.Operator ):
 			
 			if self.mode == 0:
 				#find the farthest point in the direction of the desired axis aligned direction
-				reflection_center = active_verts[0].co
-				max_dot = -2.0
-				for v in active_verts:
+				reflection_center = active_verts[0].co.copy()
+				max_dot = grid_dir_vec.dot( active_verts[0].co )
+				for i in range( 1, len( active_verts ) ):
+					v = active_verts[i]
 					dot = grid_dir_vec.dot( v.co )
 					if dot > max_dot:
 						max_dot = dot
-						reflection_center = v.co
+						reflection_center = v.co.copy()
 
 			elif self.mode == 1:
 				#slice geo and delete everythin on outer side of slice plane

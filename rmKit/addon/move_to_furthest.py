@@ -2,19 +2,20 @@ import mathutils
 import rmKit.rmlib as rmlib
 import bpy
 
-def move_to_furthest( mesh, groups, dir_vec, matrix, constrain, center ):
+def move_to_furthest( groups, dir_vec, constrain, center ):
 	plane_nml = -dir_vec
 	for g in groups:		
 		#find the plane_position (min_pos)
-		avg_pos = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
-		plane_pos = g[0].co
-		max_dot = -2.0
-		for v in g:
+		avg_pos = g[0].co.copy()
+		plane_pos = g[0].co.copy()
+		max_dot = dir_vec.dot( g[0].co )
+		for i in range( 1, len( g ) ):
+			v = g[i]
 			avg_pos += v.co
 			dot = dir_vec.dot( v.co )
 			if dot > max_dot:
 				max_dot = dot
-				plane_pos = v.co		
+				plane_pos = v.co.copy()
 
 		#for horizontal/vertical, plane_pos is the avg pos
 		avg_pos *= 1.0 / len( g )
@@ -137,7 +138,7 @@ class MESH_OT_movetofurthest( bpy.types.Operator ):
 				return { 'CANCELLED' }
 			
 			center = self.str_dir == 'horizontal' or self.str_dir == 'vertical'
-			move_to_furthest( rmmesh, vert_groups, grid_dir_vec, grid_matrix, self.constrain, center )
+			move_to_furthest( vert_groups, grid_dir_vec, self.constrain, center )
 			
 		return { 'FINISHED' }
 

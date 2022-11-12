@@ -70,18 +70,18 @@ class MESH_OT_rm_copy( bpy.types.Operator ):
 	
 	@classmethod
 	def poll( cls, context ):
-		#used by blender to test if operator can show up in a menu or as a button in the UI
-		return ( context.area.type == 'VIEW_3D' and
-				context.object is not None and
-				context.object.type == 'MESH' and
-				context.object.data.is_editmode )
+		return ( context.area.type == 'VIEW_3D' and context.object is not None )
 		
 	def execute( self, context ):
-		sel_mode = context.tool_settings.mesh_select_mode[:]
-		if sel_mode[1]:
-			bpy.ops.mesh.rm_connectedge('INVOKE_DEFAULT')
-		elif sel_mode[2]:
-			copy( context, self.cut )
+		if context.object.type == 'MESH' and context.object.data.is_editmode:
+			sel_mode = context.tool_settings.mesh_select_mode[:]
+			if sel_mode[1]:
+				bpy.ops.mesh.rm_connectedge('INVOKE_DEFAULT')
+			elif sel_mode[2]:
+				copy( context, self.cut )
+		else:
+			bpy.ops.view3d.copybuffer()
+
 		return { 'FINISHED' }
 	
 
@@ -92,14 +92,15 @@ class MESH_OT_rm_paste( bpy.types.Operator ):
 	
 	@classmethod
 	def poll( cls, context ):
-		#used by blender to test if operator can show up in a menu or as a button in the UI
-		return ( context.area.type == 'VIEW_3D' and
-				context.object is not None and
-				context.object.type == 'MESH' and
-				context.object.data.is_editmode )
+		return ( context.area.type == 'VIEW_3D' and context.object is not None )
 		
 	def execute( self, context ):
-		paste( context )
+		if context.object.type == 'MESH' and context.object.data.is_editmode:
+			sel_mode = context.tool_settings.mesh_select_mode[:]
+			if sel_mode[2]:
+				paste( context )
+		else:
+			bpy.ops.view3d.pastebuffer()
 		return { 'FINISHED' }
 	
 

@@ -149,9 +149,9 @@ class MESH_OT_ring( bpy.types.Operator ):
 					pass
 
 				if sel_mode[1]:
-					ring.select( False )
+					ring.select( replace=False )
 				else:
-					ring.polygons.select( True )
+					ring.polygons.select( replace=False )
 
 				if self.extend_last:
 					break

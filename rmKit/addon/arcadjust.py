@@ -28,7 +28,10 @@ def arc_adjust( bm, scale ):
 		s[1][1] = scale
 		s[2][2] = scale
 
-		verts = rmlib.rmVertexSet( [ pair[0] for pair in chain[1:] ] )
+		verts = rmlib.rmVertexSet()
+		for pair in chain[1:]:
+			if pair[0] not in verts:
+				verts.append( pair[0] )
 		for v in verts:
 			pos = v.co - c
 			pos = s @ pos
