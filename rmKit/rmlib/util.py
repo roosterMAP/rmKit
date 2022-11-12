@@ -145,3 +145,19 @@ def ReflectionMatrix( p, n ):
 	M[2][3] = -2.0 * c * d
 
 	return M
+
+def LookAt( look, up, pos ):
+	d = look.normalized()
+	u = up.normalized()
+	r = d.cross( u ).normalized()
+
+	R = mathutils.Matrix( ( r, u, -d ) )
+	R.transpose()
+	
+	return mathutils.Matrix.LocRotScale( pos, R, None )
+
+def Angle2( v1, v2, up ):
+	cross = up.cross( v1 ).normalized()
+	if v2.dot( cross ) < 0.0:
+		return v1.angle( v2 ) * -1.0
+	return v1.angle( v2 )
