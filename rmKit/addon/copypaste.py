@@ -33,6 +33,11 @@ def copy( context, cut=False ):
 			if i not in selected_polygon_indexes:
 				delPolys.append( p )
 		bmesh.ops.delete( temp_bmesh, geom=delPolys, context='FACES' )
+
+		#bring clipboard_mesh into world space
+		xfrm = rmmesh.world_transform
+		for v in temp_bmesh.verts:
+			v.co = xfrm @ v.co.copy()
 		
 		temp_bmesh.to_mesh( clipboard_mesh )
 		
@@ -56,7 +61,13 @@ def paste( context ):
 		for p in rmmesh.bmesh.faces:
 			p.select = False
 		
+		vcount = len( rmmesh.bmesh.verts )
 		rmmesh.bmesh.from_mesh( clipboard_mesh )
+		rmmesh.bmesh.verts.ensure_lookup_table()
+		xfrm_inv = rmmesh.world_transform.inverted()
+		for i in range( vcount, len( rmmesh.bmesh.verts ) ):
+			v = rmmesh.bmesh.verts[i]
+			v.co = xfrm_inv @ mathutils.Vector( v.co )
 	
 	
 class MESH_OT_rm_copy( bpy.types.Operator ):

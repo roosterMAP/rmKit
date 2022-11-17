@@ -50,26 +50,65 @@ class rmPolygonSet( list ):
 		else:
 			return cls( p for p in rmmesh.bmesh.faces if not p.hide )
 
+
+	def from_mos( cls, rmmesh, context, mouse_pos, pixel_radius=8, ignore_backfacing=True ):
+		rm_vp = util.rmViewport( context )
+		look_idx, abs_look_vec, look_vec = rm_vp.get_nearest_direction_vector( 'front' )
+
+		mos_edges = cls()
+		active_edges = cls( e for e in rmmesh.bmesh.edges if not e.hide )
+		for e in active_edges:
+			ept1, ept2 = e.verts
+			if ignore_backfacing and ept1.normal.dot( look_vec ) > 0.0 and ept2.normal.dot( look_vec ) > 0.0:
+				continue
+			pos1_wld = ept1.co @ rmmesh.world_transform
+			pos2_wld = ept2.co @ rmmesh.world_transform
+			sp1 = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=pos1_wld )
+			sp2 = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=pos2_wld )
+			if util.line2_dist( mathutils.Vector( sp1 ), mathutils.Vector( sp2 ), mathutils.Vector( mouse_pos ) ) <= float( pixel_radius ):
+				mos_edges.append( e )
+
+		return mos_edges
+
 	@classmethod
-	def from_mos( cls, rmmesh, context, event, ignore_backfacing=True ):
-		m_x, m_y = event.mouse_region_x, event.mouse_region_y
-		mouse_pos = mathutils.Vector( ( float( m_x ), float( m_y ) ) )
+	def from_mos( cls, rmmesh, context, mouse_pos, ignore_backfacing=True ):
+		rm_vp = util.rmViewport( context )
+		look_idx, look_vec, axis_vec = rm_vp.get_nearest_direction_vector( 'front' )
 
-		look_pos = view3d_utils.region_2d_to_origin_3d( context.region, context.region_data, mouse_pos )
-		look_vec = view3d_utils.region_2d_to_vector_3d( context.region, context.region_data, mouse_pos )
+		xfrm = rmmesh.world_transform
+		view_pos = rm_vp.cam_pos
+		
+		wld_spc_vpos = [None] * len( rmmesh.bmesh.verts )
+		active_faces = cls()
+		for f in cls( f for f in rmmesh.bmesh.faces if not f.hide ):
+			f_normal = xfrm.to_3x3() @ f.normal.copy()
+			f_normal.normalize()
+			if ignore_backfacing and f_normal.dot( look_vec ) > 0.0:
+				continue
+			active_faces.append( f )
+			for v in f.verts:
+				if wld_spc_vpos[v.index] is None:
+					wld_spc_vpos[v.index] = xfrm @ v.co.copy()
+		if len( active_faces ) < 1:
+			return active_faces
 
-		mos_polygons = cls()
-		world_transform_inv = rmmesh.world_transform.inverted()
-		cam_pos_obj = look_pos @ world_transform_inv					
-		look_vec_obj = look_vec @ world_transform_inv.to_3x3()
-		bvh = mathutils.bvhtree.BVHTree.FromBMesh( rmmesh.bmesh )
-		location, normal, index, distance = bvh.ray_cast( cam_pos_obj, look_vec_obj )
-		if location is not None:
-			p = rmmesh.bmesh.faces[index]
-			if ignore_backfacing and p.normal.dot( look_vec ) < 0.0:
-				mos_polygons.append( p )
+		min_dist = 999999999.9
+		mos_face = active_faces[0]
+		for tri in rmmesh.bmesh.calc_loop_triangles():
+			if tri[0].face not in active_faces:
+				continue
+			sp1 = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=wld_spc_vpos[tri[0].vert.index] )
+			sp2 = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=wld_spc_vpos[tri[1].vert.index] )
+			sp3 = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=wld_spc_vpos[tri[2].vert.index] )
+			hit = mathutils.geometry.intersect_point_tri_2d( mouse_pos, mathutils.Vector( sp1 ), mathutils.Vector( sp2 ), mathutils.Vector( sp3 ) )
+			if hit:
+				tri_center = ( wld_spc_vpos[tri[0].vert.index] + wld_spc_vpos[tri[1].vert.index] + wld_spc_vpos[tri[2].vert.index] ) * 0.33333333333
+				d = ( tri_center - view_pos ).length
+				if d < min_dist:
+					min_dist = d
+					mos_face = tri[0].face
 
-		return mos_polygons
+		return cls( [mos_face] )
 	
 	@property
 	def vertices( self ):
@@ -191,16 +230,20 @@ class rmEdgeSet( list ):
 	@classmethod
 	def from_mos( cls, rmmesh, context, mouse_pos, pixel_radius=8, ignore_backfacing=True ):
 		rm_vp = util.rmViewport( context )
-		look_idx, abs_look_vec, look_vec = rm_vp.get_nearest_direction_vector( 'front' )
+		look_idx, look_vec, axis_vec = rm_vp.get_nearest_direction_vector( 'front' )
+
+		xfrm = rmmesh.world_transform
 
 		mos_edges = cls()
 		active_edges = cls( e for e in rmmesh.bmesh.edges if not e.hide )
 		for e in active_edges:
 			ept1, ept2 = e.verts
-			if ignore_backfacing and ept1.normal.dot( look_vec ) > 0.0 and ept2.normal.dot( look_vec ) > 0.0:
+			enml = ( ept1.normal + ept2.normal ) * 0.5
+			enml = xfrm.to_3x3() @ enml
+			if ignore_backfacing and enml.dot( look_vec ) > 0.0:
 				continue
-			pos1_wld = ept1.co @ rmmesh.world_transform
-			pos2_wld = ept2.co @ rmmesh.world_transform
+			pos1_wld = xfrm @ ept1.co
+			pos2_wld = xfrm @ ept2.co
 			sp1 = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=pos1_wld )
 			sp2 = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=pos2_wld )
 			if util.line2_dist( mathutils.Vector( sp1 ), mathutils.Vector( sp2 ), mathutils.Vector( mouse_pos ) ) <= float( pixel_radius ):
@@ -385,14 +428,17 @@ class rmVertexSet( list ):
 	@classmethod
 	def from_mos( cls, rmmesh, context, mouse_pos, pixel_radius=8, ignore_backfacing=True ):
 		rm_vp = util.rmViewport( context )
-		look_idx, abs_look_vec, look_vec = rm_vp.get_nearest_direction_vector( 'front' )
+		look_idx, look_vec, axis_vec = rm_vp.get_nearest_direction_vector( 'front' )
+
+		xfrm = rmmesh.world_transform
 
 		mos_verts = cls()
 		active_vertices = cls( v for v in rmmesh.bmesh.verts if not v.hide )
 		for v in active_vertices:
-			if ignore_backfacing and v.normal.dot( look_vec ) > 0.0:
+			vnorm = xfrm @ xfrm.to_3x3()
+			if ignore_backfacing and vnorm.dot( look_vec ) > 0.0:
 				continue
-			pos_wld = v.co @ rmmesh.world_transform
+			pos_wld = xfrm @ v.co
 			sp = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=pos_wld )
 			if ( sp - mouse_pos ).length <= float( pixel_radius ):
 				mos_verts.append( v )

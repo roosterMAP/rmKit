@@ -95,12 +95,12 @@ class VIEW3D_MT_PIE_setedgeweight_crease( bpy.types.Menu ):
 
 		pie = layout.menu_pie()
 		
-		op_w = pie.operator( MESH_OT_setedgeweight.bl_idname, text='99%' )
-		op_w.weight = 0.99
+		op_w = pie.operator( MESH_OT_setedgeweight.bl_idname, text='100%' )
+		op_w.weight = 1.0
 		op_w.weight_type = context.object.ew_weight_type_crease
 		
-		op_e = pie.operator( MESH_OT_setedgeweight.bl_idname, text='40%' )
-		op_e.weight = 0.4
+		op_e = pie.operator( MESH_OT_setedgeweight.bl_idname, text='30%' )
+		op_e.weight = 0.3
 		op_e.weight_type = context.object.ew_weight_type_crease
 		
 		op_s = pie.operator( MESH_OT_setedgeweight.bl_idname, text='60%' )
@@ -121,8 +121,8 @@ class VIEW3D_MT_PIE_setedgeweight_crease( bpy.types.Menu ):
 		op_sw.weight = 0.8
 		op_sw.weight_type = context.object.ew_weight_type_crease
 
-		op_se = pie.operator( MESH_OT_setedgeweight.bl_idname, text='50%' )
-		op_se.weight = 0.5
+		op_se = pie.operator( MESH_OT_setedgeweight.bl_idname, text='40%' )
+		op_se.weight = 0.4
 		op_se.weight_type = context.object.ew_weight_type_crease	
 
 
@@ -135,12 +135,12 @@ class VIEW3D_MT_PIE_setedgeweight_bevel( bpy.types.Menu ):
 
 		pie = layout.menu_pie()
 		
-		op_w = pie.operator( MESH_OT_setedgeweight.bl_idname, text='99%' )
-		op_w.weight = 0.99
+		op_w = pie.operator( MESH_OT_setedgeweight.bl_idname, text='100%' )
+		op_w.weight = 1.0
 		op_w.weight_type = context.object.ew_weight_type_bevel_weight
 		
-		op_e = pie.operator( MESH_OT_setedgeweight.bl_idname, text='40%' )
-		op_e.weight = 0.4
+		op_e = pie.operator( MESH_OT_setedgeweight.bl_idname, text='30%' )
+		op_e.weight = 0.3
 		op_e.weight_type = context.object.ew_weight_type_bevel_weight
 		
 		op_s = pie.operator( MESH_OT_setedgeweight.bl_idname, text='60%' )
@@ -161,8 +161,8 @@ class VIEW3D_MT_PIE_setedgeweight_bevel( bpy.types.Menu ):
 		op_sw.weight = 0.8
 		op_sw.weight_type = context.object.ew_weight_type_bevel_weight
 
-		op_se = pie.operator( MESH_OT_setedgeweight.bl_idname, text='50%' )
-		op_se.weight = 0.5
+		op_se = pie.operator( MESH_OT_setedgeweight.bl_idname, text='40%' )
+		op_se.weight = 0.4
 		op_se.weight_type = context.object.ew_weight_type_bevel_weight
 
 

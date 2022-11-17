@@ -233,16 +233,23 @@ class MESH_OT_workplane( bpy.types.Operator ):
 
 		#toggle the render state of the GRID_RENDER global
 		if GridRenderManager.active:
-			bpy.context.space_data.overlay.show_floor = True
-			bpy.context.space_data.overlay.show_axis_x = True
-			bpy.context.space_data.overlay.show_axis_y = True
+			bpy.context.space_data.overlay.show_floor = bpy.context.scene.workplaneprops['prop_show_floor']
+			bpy.context.space_data.overlay.show_axis_x = bpy.context.scene.workplaneprops['prop_show_x']
+			bpy.context.space_data.overlay.show_axis_y = bpy.context.scene.workplaneprops['prop_show_y']
+			bpy.context.space_data.overlay.show_axis_z = bpy.context.scene.workplaneprops['prop_show_z']
 
 			context.scene.transform_orientation_slots[0].type = 'GLOBAL'
 			GRID_RENDER.stopDraw( context )
 		else:
+			bpy.context.scene.workplaneprops['prop_show_floor'] = bpy.context.space_data.overlay.show_floor
+			bpy.context.scene.workplaneprops['prop_show_x'] = bpy.context.space_data.overlay.show_axis_x
+			bpy.context.scene.workplaneprops['prop_show_y'] = bpy.context.space_data.overlay.show_axis_y
+			bpy.context.scene.workplaneprops['prop_show_z'] = bpy.context.space_data.overlay.show_axis_z
+
 			bpy.context.space_data.overlay.show_floor = False
 			bpy.context.space_data.overlay.show_axis_x = False
 			bpy.context.space_data.overlay.show_axis_y = False
+			bpy.context.space_data.overlay.show_axis_z = False
 
 			bpy.ops.transform.create_orientation( name='WORKPLANE', use=True, use_view=True, overwrite=True )
 			orientation = context.scene.transform_orientation_slots[0].custom_orientation
@@ -267,17 +274,31 @@ class MESH_OT_togglegrid( bpy.types.Operator ):
 		b1 = bpy.context.space_data.overlay.show_floor
 		b2 = bpy.context.space_data.overlay.show_axis_x
 		b3 = bpy.context.space_data.overlay.show_axis_y
+		b4 = bpy.context.space_data.overlay.show_axis_z
 
-		if b1 and b2 and b3:
+		if b1 or b2 or b3 or b4:
+			bpy.context.scene.workplaneprops['prop_show_floor'] = b1
+			bpy.context.scene.workplaneprops['prop_show_x'] = b2
+			bpy.context.scene.workplaneprops['prop_show_y'] = b3
+			bpy.context.scene.workplaneprops['prop_show_z'] = b4
 			bpy.context.space_data.overlay.show_floor = False
 			bpy.context.space_data.overlay.show_axis_x = False
 			bpy.context.space_data.overlay.show_axis_y = False
+			bpy.context.space_data.overlay.show_axis_z = False
 		else:
-			bpy.context.space_data.overlay.show_floor = True
-			bpy.context.space_data.overlay.show_axis_x = True
-			bpy.context.space_data.overlay.show_axis_y = True
+			bpy.context.space_data.overlay.show_floor = bpy.context.scene.workplaneprops['prop_show_floor']
+			bpy.context.space_data.overlay.show_axis_x = bpy.context.scene.workplaneprops['prop_show_x']
+			bpy.context.space_data.overlay.show_axis_y = bpy.context.scene.workplaneprops['prop_show_y']
+			bpy.context.space_data.overlay.show_axis_z = bpy.context.scene.workplaneprops['prop_show_z']
 				
 		return { 'FINISHED' }
+
+
+class GridVisibility( bpy.types.PropertyGroup ):
+	prop_show_floor: bpy.props.BoolProperty( name="Show Floor", default=True )
+	prop_show_x: bpy.props.BoolProperty( name="Show X Axis", default=True )
+	prop_show_y: bpy.props.BoolProperty( name="Show Y Axis", default=True )
+	prop_show_z: bpy.props.BoolProperty( name="Show Z Axis", default=False )
 
 	
 def register():
@@ -285,6 +306,8 @@ def register():
 	print( 'register :: {}'.format( MESH_OT_togglegrid.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_workplane )
 	bpy.utils.register_class( MESH_OT_togglegrid )
+	bpy.utils.register_class( GridVisibility )
+	bpy.types.Scene.workplaneprops = bpy.props.PointerProperty( type=GridVisibility )
 	
 	
 def unregister():
@@ -292,3 +315,5 @@ def unregister():
 	print( 'unregister :: {}'.format( MESH_OT_togglegrid.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_workplane )
 	bpy.utils.unregister_class( MESH_OT_togglegrid )
+	bpy.utils.unregister_class( GridVisibility )
+	del bpy.types.Scene.workplaneprops

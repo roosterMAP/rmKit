@@ -72,24 +72,35 @@ def GrabApplyMat( target_rmmesh, context, mouse_pos ):
 			return { 'CANCELLED' }
 
 		if obj == rmmesh.object:
-			source_poly = obj.data.polygons[idx]
+			try:
+				source_poly = rmlib.rmPolygonSet.from_mos( rmmesh, context, mouse_pos )[0]
+			except IndexError:
+				print( 'ERROR :: GrabApplyMat :: from_mos failed' )
+				return { 'CANCELLED' }				
 			source_mat_idx = source_poly.material_index
 			for f in faces:
 				f.material_index = source_mat_idx
 		else:
-			source_poly = obj.data.polygons[idx]
-			source_mat_idx = source_poly.material_index
-			match_found = False
-			for i, mat in enumerate( rmmesh.object.data.materials ):
-				if mat.name_full == obj.data.materials[source_mat_idx].name_full:
-					match_found = True
+			other_rmmesh = rmlib.rmMesh( obj )
+			with other_rmmesh as other_rmmesh:
+				other_rmmesh.readonly = True
+				try:
+					source_poly = rmlib.rmPolygonSet.from_mos( rmmesh, context, mouse_pos )[0]
+				except IndexError:
+					print( 'ERROR :: GrabApplyMat :: from_mos failed' )
+					return { 'CANCELLED' }
+				source_mat_idx = source_poly.material_index
+				match_found = False
+				for i, mat in enumerate( rmmesh.object.data.materials ):
+					if mat.name_full == obj.data.materials[source_mat_idx].name_full:
+						match_found = True
+						for f in faces:
+							f.material_index = i	
+						break
+				if not match_found:
+					rmmesh.object.data.materials.append( obj.data.materials[source_mat_idx] )
 					for f in faces:
-						f.material_index = i	
-					break
-			if not match_found:
-				rmmesh.object.data.materials.append( obj.data.materials[source_mat_idx] )
-				for f in faces:
-					f.material_index = len( rmmesh.object.data.materials ) - 1
+						f.material_index = len( rmmesh.object.data.materials ) - 1
 
 
 class MESH_OT_grabapplymat( bpy.types.Operator ):

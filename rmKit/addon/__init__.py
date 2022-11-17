@@ -34,6 +34,7 @@ from . import grabapplymat
 from . import extend
 from . import quickmaterial
 from . import cursor
+from . import thicken
 
 def register():
 	bpy.utils.register_class( rmKitPannel )
@@ -60,6 +61,7 @@ def register():
 	extend.register()
 	quickmaterial.register()
 	cursor.register()
+	thicken.register()
 
 def unregister():
 	bpy.utils.unregister_class( rmKitPannel )
@@ -86,3 +88,4 @@ def unregister():
 	extend.unregister()
 	quickmaterial.unregister()
 	cursor.register()
+	thicken.unregister()

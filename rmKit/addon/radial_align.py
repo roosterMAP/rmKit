@@ -8,48 +8,39 @@ def circularize( vert_loop, matrix ):
 	vcount = len( vert_loop )
 	pos_loop = [ v.co.copy() for v in vert_loop ]
 	
-	#compute axis of rotation by summing all cross vecs
-	rot_axis = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )	
+	#init delta vec by findin a vec that most aligns with a grid axis.
+	#this vec is a sum of the cross vecs. each cross is between a boudary edge vec and the axis of rotation.
+	#we skip baundary edge vecs that are too closely aligned with the prev one.
+	rot_axis = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
 	center = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
-	for i in range( vcount ):
-		prev_p = pos_loop[i-1]
-		p = pos_loop[i]
-		center += p
-		v = ( p - prev_p ).normalized()
-		for j in range( vcount ):
-			next_idx = ( i + j ) % vcount
-			next_v = ( pos_loop[next_idx] - p ).normalized()
-			cross = v.cross( next_v )
-			if cross.length > 0.0001:
-				rot_axis += cross
-				break
-	rot_axis.normalize()
-	center *= 1.0 / float( vcount )
-
-	#find an incident vector for the loop that most closely aligns with an axis.
-	#This vector is called delta.
-	angle_epsilon = math.cos( math.radians( 0.5 ) )
+	prev_vec = ( vert_loop[0].co - vert_loop[-1].co ).normalized()
+	prev_vert = vert_loop[-1]
 	max_dot = -1.0
 	delta_vec_before_first_rot = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
 	delta_vec_verts = []
+	count = 0
 	for i in range( vcount ):
-		vec_in = ( pos_loop[i] - center ).normalized()
+		curr_vec = ( pos_loop[(i+1)%vcount] - pos_loop[i] ).normalized()
+		if curr_vec.angle( prev_vec ) <= math.radians( 0.1 ):
+			continue
+		rot_axis += prev_vec.cross( curr_vec )
+		center += pos_loop[i]
+		prev_vec = curr_vec
+		count += 1
+
 		vec_out = ( pos_loop[i-1] - pos_loop[i] ).normalized()
 		vec_out = vec_out.cross( rot_axis ).normalized()
 		for j in range( 3 ):
-			dot_in = abs( vec_in.dot( matrix[j] ) )
 			dot_out = abs( vec_out.dot( matrix[j] ) )
-			if dot_in > max_dot and dot_out > max_dot:
-				if dot_in > dot_out or abs( dot_in - dot_out ) <= angle_epsilon:
-					max_dot = dot_in
-					delta_vec_verts = [vert_loop[i]]
-					delta_vec_before_first_rot = vec_in
-				else:
-					max_dot = dot_out
-					delta_vec_verts = [vert_loop[i-1], vert_loop[i]]
-					delta_vec_before_first_rot = vec_out
-	
-	#compute radius of circle
+			if dot_out >= max_dot:
+				max_dot = dot_out
+				delta_vec_verts = [prev_vert, vert_loop[i]]
+				delta_vec_before_first_rot = vec_out
+
+		prev_vert = vert_loop[i]
+
+	rot_axis.normalize()
+	center *= 1.0 / count
 	radius = 0.0
 	for p in pos_loop:
 		radius += ( p - center ).length
@@ -73,7 +64,7 @@ def circularize( vert_loop, matrix ):
 		
 	#apply rotation from delta_vec to all verts to axis align the loop
 	theta = rmlib.util.Angle2( delta_vec_before_first_rot, delta_vec_after_first_rot, rot_axis )
-	rot_quat = mathutils.Quaternion( rot_axis, theta )
+	rot_quat = mathutils.Quaternion( rot_axis, -theta )
 	for i in range( vcount ):
 		v = ( vert_loop[i].co - center ).normalized()
 		v.rotate( rot_quat )

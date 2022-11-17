@@ -57,15 +57,20 @@ class MESH_OT_targetweld( bpy.types.Operator ):
 				bmesh.ops.remove_doubles( rmmesh.bmesh, verts=verts, dist=0.00001 )
 			
 			elif sel_mode[1]:
+				#get verts of current active edge
 				edges = rmlib.rmEdgeSet.from_selection( rmmesh )
+				if len( edges ) < 2:
+					return { 'CANCELLED' }
 				active_edge = rmmesh.bmesh.select_history.active
-				if not isinstance( active_edge, bmesh.types.BMEdge ):
+				if active_edge is None or not isinstance( active_edge, bmesh.types.BMEdge ):
 					active_edge = edges[0]
 				active_verts = list( active_edge.verts )
 				
+				#clear tags
 				for v in edges.vertices:
 					v.tag = False
 				
+				#break up edges into chains and set the one that includes the active verts to be the weld target
 				chains = edges.vert_chain()
 				if len( chains ) < 2:
 					return { 'CANCELLED' }
@@ -75,6 +80,22 @@ class MESH_OT_targetweld( bpy.types.Operator ):
 				target_chain = chains.pop( i )
 				for v in target_chain:
 					v.tag = True
+
+				#weld open edges
+				target_chain_is_sorted = chain_is_sorted( target_chain )
+				if chain_is_boundary( target_chain ):
+					print( 'source is open' )
+					for i, chain in enumerate( chains ):
+						if chain_is_boundary( chain ):
+							if target_chain_is_sorted and chain_is_sorted( chain ):
+								print( 'target is open' )
+								chain = chain[::-1]
+							for i in range( len( target_chain ) ):
+								try:
+									chain[i].co = target_chain[i].co
+									chain[i].tag = True
+								except IndexError:
+									break
 				
 				#weld closed edges
 				verts_welded = True
@@ -85,6 +106,8 @@ class MESH_OT_targetweld( bpy.types.Operator ):
 						if i in skip_idxs:
 							continue
 						for v in chain:
+							if v.tag:
+								continue
 							for e in v.link_edges:
 								l_v = e.other_vert( v )
 								if l_v.tag:
@@ -92,23 +115,8 @@ class MESH_OT_targetweld( bpy.types.Operator ):
 									verts_welded = True
 									skip_idxs.add( i )
 									break
-
-				#weld open edges
-				target_chain_is_sorted = chain_is_sorted( target_chain )
-				if chain_is_boundary( target_chain ):
-					print( 'source is open' )
-					for i, chain in enumerate( chains ):
-						if i in skip_idxs:
-							continue
-						if chain_is_boundary( chain ):
-							if target_chain_is_sorted and chain_is_sorted( chain ):
-								print( 'target is open' )
-								chain = chain[::-1]
-							for i in range( len( target_chain ) ):
-								try:
-									chain[i].co = target_chain[i].co
-								except IndexError:
-									break
+						for v in chain:
+							v.tag = True
 
 				bmesh.ops.remove_doubles( rmmesh.bmesh, verts=edges.vertices, dist=0.0001 )
 
