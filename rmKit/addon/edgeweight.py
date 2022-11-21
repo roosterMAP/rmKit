@@ -47,6 +47,7 @@ def SetEdgeSharp( context, weight ):
 			
 
 class MESH_OT_setedgeweight( bpy.types.Operator ):
+	"""Set create/bevelweight amount on selected edges."""
 	bl_idname = 'mesh.rm_setedgeweight'
 	bl_label = 'Set Edge Weight'
 	bl_options = { 'UNDO' } #tell blender that we support the undo/redo pannel
@@ -87,8 +88,17 @@ class MESH_OT_setedgeweight( bpy.types.Operator ):
 
 
 class VIEW3D_MT_PIE_setedgeweight_crease( bpy.types.Menu ):
+	"""Set create/bevelweight amount on selected edges."""
 	bl_idname = 'VIEW3D_MT_PIE_setedgeweight_crease'
 	bl_label = 'Edge Weight'
+
+	@classmethod
+	def poll( cls, context ):
+		#used by blender to test if operator can show up in a menu or as a button in the UI
+		return ( context.area.type == 'VIEW_3D' and
+				context.object is not None and
+				context.object.type == 'MESH' and
+				context.object.data.is_editmode )
 
 	def draw( self, context ):
 		layout = self.layout
@@ -127,6 +137,7 @@ class VIEW3D_MT_PIE_setedgeweight_crease( bpy.types.Menu ):
 
 
 class VIEW3D_MT_PIE_setedgeweight_bevel( bpy.types.Menu ):
+	"""Set create/bevelweight amount on selected edges."""
 	bl_idname = 'VIEW3D_MT_PIE_setedgeweight_bevel'
 	bl_label = 'Edge Weight'
 

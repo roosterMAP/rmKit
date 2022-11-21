@@ -2,7 +2,7 @@ import bpy
 from .. import rmlib
 
 class MESH_OT_contextbevel( bpy.types.Operator ):
-	"""Activate bevel tool based on selection mode."""
+	"""Activate appropriate bevel tool based on selection mode."""
 	bl_idname = 'mesh.rm_contextbevel'
 	bl_label = 'Context Bevel'
 

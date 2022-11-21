@@ -400,6 +400,7 @@ class CEPoly( object ):
 
 
 class MESH_OT_connect_edge( bpy.types.Operator ):
+	"""Creates new edges between adjacent pairs of selected edges."""
 	bl_idname = 'mesh.rm_connectedge'
 	bl_label = 'Connect Edges'
 	bl_options = { 'REGISTER', 'UNDO' }

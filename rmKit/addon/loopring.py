@@ -92,12 +92,6 @@ class MESH_OT_ring( bpy.types.Operator ):
 	#bl_options = { 'REGISTER', 'UNDO' } #tell blender that we support the undo/redo pannel
 	bl_options = { 'UNDO' }
 
-	extend_last: bpy.props.BoolProperty(
-			name='Extend Last',
-			description='Only extend loop selection for most recently selected edge',
-			default=False
-	)
-
 	@classmethod
 	def poll( cls, context ):
 		#used by blender to test if operator can show up in a menu or as a button in the UI
@@ -152,9 +146,6 @@ class MESH_OT_ring( bpy.types.Operator ):
 					ring.select( replace=False )
 				else:
 					ring.polygons.select( replace=False )
-
-				if self.extend_last:
-					break
 				
 			for e in rmmesh.bmesh.edges:
 				e.tag = False
@@ -165,10 +156,9 @@ class MESH_OT_ring( bpy.types.Operator ):
 
 
 class MESH_OT_loop( bpy.types.Operator ):    
-	"""Extend current element selection by loop."""
+	"""Extend current element selection by loop. Utilizes 3DSMax edge loop algorithm."""
 	bl_idname = 'mesh.rm_loop'
 	bl_label = 'Loop Select'
-	#bl_options = { 'REGISTER', 'UNDO' } #tell blender that we support the undo/redo pannel
 	bl_options = { 'UNDO' }
 	
 	force_boundary: bpy.props.BoolProperty(
@@ -176,19 +166,7 @@ class MESH_OT_loop( bpy.types.Operator ):
 		description='When True, all loop edges extend along bounary edges.',
 		default=False
 	)
-
-	modo_algorithm: bpy.props.BoolProperty(
-			name='Modo Loop',
-			description='Uses an alternative algorithm to match modo\' loop selection behavior.',
-			default=False
-	)
-
-	extend_last: bpy.props.BoolProperty(
-			name='Extend Last',
-			description='Only extend loop selection for most recently selected edge',
-			default=False
-	)
-
+	
 	@classmethod
 	def poll( cls, context ):
 		#used by blender to test if operator can show up in a menu or as a button in the UI
@@ -200,7 +178,7 @@ class MESH_OT_loop( bpy.types.Operator ):
 	def execute( self, context ):
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 		if not sel_mode[1]:
-			bpy.ops.mesh.rm_ring( extend_last=self.extend_last )
+			bpy.ops.mesh.rm_ring()
 			return { 'FINISHED' }
 		
 		rmmesh = rmlib.rmMesh.GetActive( context )
@@ -215,67 +193,14 @@ class MESH_OT_loop( bpy.types.Operator ):
 				if not e.tag:
 					continue
 				
-				if self.modo_algorithm:
-					loop = edge_loop_alt( e, e.verts[0], rmlib.rmEdgeSet( [e] ) )
-					loop = edge_loop_alt( e, e.verts[1], loop )
-				else:
-					loop = edge_loop( e, e.verts[0], rmlib.rmEdgeSet( [e] ), self.force_boundary )
-					loop = edge_loop( e, e.verts[1], loop, self.force_boundary )
+				loop = edge_loop( e, e.verts[0], rmlib.rmEdgeSet( [e] ), self.force_boundary )
+				loop = edge_loop( e, e.verts[1], loop, self.force_boundary )
 				
 				loop.select( False )
-
-				if self.extend_last:
-					break
 				
 			for e in rmmesh.bmesh.edges:
 				e.tag = False
 
-		return { 'FINISHED' }
-
-
-class MESH_OT_continuous( bpy.types.Operator ):    
-	"""Extend current element selection by ring."""
-	bl_idname = 'mesh.rm_continuouse'
-	bl_label = 'Select Continuouse'
-	bl_options = { 'UNDO' }
-
-	extend: bpy.props.BoolProperty(
-			name='Extend',
-			description='Add to existing selection.',
-			default=False
-	)
-
-	modo_algorithm: bpy.props.BoolProperty(
-			name='Modo Loop',
-			description='Uses an alternative algorithm to match modo\' loop selection behavior.',
-			default=False
-	)
-
-	@classmethod
-	def poll( cls, context ):
-		#used by blender to test if operator can show up in a menu or as a button in the UI
-		return ( context.area.type == 'VIEW_3D' and
-				context.object is not None and
-				context.object.type == 'MESH' and
-				context.object.data.is_editmode )
-
-	def execute( self, context ):
-		rmmesh = rmlib.rmMesh.GetActive( context )
-		with rmmesh as rmmesh:
-			rmmesh.readonly = True
-			sel_mode = context.tool_settings.mesh_select_mode[:]
-			if sel_mode[0]:
-				selected_verts = rmlib.rmVertexSet.from_selection( rmmesh )				
-				bpy.ops.mesh.select_linked( delimit={ 'SEAM' } )
-				if self.extend:
-					selected_verts.select( False )
-			elif sel_mode[1]:
-				bpy.ops.mesh.rm_loop( force_boundary=True, modo_algorithm=self.modo_algorithm )
-			else:
-				selected_polys = rmlib.rmPolygonSet.from_selection( rmmesh )
-				bpy.ops.mesh.select_linked( delimit={ 'SEAM' } )
-				if self.extend:
-					selected_polys.select( False )
 		return { 'FINISHED' }
 
 
@@ -284,8 +209,6 @@ def register():
 	bpy.utils.register_class( MESH_OT_loop )
 	print( 'register :: {}'.format( MESH_OT_ring.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_ring )
-	print( 'register :: {}'.format( MESH_OT_continuous.bl_idname ) )
-	bpy.utils.register_class( MESH_OT_continuous )
 	
 	
 def unregister():
@@ -293,5 +216,3 @@ def unregister():
 	bpy.utils.unregister_class( MESH_OT_loop )
 	print( 'unregister :: {}'.format( MESH_OT_ring.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_ring )
-	print( 'unregister :: {}'.format( MESH_OT_continuous.bl_idname ) )
-	bpy.utils.unregister_class( MESH_OT_continuous )

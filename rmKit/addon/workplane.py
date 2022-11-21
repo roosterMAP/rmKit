@@ -128,7 +128,7 @@ class GridRenderManager:
 
 
 class MESH_OT_workplane( bpy.types.Operator ):    
-	"""Draw workplane"""
+	"""Toggle the workplane. Workplane orientation is determined by vert/edge/face selection."""
 	bl_idname = 'view3d.rm_workplane'
 	bl_label = 'Workplane'
 	
@@ -261,6 +261,7 @@ class MESH_OT_workplane( bpy.types.Operator ):
 
 
 class MESH_OT_togglegrid( bpy.types.Operator ):
+	"""Toggle view3d grid."""
 	bl_idname = 'view3d.rm_togglegrid'
 	bl_label = 'Toggle Grid'
 	bl_options = { 'UNDO' }

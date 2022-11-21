@@ -4,6 +4,7 @@ import rmKit.rmlib as rmlib
 MAT_PROP_UPDATED = False
 
 class MESH_OT_quickmaterial( bpy.types.Operator ):
+	"""Utility for quickly sampling, modifying, and creating materials for 3d viewport."""
 	bl_idname = 'mesh.rm_quickmaterial'
 	bl_label = 'Quick Material'
 	bl_options = { 'UNDO' }
@@ -83,8 +84,17 @@ class MESH_OT_quickmaterial( bpy.types.Operator ):
 		hit, loc, nml, idx, obj, mat = context.scene.ray_cast( depsgraph, look_pos, look_vec )
 		set_defaults = True
 		if hit and len( obj.data.materials ) > 0:
-			source_poly = obj.data.polygons[idx]
-			material = obj.data.materials[source_poly.material_index]
+			mat_idx = 0
+			rmmesh = rmlib.rmMesh( obj )
+			with rmmesh as rmmesh:
+				rmmesh.readonly = True
+				try:
+					source_poly = rmlib.rmPolygonSet.from_mos( rmmesh, context, mouse_pos )[0]
+				except IndexError:
+					print( 'ERROR :: QuickMat INVOKE :: from_mos failed' )
+					return { 'CANCELLED' }
+				mat_idx = source_poly.material_index
+			material = obj.data.materials[mat_idx]
 			bpy.context.scene.quickmatprops["prop_mat"] = material
 			bpy.context.scene.quickmatprops["prop_col"] = material.diffuse_color
 			bpy.context.scene.quickmatprops["prop_met"] = material.metallic

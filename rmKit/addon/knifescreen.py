@@ -3,7 +3,6 @@ import rmKit.rmlib as rmlib
 
 BACKGROUND_LAYERNAME = 'rm_background'
 
-
 def GetSelsetPolygons( bm, layername ):
 	intlayers = bm.faces.layers.int
 	selset = intlayers.get( layername, None )
@@ -13,6 +12,7 @@ def GetSelsetPolygons( bm, layername ):
 
 
 class MESH_OT_knifescreen( bpy.types.Operator ):
+	"""Slice the background face selection based on the current vert/edge selection."""
 	bl_idname = 'mesh.rm_knifescreen'
 	bl_label = 'KnifeScreen'
 	bl_options = { 'UNDO' }
@@ -129,6 +129,7 @@ class MESH_OT_knifescreen( bpy.types.Operator ):
 
 
 class VIEW3D_MT_knifescreen( bpy.types.Menu ):
+	"""Slice the background face selection based on the current vert/edge selection."""
 	bl_idname = 'OBJECT_MT_rm_knifescreen'
 	bl_label = 'Knife Screen GUI'
 

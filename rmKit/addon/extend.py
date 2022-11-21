@@ -3,6 +3,7 @@ import rmKit.rmlib as rmlib
 
 
 class MESH_OT_extend( bpy.types.Operator ):
+	"""Runs Extend Vert in vert mode, Edge Extude in edge mode, and DuplicateMode in face mode."""
 	bl_idname = 'mesh.rm_extend'
 	bl_label = 'Extend'
 	bl_options = { 'UNDO' }

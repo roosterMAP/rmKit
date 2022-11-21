@@ -55,7 +55,7 @@ def move_to_furthest( groups, dir_vec, constrain, center ):
 				
 				
 class MESH_OT_movetofurthest( bpy.types.Operator ):
-	"""Align selection in direction relative to viewport camera."""
+	"""Align selection to a grid axis most aligned with a direction relative to viewport camera."""
 	bl_idname = 'mesh.rm_movetofurthest'
 	bl_label = 'Move To Furthest'
 	#bl_options = { 'REGISTER', 'UNDO' }
@@ -143,7 +143,99 @@ class MESH_OT_movetofurthest( bpy.types.Operator ):
 		return { 'FINISHED' }
 
 
+class MESH_OT_uvmovetofurthest( bpy.types.Operator ):
+	"""Align selection to a uv axis most aligned with a direction relative to viewport camera."""
+	bl_idname = 'mesh.rm_uvmovetofurthest'
+	bl_label = 'UV Move To Furthest'
+	bl_options = { 'UNDO' }
+
+	str_dir: bpy.props.EnumProperty(
+		items=[ ( "up", "Up", "", 1 ),
+				( "down", "Down", "", 2 ),
+				( "left", "Left", "", 3 ),
+				( "right", "Right", "", 4 ),
+				( "horizontal", "Horizontal", "", 5 ),
+				( "vertical", "Vertical", "", 6 ) ],
+		name="Direction",
+		default="right"
+	)
+
+	local: bpy.props.BoolProperty(
+		name='Local',
+		description='Group selection based on 3d continuity and align each respectively.',
+		default=False
+	)
+
+	@classmethod
+	def poll( cls, context ):
+		#used by blender to test if operator can show up in a menu or as a button in the UI
+		return ( context.area.type == 'IMAGE_EDITOR' and
+				context.object is not None and
+				context.object.type == 'MESH' and
+				context.object.data.is_editmode )
+
+	def execute( self, context ):
+		if context.object is None or context.mode == 'OBJECT':
+			return { 'CANCELLED' }
+
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		if rmmesh is None:
+			return { 'CANCELLED' }
+
+		sel_mode = context.tool_settings.mesh_select_mode[:]
+		if not sel_mode[0] and not sel_mode[1] and not sel_mode[2]:
+			return { 'CANCELLED' }
+		
+		with rmmesh as rmmesh:
+			uvlayer = rmmesh.active_uv
+			loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+			loop_groups = []
+			if self.local:
+				loop_groups += loop_selection.group()
+			else:
+				loop_groups.append( loop_selection )
+				
+			for g in loop_groups:
+				min_u = 99999999.9
+				min_v = 99999999.9
+				max_u = -99999999.9
+				max_v = -99999999.9
+				for l in g:
+					u, v = l[uvlayer].uv
+					if u < min_u:
+						min_u = u
+					if u > max_u:
+						max_u = u
+					if v < min_v:
+						min_u = v
+					if v > max_v:
+						max_v = v
+						
+				avg_u = ( min_u + max_u ) * 0.5
+				avg_v = ( min_v + max_v ) * 0.5
+				
+				for l in g:
+					u, v = l[uvlayer].uv
+					if self.str_dir == 'up':
+						l[uvlayer].uv = ( u, max_v )
+					elif self.str_dir == 'down':
+						l[uvlayer].uv = ( u, min_v )
+					elif self.str_dir == 'left':
+						l[uvlayer].uv = ( min_u, v )
+					elif self.str_dir == 'right':
+						l[uvlayer].uv = ( max_u, v )
+					elif self.str_dir == 'horizontal':
+						l[uvlayer].uv = ( u, avg_v )
+					elif self.str_dir == 'vertical':
+						l[uvlayer].uv = ( avg_u, v )
+					else:
+						continue
+			
+		return { 'FINISHED' }
+
+
 class VIEW3D_MT_PIE_movetofurthest( bpy.types.Menu ):
+	"""Align selection to a grid axis most aligned with a direction relative to viewport camera."""
 	bl_idname = 'VIEW3D_MT_PIE_movetofurthest'
 	bl_label = 'Move To Furthest'
 
@@ -188,6 +280,7 @@ class VIEW3D_MT_PIE_movetofurthest( bpy.types.Menu ):
 		
 		
 class VIEW3D_MT_PIE_movetofurthest_local( bpy.types.Menu ):
+	"""Align selection to a grid axis most aligned with a direction relative to viewport camera."""
 	bl_idname = 'VIEW3D_MT_PIE_movetofurthest_local'
 	bl_label = 'Move To Furthest LOCAL'
 
@@ -231,6 +324,7 @@ class VIEW3D_MT_PIE_movetofurthest_local( bpy.types.Menu ):
 		
 	
 class VIEW3D_MT_PIE_movetofurthest_constrain( bpy.types.Menu ):
+	"""Align selection to a grid axis most aligned with a direction relative to viewport camera."""
 	bl_idname = 'VIEW3D_MT_PIE_movetofurthest_constrain'
 	bl_label = 'Move To Furthest LOCAL'
 
@@ -274,6 +368,7 @@ class VIEW3D_MT_PIE_movetofurthest_constrain( bpy.types.Menu ):
 		
 		
 class VIEW3D_MT_PIE_movetofurthest_both( bpy.types.Menu ):
+	"""Align selection to a grid axis most aligned with a direction relative to viewport camera."""
 	bl_idname = 'VIEW3D_MT_PIE_movetofurthest_both'
 	bl_label = 'Move To Furthest LOCAL'
 
@@ -316,31 +411,119 @@ class VIEW3D_MT_PIE_movetofurthest_both( bpy.types.Menu ):
 		op_v.constrain = context.object.mtf_prop_on
 
 
+class IMAGE_EDITOR_MT_PIE_uvmovetofurthest( bpy.types.Menu ):
+	"""Align selection to a uv axis most aligned with a direction relative to viewport camera."""
+	bl_idname = 'IMAGE_EDITOR_MT_PIE_uvmovetofurthest'
+	bl_label = 'UV Move To Furthest'
+
+	def draw( self, context ):
+		layout = self.layout
+
+		pie = layout.menu_pie()
+		op_l = pie.operator( 'mesh.rm_uvmovetofurthest', text='Left' )
+		op_l.str_dir = 'left'
+		op_l.local = context.object.mtf_prop_off
+		
+		op_r = pie.operator( 'mesh.rm_uvmovetofurthest', text='Right' )
+		op_r.str_dir = 'right'
+		op_r.local = context.object.mtf_prop_off
+		
+		op_d = pie.operator( 'mesh.rm_uvmovetofurthest', text='Down' )
+		op_d.str_dir = 'down'
+		op_d.local = context.object.mtf_prop_off
+		
+		op_u = pie.operator( 'mesh.rm_uvmovetofurthest', text='Up' )
+		op_u.str_dir = 'up'
+		op_u.local = context.object.mtf_prop_off
+		
+		pie.operator( 'wm.call_menu_pie', text='Local' ).name = 'IMAGE_EDITOR_MT_PIE_uvmovetofurthest_local'
+		
+		pie.separator()
+		
+		op_h = pie.operator( 'mesh.rm_uvmovetofurthest', text='Horizontal' )
+		op_h.str_dir = 'vertical'
+		op_h.local = context.object.mtf_prop_off
+				
+		op_v = pie.operator( 'mesh.rm_uvmovetofurthest', text='Vertical' )
+		op_v.str_dir = 'horizontal'
+		op_v.local = context.object.mtf_prop_off
+
+
+class IMAGE_EDITOR_MT_PIE_uvmovetofurthest_local( bpy.types.Menu ):
+	"""Align selection to a uv axis most aligned with a direction relative to viewport camera."""
+	bl_idname = 'IMAGE_EDITOR_MT_PIE_uvmovetofurthest_local'
+	bl_label = 'UV Move To Furthest LOCAL'
+
+	def draw( self, context ):
+		layout = self.layout
+
+		pie = layout.menu_pie()
+		op_l = pie.operator( 'mesh.rm_uvmovetofurthest', text='Left' )
+		op_l.str_dir = 'left'
+		op_l.local = context.object.mtf_prop_on
+		
+		op_r = pie.operator( 'mesh.rm_uvmovetofurthest', text='Right' )
+		op_r.str_dir = 'right'
+		op_r.local = context.object.mtf_prop_on
+		
+		op_d = pie.operator( 'mesh.rm_uvmovetofurthest', text='Down' )
+		op_d.str_dir = 'down'
+		op_d.local = context.object.mtf_prop_on
+		
+		op_u = pie.operator( 'mesh.rm_uvmovetofurthest', text='Up' )
+		op_u.str_dir = 'up'
+		op_u.local = context.object.mtf_prop_on
+		
+		pie.separator()
+		
+		pie.separator()
+		
+		op_h = pie.operator( 'mesh.rm_uvmovetofurthest', text='Horizontal' )
+		op_h.str_dir = 'vertical'
+		op_h.local = context.object.mtf_prop_on
+				
+		op_v = pie.operator( 'mesh.rm_uvmovetofurthest', text='Vertical' )
+		op_v.str_dir = 'horizontal'
+		op_v.local = context.object.mtf_prop_on
+
+
 def register():
 	print( 'register :: {}'.format( MESH_OT_movetofurthest.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_uvmovetofurthest.bl_idname ) )
 	print( 'register :: {}'.format( VIEW3D_MT_PIE_movetofurthest.bl_idname ) )
 	print( 'register :: {}'.format( VIEW3D_MT_PIE_movetofurthest_local.bl_idname ) )
 	print( 'register :: {}'.format( VIEW3D_MT_PIE_movetofurthest_constrain.bl_idname ) )
 	print( 'register :: {}'.format( VIEW3D_MT_PIE_movetofurthest_both.bl_idname ) )
+	#print( 'register :: {}'.format( IMAGE_EDITOR_MT_PIE_uvmovetofurthest.bl_idname ) )
+	#print( 'register :: {}'.format( IMAGE_EDITOR_MT_PIE_uvmovetofurthest_local.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_movetofurthest )
+	bpy.utils.register_class( MESH_OT_uvmovetofurthest )
 	bpy.utils.register_class( VIEW3D_MT_PIE_movetofurthest )
 	bpy.utils.register_class( VIEW3D_MT_PIE_movetofurthest_local )
 	bpy.utils.register_class( VIEW3D_MT_PIE_movetofurthest_constrain )
 	bpy.utils.register_class( VIEW3D_MT_PIE_movetofurthest_both )
+	#bpy.utils.register_class( IMAGE_EDITOR_MT_PIE_uvmovetofurthest )
+	#bpy.utils.register_class( IMAGE_EDITOR_MT_PIE_uvmovetofurthest_local )
 	bpy.types.Object.mtf_prop_on = bpy.props.BoolProperty( default=True	)
 	bpy.types.Object.mtf_prop_off = bpy.props.BoolProperty( default=False )	
 	
 
 def unregister():
 	print( 'unregister :: {}'.format( MESH_OT_movetofurthest.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_uvmovetofurthest.bl_idname ) )
 	print( 'unregister :: {}'.format( VIEW3D_MT_PIE_movetofurthest.bl_idname ) )
 	print( 'unregister :: {}'.format( VIEW3D_MT_PIE_movetofurthest_local.bl_idname ) )
 	print( 'unregister :: {}'.format( VIEW3D_MT_PIE_movetofurthest_constrain.bl_idname ) )
 	print( 'unregister :: {}'.format( VIEW3D_MT_PIE_movetofurthest_both.bl_idname ) )
+	#print( 'unregister :: {}'.format( IMAGE_EDITOR_MT_PIE_uvmovetofurthest.bl_idname ) )
+	#print( 'unregister :: {}'.format( IMAGE_EDITOR_MT_PIE_uvmovetofurthest_local.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_movetofurthest )
+	bpy.utils.unregister_class( MESH_OT_uvmovetofurthest )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_movetofurthest )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_movetofurthest_local )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_movetofurthest_constrain )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_movetofurthest_both )
+	#bpy.utils.unregister_class( IMAGE_EDITOR_MT_PIE_uvmovetofurthest )
+	#bpy.utils.unregister_class( IMAGE_EDITOR_MT_PIE_uvmovetofurthest_local )
 	del bpy.types.Object.mtf_prop_on
 	del bpy.types.Object.mtf_prop_off

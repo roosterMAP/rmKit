@@ -105,6 +105,7 @@ class MESH_OT_screenreflect( bpy.types.Operator ):
 
 
 class VIEW3D_MT_PIE_screenreflect( bpy.types.Menu ):
+	"""Quickly mirror the face selection about a plane whose normal is defined by a grid direction relative to viewport camera."""
 	bl_idname = 'OBJECT_MT_rm_screenreflect'
 	bl_label = 'Screen Reflect'
 
@@ -139,6 +140,7 @@ class VIEW3D_MT_PIE_screenreflect( bpy.types.Menu ):
 		
 
 class VIEW3D_MT_PIE_screenreflect_slice( bpy.types.Menu ):
+	"""Quickly mirror the face selection about a plane whose normal is defined by a grid direction relative to viewport camera."""
 	bl_idname = 'VIEW3D_MT_PIE_screenreflect_slice'
 	bl_label = 'Screen Reflect - Slice'
 
@@ -165,6 +167,7 @@ class VIEW3D_MT_PIE_screenreflect_slice( bpy.types.Menu ):
 
 
 class VIEW3D_MT_PIE_screenreflect_noslice( bpy.types.Menu ):
+	"""Quickly mirror the face selection about a plane whose normal is defined by a grid direction relative to viewport camera."""
 	bl_idname = 'VIEW3D_MT_PIE_screenreflect_noslice'
 	bl_label = 'Screen Reflect - No Slice'
 

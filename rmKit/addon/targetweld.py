@@ -1,5 +1,3 @@
-from logging import exception
-from re import T
 import bpy, bmesh
 import rmKit.rmlib as rmlib
 
@@ -19,6 +17,7 @@ def chain_is_boundary( chain ):
 
 
 class MESH_OT_targetweld( bpy.types.Operator ):
+	"""Target weld verts or edge loops to active vert/edge."""
 	bl_idname = 'mesh.rm_targetweld'
 	bl_label = 'Target Weld'
 	bl_options = { 'UNDO' }

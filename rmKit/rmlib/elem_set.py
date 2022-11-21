@@ -3,10 +3,6 @@ from bpy_extras import view3d_utils
 from rmKit.rmlib import util
 import mathutils
 
-
-#MOS :: https://blender.stackexchange.com/questions/9222/how-to-get-intersection-of-a-specific-object-and-the-mouse-in-the-bge
-
-
 class rmPolygonSet( list ):
 	"""
 	Utility class for lists of bmesh.types.BMFace objects
@@ -193,6 +189,51 @@ class rmPolygonSet( list ):
 						if np.tag:
 							continue							
 						if element or np in self:
+							outerSet.add( np )
+							np.tag = True
+							
+			continuous_groups.append( innerSet )
+			
+		for group in continuous_groups:
+			for p in group:
+				p.tag = False
+			
+		return continuous_groups
+
+
+	def island( self, uvlayer ):
+		"""
+		Returns list of rmPolygonSets where each set is an uv island for the uvlayer dataset.
+
+		Args:
+			uvlayer (bmesh.types.BMLoopUV): The layer dataset from which to read uv coords.
+
+		Returns:
+			[rmPolygonSets,]: List of rmPolygonSets.
+		"""
+		continuous_groups = []
+		
+		for p in self:
+			p.tag = False
+				
+		for poly in self:
+			if poly.tag:
+				continue
+				
+			innerSet = rmPolygonSet()
+			poly.tag = True
+			outerSet = set( [ poly ] )
+			
+			while len( outerSet ) > 0:
+				p = outerSet.pop()
+				innerSet.append( p )
+				for l in p.loops:
+					v = l.vert
+					for nl in v.link_loops:
+						np = nl.face
+						if np.tag:
+							continue
+						if np in self and util.AlmostEqual_v2( l[uvlayer].uv, nl[uvlayer].uv ):
 							outerSet.add( np )
 							np.tag = True
 							
@@ -514,3 +555,277 @@ class rmVertexSet( list ):
 				v.tag = False
 			
 		return continuous_groups
+
+
+class rmUVLoopSet( list ):
+	"""
+	Utility class for lists of bmesh.types.BMLoop objects
+	"""
+	
+	def __init__( self, *args, **kwargs ):
+		"""
+		Constructor for rmUVLoopSet.
+		Positional values initializes the super list data.
+		Kay value(s) are for the uvlayer dataset.
+		"""
+		self.uvlayer = None
+		list.__init__( self, *args )
+		for key, value in kwargs.items():
+			if key == 'uvlayer':
+				self.uvlayer = value
+		
+	def __repr__( self ):
+		return 'rmUVLoopSet :: {}'.format( [ l.index for l in self ] )
+	
+	@classmethod
+	def from_selection( cls, rmmesh, uvlayer=None ):
+		"""
+		Class method that returns rmUVLoopSet of current loop selection.
+
+		Args:
+			rmmesh (rmMesh): The input mesh whose polygons are selected.
+			uvlayer (bmesh.types.BMLoopUV): The uvlayer dataset.
+
+		Returns:
+			[rmUVLoopSet,]: List of rmUVLoopSet.
+		"""
+		
+		if uvlayer is None:
+			uvlayer = rmmesh.active_uv
+		members = cls( [], uvlayer=uvlayer )
+		for f in rmmesh.bmesh.faces:
+			for l in f.loops:
+				if l[uvlayer].select:
+					members.append( l )
+			
+		return members
+
+	@classmethod
+	def from_edge_selection( cls, rmmesh, uvlayer=None ):
+		"""
+		Class method that returns rmUVLoopSet of current loop selection.
+
+		Args:
+			rmmesh (rmMesh): The input mesh whose polygons are selected.
+			uvlayer (bmesh.types.BMLoopUV): The uvlayer dataset.
+
+		Returns:
+			[rmUVLoopSet,]: List of rmUVLoopSet.
+		"""
+		
+		if uvlayer is None:
+			uvlayer = rmmesh.active_uv
+		members = cls( [], uvlayer=uvlayer )
+		for f in rmmesh.bmesh.faces:
+			for l in f.loops:
+				if l[uvlayer].select_edge:
+					members.append( l )
+			
+		return members
+
+	@classmethod
+	def from_mesh( cls, rmmesh, uvlayer, filter_hidden=True ):
+		"""
+		Returns a list of all bmesh.types.BMLoop objects that make up a mesh.
+
+		Args:
+			rmmesh (rmMesh): The input mesh whose loops are selected.
+			uvlayer (bmesh.types.BMLoopUV): The uvlayer dataset.
+			filter_hidden (bool): If True, we skip elems hidden in 3d view.
+
+		Returns:
+			[rmLoopSet,]: List of rmUVLoopSet.
+		"""
+		members = cls( [], uvlayer=uvlayer )
+		for f in rmmesh.bmesh.faces:
+			if filter_hidden and f.hide:
+				continue
+			for l in f.loops:
+				if filter_hidden and l[uvlayer].hide:
+					continue
+				members.append( l )
+		return members
+	
+	def __group_faces( self ):
+		continuous_groups = []
+
+		for l in self:
+			l.tag = False
+
+		#filter out loops whose faces have loops that are not part of self
+		mode_loops = []
+		all_loops = set( self )
+		for l in all_loops:
+			if l.tag:
+				continue
+			next_l = l.link_loop_next
+			while l != next_l:
+				next_l.tag = True
+				if next_l not in all_loops:
+					break
+				next_l = next_l.link_loop_next
+			if l == next_l:
+				mode_loops += list( l.face.loops )
+		for l in self:
+			l.tag = False
+
+		for loop in mode_loops:
+			if loop.tag:
+				continue
+
+			innerSet = set()
+			outerSet = set( [ loop ] )
+
+			while len( outerSet ) > 0:
+				l = outerSet.pop()
+				cycleSet = set( [l] )
+
+				#test link_loop adjacency
+				for nl in l.vert.link_loops:
+					if nl.tag:
+						continue
+					if nl in mode_loops:
+						if util.AlmostEqual_v2( l[self.uvlayer].uv, nl[self.uvlayer].uv ):
+							cycleSet.add( nl )
+
+				#test loop_cycle adjacency
+				for nl in cycleSet:
+					if nl.tag:
+						continue
+					
+					nl_next = nl.link_loop_next
+					if not nl_next.tag and nl_next in mode_loops:
+						outerSet.add( nl_next )
+						
+					nl_prev = nl.link_loop_prev
+					if not nl_prev.tag and nl_prev in mode_loops:
+						outerSet.add( nl_prev )
+						
+					innerSet.add( nl )
+					nl.tag = True
+
+			#add back in the loops that were filtered out at the beginig
+			new_members = set()
+			for l in innerSet:
+				for nl in l.vert.link_loops:
+					if nl in self and util.AlmostEqual_v2( l[self.uvlayer].uv, nl[self.uvlayer].uv ):
+						new_members.add( nl )
+			continuous_groups.append( rmUVLoopSet( list( innerSet.union( new_members ) ), uvlayer=self.uvlayer ) )
+
+		for group in continuous_groups:
+			for l in group:
+				l.tag = False
+
+		return continuous_groups
+
+
+	def __group_edges( self ):
+		continuous_groups = []
+
+		for l in self:
+			l.edge.tag = True
+			l.tag = False
+
+		for loop in self:
+			if loop.tag:
+				continue
+
+			innerSet = set()
+			outerSet = set( [ loop ] )
+
+			while len( outerSet ) > 0:
+				l = outerSet.pop()
+				innerSet.add( l )
+				l.tag = True
+
+				#test link_loop adjacency
+				for l in [ l, l.link_loop_next ]:
+					for nl in l.vert.link_loops:
+						if nl.tag:
+							continue						
+						if nl in self and nl.edge.tag:
+							if util.AlmostEqual_v2( l[self.uvlayer].uv, nl[self.uvlayer].uv ):
+								outerSet.add( nl )
+								nl.tag = True
+						nl_prev = nl.link_loop_prev
+						if not nl_prev.tag and nl_prev.edge.tag and nl_prev in self:
+							if util.AlmostEqual_v2( l[self.uvlayer].uv, nl_prev[self.uvlayer].uv ):
+								outerSet.add( nl_prev )
+								nl_prev.tag = True
+
+			continuous_groups.append( rmUVLoopSet( innerSet, uvlayer=self.uvlayer ) )
+
+		for l in self:
+			l.edge.tag = False
+			l.tag = False
+
+		return continuous_groups
+	
+
+	def __group_vertices( self, element=False ):
+		continuous_groups = []
+
+		for l in self:
+			l.tag = False
+
+		for loop in self:
+			if loop.tag:
+				continue
+
+			innerSet = set()
+			outerSet = set( [ loop ] )
+
+			while len( outerSet ) > 0:
+				l = outerSet.pop()
+				cycleSet = set( [l] )
+
+				#test link_loop adjacency
+				for nl in l.vert.link_loops:
+					if nl.tag:
+						continue
+					if element or nl in self:
+						if util.AlmostEqual_v2( l[self.uvlayer].uv, nl[self.uvlayer].uv ):
+							cycleSet.add( nl )
+
+				#test loop_cycle adjacency
+				for nl in cycleSet:
+					if nl.tag:
+						continue
+					
+					nl_next = nl.link_loop_next
+					if not nl_next.tag and ( element or nl_next in self ):
+						outerSet.add( nl_next )
+						
+					nl_prev = nl.link_loop_prev
+					if not nl_prev.tag and ( element or nl_prev in self ):
+						outerSet.add( nl_prev )
+						
+					innerSet.add( nl )
+					nl.tag = True
+							
+			continuous_groups.append( rmUVLoopSet( list( innerSet ), uvlayer=self.uvlayer ) )
+
+		for group in continuous_groups:
+			for l in group:
+				l.tag = False
+
+		return continuous_groups
+		
+
+	def group( self, mode=None, element=False ):
+		"""
+		Returns a list of continuous rmUVLoopSet.
+
+		Args:
+			mode (string): VERTEX|EDGE|FACE for what uv selection mode logic to use for grouping.
+			element (bool): When True, the link loops of all 3d continuouse verts from self are visited.
+
+		Returns:
+			[rmUVLoopSet,]: List of rmUVLoopSet.
+		"""
+		if mode == 'EDGE':
+			return self.__group_edges()
+		elif mode == 'FACE':
+			return self.__group_faces()
+		
+		return self.__group_vertices( element )

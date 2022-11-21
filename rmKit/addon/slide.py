@@ -3,6 +3,7 @@ import rmKit.rmlib as rmlib
 
 
 class MESH_OT_slide( bpy.types.Operator ):
+	"""Calls Vertex Slide in vert mode and Edge slide in edge mode."""
 	bl_idname = 'mesh.rm_slide'
 	bl_label = 'Slide'
 	bl_options = { 'UNDO' }

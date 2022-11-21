@@ -5,6 +5,7 @@ import mathutils
 import math
 
 class MESH_OT_push( bpy.types.Operator ):
+	"""Offset vert/edge/face selection based off of vert normals."""
 	bl_idname = 'mesh.rm_push'
 	bl_label = 'Push'
 	bl_options = { 'REGISTER', 'UNDO' }

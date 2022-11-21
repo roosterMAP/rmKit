@@ -72,6 +72,7 @@ def circularize( vert_loop, matrix ):
 	
 
 class MESH_OT_radialalign( bpy.types.Operator ):
+	"""Map the verts that make up the edge selection or boundary of face selection to a circle."""
 	bl_idname = 'mesh.rm_radialalign'
 	bl_label = 'Radial Align'
 	bl_options = { 'UNDO' }

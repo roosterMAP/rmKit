@@ -2,6 +2,7 @@ import bpy, bmesh, mathutils
 import rmKit.rmlib as rmlib
 
 class MESH_OT_cursortoselection( bpy.types.Operator ):
+	"""Move and orient the 3D Cursor to the vert/edge/face selection."""
 	bl_idname = 'view3d.rm_cursor_to_selection'
 	bl_label = 'Move and Orient 3D Cursor to Selection'
 	bl_options = { 'UNDO' }
@@ -81,6 +82,7 @@ class MESH_OT_cursortoselection( bpy.types.Operator ):
 
 
 class MESH_OT_origintocursor( bpy.types.Operator ):
+	"""Move the pivot point of selected objects to the 3D Cursor. All linked meshes xforms are compensated for this transformation."""
 	bl_idname = 'view3d.rm_origin_to_cursor'
 	bl_label = 'Pivot to Cursor'
 	bl_options = { 'UNDO' }
@@ -140,6 +142,7 @@ class MESH_OT_origintocursor( bpy.types.Operator ):
 
 
 class VIEW3D_MT_PIE_cursor( bpy.types.Menu ):
+	"""A seriese of commands related to the 3D Cursor"""
 	bl_idname = 'VIEW3D_MT_PIE_cursor'
 	bl_label = '3D Cursor Ops'
 

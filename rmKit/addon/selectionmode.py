@@ -45,6 +45,7 @@ def GetSelsetMembership( bm, type, layername):
 	
 
 class MESH_OT_changetomode( bpy.types.Operator ):
+	"""Change to vert/edge/face selection mode and cache the current selection. Upon returning to previouse mode, the cached selection will be reestablished."""
 	bl_idname = 'mesh.rm_changemodeto'
 	bl_label = 'Change Mode To'
 	bl_options = { 'UNDO' } #tell blender that we support the undo/redo pannel
@@ -125,6 +126,7 @@ class MESH_OT_changetomode( bpy.types.Operator ):
 
 
 class MESH_OT_convertmodeto( bpy.types.Operator ):
+	"""Convert current selection to new mode. Also caches prev selection."""
 	bl_idname = 'mesh.rm_convertmodeto'
 	bl_label = 'Convert Mode To'
 	bl_options = { 'UNDO' } #tell blender that we support the undo/redo pannel
@@ -195,7 +197,47 @@ class MESH_OT_convertmodeto( bpy.types.Operator ):
 		return { 'FINISHED' }
 
 
-class MESH_OT_invertcontinuouse( bpy.types.Operator ):
+class MESH_OT_continuous( bpy.types.Operator ):    
+	"""Extend current element selection by ring."""
+	bl_idname = 'mesh.rm_continuous'
+	bl_label = 'Select Continuous'
+	bl_options = { 'UNDO' }
+
+	add: bpy.props.BoolProperty(
+			name='Add',
+			description='Add to existing selection.',
+			default=False
+	)
+
+	@classmethod
+	def poll( cls, context ):
+		#used by blender to test if operator can show up in a menu or as a button in the UI
+		return ( context.area.type == 'VIEW_3D' and
+				context.object is not None and
+				context.object.type == 'MESH' and
+				context.object.data.is_editmode )
+
+	def execute( self, context ):
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		with rmmesh as rmmesh:
+			rmmesh.readonly = True
+			sel_mode = context.tool_settings.mesh_select_mode[:]
+			if sel_mode[0]:
+				selected_verts = rmlib.rmVertexSet.from_selection( rmmesh )				
+				bpy.ops.mesh.select_linked( delimit={ 'SEAM' } )
+				if self.add:
+					selected_verts.select( False )
+			elif sel_mode[1]:
+				bpy.ops.mesh.rm_loop( force_boundary=True )
+			else:
+				selected_polys = rmlib.rmPolygonSet.from_selection( rmmesh )
+				bpy.ops.mesh.select_linked( delimit={ 'SEAM' } )
+				if self.add:
+					selected_polys.select( False )
+		return { 'FINISHED' }
+
+
+class MESH_OT_invertcontinuous( bpy.types.Operator ):
 	bl_idname = 'mesh.rm_invertcontinuous'
 	bl_label = 'Invert Continuous'
 	bl_options = { 'UNDO' }
@@ -251,16 +293,20 @@ class MESH_OT_invertcontinuouse( bpy.types.Operator ):
 def register():
 	print( 'register :: {}'.format( MESH_OT_changetomode.bl_idname ) )
 	print( 'register :: {}'.format( MESH_OT_convertmodeto.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_invertcontinuouse.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_invertcontinuous.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_continuous.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_changetomode )
 	bpy.utils.register_class( MESH_OT_convertmodeto )
-	bpy.utils.register_class( MESH_OT_invertcontinuouse )
+	bpy.utils.register_class( MESH_OT_invertcontinuous )
+	bpy.utils.register_class( MESH_OT_continuous )
 
 	
 def unregister():
 	print( 'unregister :: {}'.format( MESH_OT_changetomode.bl_idname ) )
 	print( 'unregister :: {}'.format( MESH_OT_convertmodeto.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_invertcontinuouse.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_invertcontinuous.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_continuous.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_changetomode )
 	bpy.utils.unregister_class( MESH_OT_convertmodeto )
-	bpy.utils.unregister_class( MESH_OT_invertcontinuouse )
+	bpy.utils.unregister_class( MESH_OT_invertcontinuous )
+	bpy.utils.unregister_class( MESH_OT_continuous )

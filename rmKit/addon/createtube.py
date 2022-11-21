@@ -31,6 +31,7 @@ class Tube():
 
 
 class MESH_OT_createtube( bpy.types.Operator ):
+	"""Creates a generalized cylinder abound the edge selection. If a generalized cylinder is selected in polygon mode, then a new ones is recreated."""
 	bl_idname = 'mesh.rm_createtube'
 	bl_label = 'Create Tube'
 	bl_options = { 'REGISTER', 'UNDO' }

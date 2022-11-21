@@ -37,6 +37,7 @@ def BridgeSurfaces( bm, faces1, faces2 ):
 
 
 class MESH_OT_thicken( bpy.types.Operator ):
+	"""Same as solidify, just with better controls."""
 	bl_idname = 'mesh.rm_thicken'
 	bl_label = 'Thicken'
 	bl_options = { 'REGISTER', 'UNDO' }

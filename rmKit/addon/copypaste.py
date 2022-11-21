@@ -71,6 +71,7 @@ def paste( context ):
 	
 	
 class MESH_OT_rm_copy( bpy.types.Operator ):
+	"""Runs copybuffer in object mode. In polygon mode is copies/cuts the polygon selection to the clipboard."""
 	bl_idname = 'mesh.rm_copy'
 	bl_label = 'Copy'
 
@@ -97,6 +98,7 @@ class MESH_OT_rm_copy( bpy.types.Operator ):
 	
 
 class MESH_OT_rm_paste( bpy.types.Operator ):
+	"""Runs pastebuffer in object mode. In polygon mode is pastes the polygon selection into the current mesh."""
 	bl_idname = 'mesh.rm_paste'
 	bl_label = 'Paste'
 	bl_options = { 'UNDO' }

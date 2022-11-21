@@ -41,6 +41,18 @@ class rmMesh():
 			self.__bmesh.free()		
 		self.__bmesh = None
 
+	def iter_uvs( self ):
+		if self.__bmesh is None:
+			raise RuntimeError( 'bmesh cannot be accessed outside of a "with" context!!!' )
+		for uvlayer in self.bmesh.loops.layers.uv.values():
+			yield uvlayer
+
+	@property
+	def active_uv( self ):
+		if self.__bmesh is None:
+			raise RuntimeError( 'bmesh cannot be accessed outside of a "with" context!!!' )
+		return self.bmesh.loops.layers.uv.verify()
+
 	@property
 	def object( self ):
 		return self.__object

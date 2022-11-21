@@ -3,6 +3,8 @@ import mathutils
 from bpy_extras import view3d_utils
 import math
 
+FLOAT_EPSILON = 0.000001
+
 class rmCustomOrientation():
 	def __init__( self, context ):
 		self.__scene = context.scene
@@ -161,3 +163,9 @@ def Angle2( v1, v2, up ):
 	if v2.dot( cross ) < 0.0:
 		return v1.angle( v2 ) * -1.0
 	return v1.angle( v2 )
+
+def AlmostEqual( f1, f2 ):
+	return abs( f1 - f2 ) <= FLOAT_EPSILON
+
+def AlmostEqual_v2( v1, v2 ):
+	return AlmostEqual( v1[0], v2[0] ) and AlmostEqual( v1[1], v2[1] )

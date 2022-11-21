@@ -41,6 +41,7 @@ def arc_adjust( bm, scale ):
 			bmesh.ops.remove_doubles( bm, verts=verts, dist=0.00001 )
 
 class MESH_OT_arcadjust( bpy.types.Operator ):
+	
 	bl_idname = 'mesh.rm_arcadjust'
 	bl_label = 'Arc Adjust'
 	bl_options = { 'REGISTER', 'UNDO' }

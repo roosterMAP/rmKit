@@ -383,7 +383,7 @@ def loopgroupnormal( loops, weighted, member_pidxs ):
 
 
 class VIEW3D_PT_VNORMS( bpy.types.Panel ):
-	bl_parent_id = "VIEW3D_PT_RMKIT_PARENT"
+	bl_parent_id = "VIEW3D_PT_LAYERS"
 	bl_label = "VNormal Kit"
 	bl_region_type = "UI"
 	bl_space_type = "VIEW_3D"
@@ -467,7 +467,3 @@ def unregister():
 	bpy.utils.unregister_class( MESH_OT_applyall )
 	del bpy.types.Scene.vn_selsetweighted
 	bpy.utils.unregister_class( VIEW3D_PT_VNORMS )
-
-
-if __name__ == '__main__':
-	register()

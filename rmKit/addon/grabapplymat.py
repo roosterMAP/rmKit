@@ -104,6 +104,7 @@ def GrabApplyMat( target_rmmesh, context, mouse_pos ):
 
 
 class MESH_OT_grabapplymat( bpy.types.Operator ):
+	"""Sample the material of the face under the cursor and apply it to the selected faces."""
 	bl_idname = 'mesh.rm_grabapplymat'
 	bl_label = 'GrabApplyMat (MOS)'
 	bl_options = { 'UNDO' } #tell blender that we support the undo/redo pannel

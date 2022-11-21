@@ -6,7 +6,6 @@ class rmKitPannel( bpy.types.Panel ):
 	bl_space_type = "VIEW_3D"
 	bl_region_type = "UI"
 	bl_category = "rmKit"
-	bl_options = { "HIDE_HEADER" }
 
 	def draw( self, context ):
 		layout = self.layout
@@ -35,6 +34,7 @@ from . import extend
 from . import quickmaterial
 from . import cursor
 from . import thicken
+from . import panel
 
 def register():
 	bpy.utils.register_class( rmKitPannel )
@@ -49,7 +49,6 @@ def register():
 	arcadjust.register()
 	targetweld.register()
 	createtube.register()
-	vnormals.register()
 	copypaste.register()
 	workplane.register()
 	selectionmode.register()
@@ -62,6 +61,8 @@ def register():
 	quickmaterial.register()
 	cursor.register()
 	thicken.register()
+	panel.register()
+	vnormals.register()
 
 def unregister():
 	bpy.utils.unregister_class( rmKitPannel )
@@ -75,8 +76,7 @@ def unregister():
 	connect_edges.unregister()
 	arcadjust.unregister()
 	targetweld.unregister()
-	createtube.unregister()
-	vnormals.unregister()
+	createtube.unregister()	
 	copypaste.unregister()
 	workplane.unregister()
 	selectionmode.unregister()
@@ -87,5 +87,7 @@ def unregister():
 	grabapplymat.unregister()
 	extend.unregister()
 	quickmaterial.unregister()
-	cursor.register()
+	cursor.unregister()
 	thicken.unregister()
+	panel.unregister()
+	vnormals.unregister()
