@@ -260,8 +260,10 @@ class CEPoly( object ):
 			for subvert_loop in new_poly.loops:
 				if subvert_loop.vert == vert.vert:
 					break
-
+				
+			#asigne uv data
 			if CEPoly.BMesh.loops.layers.uv is not None:
+				#generate interpolated uv coord
 				for uvlayer in CEPoly.BMesh.loops.layers.uv.values():
 					start_uv = loop[uvlayer].uv
 					end_uv = end_loop[uvlayer].uv
@@ -273,10 +275,20 @@ class CEPoly( object ):
 			#assign edge layer data
 			if subvert_loop.edge.tag:
 				continue
-			for layer in CEPoly.BMesh.edges.layers.crease.values():
-				if next_vert.GetEndVerts( self.polygon )[1] == end_vert or end_vert == next_vert:
-					subvert_loop.edge[layer] = loop.edge[layer]
-					subvert_loop.edge.tag = True
+
+			#edge data processing
+			if next_vert.GetEndVerts( self.polygon )[1] == end_vert or end_vert == next_vert:
+				#transfer crease weight
+				if CEPoly.BMesh.edges.layers.crease is not None:
+					for layer in CEPoly.BMesh.edges.layers.crease.values():
+						subvert_loop.edge[layer] = loop.edge[layer]
+						subvert_loop.edge.tag = True
+
+				#transfer sharp and seam
+				subvert_loop.edge.smooth = loop.edge.smooth
+				subvert_loop.edge.seam = loop.edge.seam
+				subvert_loop.edge.tag = True
+			
 
 
 	def __createOuterPolygon( self, vlist ):
@@ -518,6 +530,7 @@ class MESH_OT_connect_edge( bpy.types.Operator ):
 
 		if event.type == 'LEFTMOUSE':
 			return { 'FINISHED' }
+
 		elif event.type == 'MOUSEMOVE':
 			delta_x = float( event.mouse_x - event.mouse_prev_press_x ) / context.region.width
 			delta_y = float( event.mouse_y - event.mouse_prev_press_y ) / context.region.height
@@ -531,10 +544,15 @@ class MESH_OT_connect_edge( bpy.types.Operator ):
 			else:
 				return { 'RUNNING_MODAL' }
 			self.execute( context )
+
 		elif event.type == 'WHEELUPMOUSE':
 			self.level = min( self.level + 1, 64 )
+			self.execute( context )
+
 		elif event.type == 'WHEELDOWNMOUSE':
 			self.level = max( self.level - 1, 1 )
+			self.execute( context )
+
 		elif event.type == 'ESC':
 			return { 'CANCELLED' }
 
