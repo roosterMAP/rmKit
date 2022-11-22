@@ -9,8 +9,9 @@ class MESH_OT_cursortoselection( bpy.types.Operator ):
 	
 	@classmethod
 	def poll( cls, context ):
-		#used by blender to test if operator can show up in a menu or as a button in the UI
-		return context.area.type == 'VIEW_3D' and len( context.selected_objects ) > 0
+		return ( context.area.type == 'VIEW_3D' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' )
 
 	def execute( self, context ):
 		if context.mode == 'EDIT_MESH':
@@ -32,10 +33,13 @@ class MESH_OT_cursortoselection( bpy.types.Operator ):
 							v1, v2 = e.verts
 							v_t = v2.co - v1.co
 							v_t = v_n.cross( v_t.normalized() )
-							
-						m4 = rmlib.util.LookAt( v_n, v_t, v.co )
+
+						v_p = rmmesh.world_transform @ v.co.copy()
+						v_t = rmmesh.world_transform.to_3x3() @ v_t
+						v_n = rmmesh.world_transform.to_3x3() @ v_n
+						m4 = rmlib.util.LookAt( v_n, v_t, v_p )
 						context.scene.cursor.matrix = m4
-						context.scene.cursor.location = v.co
+						context.scene.cursor.location = v_p
 
 
 				elif sel_mode[1]:
@@ -56,6 +60,9 @@ class MESH_OT_cursortoselection( bpy.types.Operator ):
 
 						e_p = ( v1.co + v2.co ) * 0.5
 						
+						e_p = rmmesh.world_transform @ e_p
+						e_t = rmmesh.world_transform.to_3x3() @ e_t
+						e_n = rmmesh.world_transform.to_3x3() @ e_n
 						m4 = rmlib.util.LookAt( e_n, e_t, e_p )						
 						context.scene.cursor.matrix = m4
 						context.scene.cursor.location = e_p
@@ -65,8 +72,10 @@ class MESH_OT_cursortoselection( bpy.types.Operator ):
 					if len( sel_polys ) > 0:
 						p = sel_polys[0]
 						
-						p_p = p.calc_center_median()
-						m4 = rmlib.util.LookAt( p.normal, p.calc_tangent_edge_pair(), p_p )						
+						p_p = rmmesh.world_transform @ p.calc_center_median()
+						p_t = rmmesh.world_transform.to_3x3() @ p.calc_tangent_edge_pair()
+						p_n = rmmesh.world_transform.to_3x3() @ p.normal
+						m4 = rmlib.util.LookAt( p_n, p_t, p_p )
 						context.scene.cursor.matrix = m4
 						context.scene.cursor.location = p_p
 
@@ -90,7 +99,7 @@ class MESH_OT_origintocursor( bpy.types.Operator ):
 	@classmethod
 	def poll( cls, context ):
 		#used by blender to test if operator can show up in a menu or as a button in the UI
-		return context.area.type == 'VIEW_3D' and len( context.selected_objects ) > 0
+		return context.area.type == 'VIEW_3D'
 
 	def execute( self, context ):
 		prev_mode = context.mode

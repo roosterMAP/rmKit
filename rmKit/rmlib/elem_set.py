@@ -46,26 +46,6 @@ class rmPolygonSet( list ):
 		else:
 			return cls( p for p in rmmesh.bmesh.faces if not p.hide )
 
-
-	def from_mos( cls, rmmesh, context, mouse_pos, pixel_radius=8, ignore_backfacing=True ):
-		rm_vp = util.rmViewport( context )
-		look_idx, abs_look_vec, look_vec = rm_vp.get_nearest_direction_vector( 'front' )
-
-		mos_edges = cls()
-		active_edges = cls( e for e in rmmesh.bmesh.edges if not e.hide )
-		for e in active_edges:
-			ept1, ept2 = e.verts
-			if ignore_backfacing and ept1.normal.dot( look_vec ) > 0.0 and ept2.normal.dot( look_vec ) > 0.0:
-				continue
-			pos1_wld = ept1.co @ rmmesh.world_transform
-			pos2_wld = ept2.co @ rmmesh.world_transform
-			sp1 = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=pos1_wld )
-			sp2 = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=pos2_wld )
-			if util.line2_dist( mathutils.Vector( sp1 ), mathutils.Vector( sp2 ), mathutils.Vector( mouse_pos ) ) <= float( pixel_radius ):
-				mos_edges.append( e )
-
-		return mos_edges
-
 	@classmethod
 	def from_mos( cls, rmmesh, context, mouse_pos, ignore_backfacing=True ):
 		rm_vp = util.rmViewport( context )
@@ -96,6 +76,8 @@ class rmPolygonSet( list ):
 			sp1 = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=wld_spc_vpos[tri[0].vert.index] )
 			sp2 = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=wld_spc_vpos[tri[1].vert.index] )
 			sp3 = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=wld_spc_vpos[tri[2].vert.index] )
+			if sp1 is None or sp2 is None or sp3 is None:
+				continue
 			hit = mathutils.geometry.intersect_point_tri_2d( mouse_pos, mathutils.Vector( sp1 ), mathutils.Vector( sp2 ), mathutils.Vector( sp3 ) )
 			if hit:
 				tri_center = ( wld_spc_vpos[tri[0].vert.index] + wld_spc_vpos[tri[1].vert.index] + wld_spc_vpos[tri[2].vert.index] ) * 0.33333333333
@@ -287,6 +269,8 @@ class rmEdgeSet( list ):
 			pos2_wld = xfrm @ ept2.co
 			sp1 = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=pos1_wld )
 			sp2 = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=pos2_wld )
+			if sp1 is None or sp2 is None:
+				continue
 			if util.line2_dist( mathutils.Vector( sp1 ), mathutils.Vector( sp2 ), mathutils.Vector( mouse_pos ) ) <= float( pixel_radius ):
 				mos_edges.append( e )
 
@@ -373,6 +357,11 @@ class rmEdgeSet( list ):
 	
 	def vert_chain( self ):
 		vert_chains = []
+
+		#blender's poly->boundary cmd doesnt clear all edge tags.
+		for v in self.vertices:
+			for e in v.link_edges:
+				e.tag = False
 		
 		#tag all member edges
 		for e in self:
@@ -481,6 +470,8 @@ class rmVertexSet( list ):
 				continue
 			pos_wld = xfrm @ v.co
 			sp = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=pos_wld )
+			if sp is None:
+				continue
 			if ( sp - mouse_pos ).length <= float( pixel_radius ):
 				mos_verts.append( v )
 

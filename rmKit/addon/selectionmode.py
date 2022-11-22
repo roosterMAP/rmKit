@@ -60,10 +60,10 @@ class MESH_OT_changetomode( bpy.types.Operator ):
 	
 	@classmethod
 	def poll( cls, context ):
-		#used by blender to test if operator can show up in a menu or as a button in the UI
 		return ( context.area.type == 'VIEW_3D' and
-				context.object is not None and
-				context.object.type == 'MESH' )
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
+				context.object.data.is_editmode )
 		
 	def execute( self, context ):
 		if context.mode != 'OBJECT' and not context.object.data.is_editmode:
@@ -71,6 +71,8 @@ class MESH_OT_changetomode( bpy.types.Operator ):
 		
 		if context.object.type == 'MESH':
 			rmmesh = rmlib.rmMesh.GetActive( context )
+			if rmmesh is None:
+				return { 'CANCELLED' }
 			with rmmesh as rmmesh:
 				intlayers_v = rmmesh.bmesh.verts.layers.int
 				selset = intlayers_v.get( BACKGROUND_LAYERNAME, None )
@@ -141,10 +143,9 @@ class MESH_OT_convertmodeto( bpy.types.Operator ):
 	
 	@classmethod
 	def poll( cls, context ):
-		#used by blender to test if operator can show up in a menu or as a button in the UI
 		return ( context.area.type == 'VIEW_3D' and
-				context.object is not None and
-				context.object.type == 'MESH' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
 				context.object.data.is_editmode )
 		
 	def execute( self, context ):
@@ -174,6 +175,24 @@ class MESH_OT_convertmodeto( bpy.types.Operator ):
 
 			elif sel_mode[1]:
 				edges = rmlib.rmEdgeSet.from_selection( rmmesh )
+
+				sel_faces = set()
+				if self.mode_to == 'FACE':
+					for v in edges.vertices:
+						sel_count = 0
+						is_open = False
+						selected_boundary = False
+						for e in v.link_edges:
+							if e.is_boundary:
+								if e.select:
+									selected_boundary = True
+								is_open = True
+							if e.select:
+								sel_count += 1
+						if ( is_open and not selected_boundary ) or sel_count > 1:
+							for f in v.link_faces:
+								sel_faces.add( f )
+
 				bpy.ops.mesh.rm_changemodeto( mode_to=self.mode_to )
 				bpy.ops.mesh.select_all( action='DESELECT' )
 				if self.mode_to == 'VERT':
@@ -181,6 +200,8 @@ class MESH_OT_convertmodeto( bpy.types.Operator ):
 						v.select = True
 				elif self.mode_to == 'FACE':
 					for f in edges.polygons:
+						f.select = True
+					for f in sel_faces:
 						f.select = True
 
 			elif sel_mode[2]:
@@ -193,6 +214,7 @@ class MESH_OT_convertmodeto( bpy.types.Operator ):
 				elif self.mode_to == 'EDGE':
 					for e in faces.edges:
 						e.select = True
+					
 				
 		return { 'FINISHED' }
 

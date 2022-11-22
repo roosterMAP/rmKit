@@ -1,6 +1,28 @@
-import bpy
-import bmesh
-from .. import rmlib
+import bpy, bmesh, mathutils
+import rmKit.rmlib as rmlib
+
+def has_open_vert_member( verts ):
+	for v in verts:
+		for e in v.link_edges:
+			if e.is_boundary:
+				return True
+	return False
+
+def collapse_verts( verts ):
+	collapse_groups = [ [], ]
+	for g in verts.group():
+		if has_open_vert_member( g ):
+			collapse_groups[0] += g
+		else:
+			collapse_groups.append( g )
+
+	for g in collapse_groups:
+		avg = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
+		for v in g:
+			avg += v.co
+		avg *= 1.0 / len( g )
+		for v in g:
+			v.co = avg
 
 class MESH_OT_reduce( bpy.types.Operator ):
 	"""Delete/Remove/Collapse selected components."""
@@ -20,10 +42,9 @@ class MESH_OT_reduce( bpy.types.Operator ):
 
 	@classmethod
 	def poll( cls, context ):
-		#used by blender to test if operator can show up in a menu or as a button in the UI
 		return ( context.area.type == 'VIEW_3D' and
-				context.object is not None and
-				context.object.type == 'MESH' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
 				context.object.data.is_editmode )
 		
 	def execute( self, context ):
@@ -46,7 +67,10 @@ class MESH_OT_reduce( bpy.types.Operator ):
 					if self.reduce_mode == 'DEL':
 						bpy.ops.mesh.delete( type='VERT' )
 					elif self.reduce_mode == 'COL':
-						bpy.ops.mesh.edge_collapse()
+						rmmesh.readonly = False
+						verts = rmlib.rmVertexSet.from_selection( rmmesh )
+						collapse_verts( verts )
+						bmesh.ops.remove_doubles( rmmesh.bmesh, verts=verts, dist=0.00001 )
 					else:
 						bpy.ops.mesh.dissolve_verts()
 

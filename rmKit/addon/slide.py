@@ -10,10 +10,9 @@ class MESH_OT_slide( bpy.types.Operator ):
 	
 	@classmethod
 	def poll( cls, context ):
-		#used by blender to test if operator can show up in a menu or as a button in the UI
 		return ( context.area.type == 'VIEW_3D' and
-				context.object is not None and
-				context.object.type == 'MESH' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
 				context.object.data.is_editmode )
 		
 	def execute( self, context ):

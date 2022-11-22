@@ -10,8 +10,7 @@ class MESH_OT_extend( bpy.types.Operator ):
 	
 	@classmethod
 	def poll( cls, context ):
-		#used by blender to test if operator can show up in a menu or as a button in the UI
-		return ( context.area.type == 'VIEW_3D' and context.object is not None )
+		return context.area.type == 'VIEW_3D'
 		
 	def execute( self, context ):
 		#get the selection mode

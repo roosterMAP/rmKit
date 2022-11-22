@@ -134,7 +134,6 @@ class MESH_OT_workplane( bpy.types.Operator ):
 	
 	@classmethod
 	def poll( cls, context ):
-		#used by blender to test if operator can show up in a menu or as a button in the UI
 		return context.area.type == 'VIEW_3D'
 		
 	def invoke(self, context, event):

@@ -453,8 +453,8 @@ class MESH_OT_connect_edge( bpy.types.Operator ):
 	@classmethod
 	def poll( cls, context ):
 		return ( context.area.type == 'VIEW_3D' and
-				context.object is not None and
-				context.object.type == 'MESH' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
 				context.object.data.is_editmode )
 
 	def LocalizeNewBMesh( self ):

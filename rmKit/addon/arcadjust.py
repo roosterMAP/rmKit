@@ -14,7 +14,9 @@ def ScaleLine( p0, p1, scale ):
 
 def arc_adjust( bm, scale ):
 	edges = rmlib.rmEdgeSet( [ e for e in bm.edges if e.select ] )
+	print( len( edges ) )
 	chains = edges.chain()
+	print( len( chains ) )
 	for chain in chains:
 		if len( chain ) < 3:
 			continue
@@ -126,8 +128,8 @@ class MESH_OT_unbevel( bpy.types.Operator ):
 	def poll( cls, context ):
 		#used by blender to test if operator can show up in a menu or as a button in the UI
 		return ( context.area.type == 'VIEW_3D' and
-				context.object is not None and
-				context.object.type == 'MESH' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
 				context.object.data.is_editmode )
 		
 	def execute( self, context ):

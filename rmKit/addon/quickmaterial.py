@@ -13,7 +13,7 @@ class MESH_OT_quickmaterial( bpy.types.Operator ):
 
 	@classmethod
 	def poll( cls, context ):
-		return ( context.area.type == 'VIEW_3D' )
+		return context.area.type == 'VIEW_3D'
 		
 	def execute( self, context ):		
 		material = bpy.context.scene.quickmatprops["prop_mat"]

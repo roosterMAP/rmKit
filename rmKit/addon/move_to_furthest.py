@@ -58,7 +58,6 @@ class MESH_OT_movetofurthest( bpy.types.Operator ):
 	"""Align selection to a grid axis most aligned with a direction relative to viewport camera."""
 	bl_idname = 'mesh.rm_movetofurthest'
 	bl_label = 'Move To Furthest'
-	#bl_options = { 'REGISTER', 'UNDO' }
 	bl_options = { 'UNDO' }
 
 	str_dir: bpy.props.EnumProperty(
@@ -86,10 +85,9 @@ class MESH_OT_movetofurthest( bpy.types.Operator ):
 
 	@classmethod
 	def poll( cls, context ):
-		#used by blender to test if operator can show up in a menu or as a button in the UI
 		return ( context.area.type == 'VIEW_3D' and
-				context.object is not None and
-				context.object.type == 'MESH' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
 				context.object.data.is_editmode )
 
 	def execute( self, context ):
@@ -168,10 +166,9 @@ class MESH_OT_uvmovetofurthest( bpy.types.Operator ):
 
 	@classmethod
 	def poll( cls, context ):
-		#used by blender to test if operator can show up in a menu or as a button in the UI
-		return ( context.area.type == 'IMAGE_EDITOR' and
-				context.object is not None and
-				context.object.type == 'MESH' and
+		return ( context.area.type == 'VIEW_3D' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
 				context.object.data.is_editmode )
 
 	def execute( self, context ):

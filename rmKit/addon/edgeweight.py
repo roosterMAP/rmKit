@@ -67,10 +67,9 @@ class MESH_OT_setedgeweight( bpy.types.Operator ):
 
 	@classmethod
 	def poll( cls, context ):
-		#used by blender to test if operator can show up in a menu or as a button in the UI
 		return ( context.area.type == 'VIEW_3D' and
-				context.object is not None and
-				context.object.type == 'MESH' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
 				context.object.data.is_editmode )
 		
 	def execute( self, context ):
@@ -91,14 +90,6 @@ class VIEW3D_MT_PIE_setedgeweight_crease( bpy.types.Menu ):
 	"""Set create/bevelweight amount on selected edges."""
 	bl_idname = 'VIEW3D_MT_PIE_setedgeweight_crease'
 	bl_label = 'Edge Weight'
-
-	@classmethod
-	def poll( cls, context ):
-		#used by blender to test if operator can show up in a menu or as a button in the UI
-		return ( context.area.type == 'VIEW_3D' and
-				context.object is not None and
-				context.object.type == 'MESH' and
-				context.object.data.is_editmode )
 
 	def draw( self, context ):
 		layout = self.layout

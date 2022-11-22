@@ -63,8 +63,8 @@ class MESH_OT_thicken( bpy.types.Operator ):
 	@classmethod
 	def poll( cls, context ):
 		return ( context.area.type == 'VIEW_3D' and
-				context.object is not None and
-				context.object.type == 'MESH' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
 				context.object.data.is_editmode )
 		
 	def execute( self, context ):
@@ -96,7 +96,7 @@ class MESH_OT_thicken( bpy.types.Operator ):
 				for v in faces1.vertices:
 					v.co += mathutils.Vector( v.normal ) * abs( self.thickness ) * 0.5
 				for v in faces2.vertices:
-					v.co += mathutils.Vector( v.normal ) * abs( self.thickness ) * 0.5
+					v.co -= mathutils.Vector( v.normal ) * abs( self.thickness ) * 0.5
 			else:
 				if self.thickness > 0.0:
 					for v in faces1.vertices:

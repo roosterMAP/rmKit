@@ -56,6 +56,7 @@ class MESH_OT_createtube( bpy.types.Operator ):
 	def __init__( self ):
 		self.bmesh = None
 		self._tubes = []
+		self.bbox_dist = 0.0
 
 	def __del__( self ):
 		if self.bmesh is not None:
@@ -66,8 +67,8 @@ class MESH_OT_createtube( bpy.types.Operator ):
 	@classmethod
 	def poll( cls, context ):
 		return ( context.area.type == 'VIEW_3D' and
-				context.object is not None and
-				context.object.type == 'MESH' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
 				context.object.data.is_editmode )
 
 	def LocalizeNewBMesh( self ):
@@ -197,7 +198,21 @@ class MESH_OT_createtube( bpy.types.Operator ):
 
 				#cache Tube objects for edge selection
 				if sel_mode[1]:
-					chains = rmlib.rmEdgeSet.from_selection( rmmesh ).chain()
+					edges = rmlib.rmEdgeSet.from_selection( rmmesh )
+					
+					#init bbox_dist for haul sensitivity
+					verts = edges.vertices
+					min = verts[0].co.copy()
+					max = verts[0].co.copy()
+					for v in verts:
+						for i in range( 3 ):
+							if v.co[i] < min[i]:
+								min[i] = v.co[i]
+							if v.co[i] > max[i]:
+								max[i] = v.co[i]
+					self.bbox_dist = ( max - min ).length
+					
+					chains = edges.chain()
 					for i, chain in enumerate( chains ):
 						tube = Tube()
 
@@ -220,7 +235,21 @@ class MESH_OT_createtube( bpy.types.Operator ):
 
 				#cache Tube objs from face selection
 				elif sel_mode[2]:
-					groups = rmlib.rmPolygonSet.from_selection( rmmesh ).group()
+					faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+
+					#init bbox_dist for haul sensitivity
+					verts = faces.vertices
+					min = verts[0].co.copy()
+					max = verts[0].co.copy()
+					for v in verts:
+						for i in range( 3 ):
+							if v.co[i] < min[i]:
+								min[i] = v.co[i]
+							if v.co[i] > max[i]:
+								max[i] = v.co[i]
+					self.bbox_dist = ( max - min ).length
+
+					groups = faces.group()
 					for group in groups:
 						#ensure group is all quads
 						allQuads = True
