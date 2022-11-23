@@ -712,6 +712,30 @@ class rmUVLoopSet( list ):
 		return continuous_groups
 
 
+	def border_loops( self, invert=False ):
+		boader_loops = rmUVLoopSet( [], uvlayer=self.uvlayer )
+		continuous_loops = rmUVLoopSet( [], uvlayer=self.uvlayer )
+		for l in self:
+			if len( l.edge.link_faces ) < 2:
+				boader_loops.append( l )
+				continue
+
+			next_l = l.next_link_loop
+			for nl in next_l.vert.link_loops:
+				if nl.edge == l.edge and nl.face != l.face:
+					break
+			next_nl = nl.next_link_loop
+			if rmlib.util.AlmostEqual_v2( nl[self.uvlayer].uv, next_l[self.uvlayer].uv ) and rmlib.util.AlmostEqual_v2( next_nl[self.uvlayer].uv, l[self.uvlayer].uv ):
+				continuous_loops.append( l )
+			else:
+				boader_loops.append( l )
+
+		if invert:
+			return continuous_loops
+		else:
+			return boader_loops
+
+
 	def group_edges( self ):
 		continuous_groups = []
 

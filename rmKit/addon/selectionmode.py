@@ -62,8 +62,7 @@ class MESH_OT_changetomode( bpy.types.Operator ):
 	def poll( cls, context ):
 		return ( context.area.type == 'VIEW_3D' and
 				context.active_object is not None and
-				context.active_object.type == 'MESH' and
-				context.object.data.is_editmode )
+				context.active_object.type == 'MESH' )
 		
 	def execute( self, context ):
 		if context.mode != 'OBJECT' and not context.object.data.is_editmode:
@@ -144,8 +143,8 @@ class MESH_OT_convertmodeto( bpy.types.Operator ):
 	@classmethod
 	def poll( cls, context ):
 		return ( context.area.type == 'VIEW_3D' and
-				context.active_object is not None and
-				context.active_object.type == 'MESH' and
+				context.object is not None and
+				context.object.type == 'MESH' and
 				context.object.data.is_editmode )
 		
 	def execute( self, context ):
