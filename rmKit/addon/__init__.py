@@ -25,7 +25,6 @@ from . import vnormals
 from . import copypaste
 from . import workplane
 from . import selectionmode
-from . import push
 from . import radial_align
 from . import slide
 from . import edgeweight
@@ -34,6 +33,7 @@ from . import extend
 from . import quickmaterial
 from . import cursor
 from . import thicken
+from . import stitch
 from . import panel
 
 def register():
@@ -52,7 +52,6 @@ def register():
 	copypaste.register()
 	workplane.register()
 	selectionmode.register()
-	push.register()
 	radial_align.register()
 	slide.register()
 	edgeweight.register()
@@ -63,6 +62,7 @@ def register():
 	thicken.register()
 	panel.register()
 	vnormals.register()
+	stitch.register()
 
 def unregister():
 	bpy.utils.unregister_class( rmKitPannel )
@@ -80,7 +80,6 @@ def unregister():
 	copypaste.unregister()
 	workplane.unregister()
 	selectionmode.unregister()
-	push.unregister()
 	radial_align.unregister()
 	slide.unregister()
 	edgeweight.unregister()
@@ -91,3 +90,4 @@ def unregister():
 	thicken.unregister()
 	panel.unregister()
 	vnormals.unregister()
+	stitch.unregister()

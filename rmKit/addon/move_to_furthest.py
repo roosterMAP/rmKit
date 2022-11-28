@@ -219,7 +219,7 @@ class MESH_OT_uvmovetofurthest( bpy.types.Operator ):
 					loop_selection = rmlib.rmUVLoopSet.from_edge_selection( rmmesh=rmmesh, uvlayer=uvlayer )
 					loop_groups = loop_selection.group_edges()
 					for i in range( len( loop_groups ) ):
-						loop_groups[i].add_overlapping_loops()
+						loop_groups[i].add_overlapping_loops( True )
 
 				elif sel_mode == 'FACE' and self.local:
 					loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )

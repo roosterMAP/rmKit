@@ -169,3 +169,7 @@ def AlmostEqual( f1, f2 ):
 
 def AlmostEqual_v2( v1, v2 ):
 	return AlmostEqual( v1[0], v2[0] ) and AlmostEqual( v1[1], v2[1] )
+
+def ProjectVector( a, b ):
+	#returns vector produced by projecting a onto b.
+	return b * ( a.dot( b ) / b.dot( b ) )

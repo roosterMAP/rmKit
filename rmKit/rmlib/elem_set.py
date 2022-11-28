@@ -720,12 +720,12 @@ class rmUVLoopSet( list ):
 				boader_loops.append( l )
 				continue
 
-			next_l = l.next_link_loop
+			next_l = l.link_loop_next
 			for nl in next_l.vert.link_loops:
 				if nl.edge == l.edge and nl.face != l.face:
 					break
-			next_nl = nl.next_link_loop
-			if rmlib.util.AlmostEqual_v2( nl[self.uvlayer].uv, next_l[self.uvlayer].uv ) and rmlib.util.AlmostEqual_v2( next_nl[self.uvlayer].uv, l[self.uvlayer].uv ):
+			next_nl = nl.link_loop_next
+			if util.AlmostEqual_v2( nl[self.uvlayer].uv, next_l[self.uvlayer].uv ) and util.AlmostEqual_v2( next_nl[self.uvlayer].uv, l[self.uvlayer].uv ):
 				continuous_loops.append( l )
 			else:
 				boader_loops.append( l )
@@ -769,7 +769,7 @@ class rmUVLoopSet( list ):
 								outerSet.append( nl_prev )
 								nl_prev.tag = True
 
-			continuous_groups.append( rmUVLoopSet( outerSet, uvlayer=self.uvlayer ) )
+			continuous_groups.append( rmUVLoopSet( innerSet, uvlayer=self.uvlayer ) )
 
 		for l in self:
 			l.edge.tag = False
@@ -778,22 +778,27 @@ class rmUVLoopSet( list ):
 		return continuous_groups
 
 
-	def add_overlapping_loops( self ):
-		groupSet = set()
+	def add_overlapping_loops( self, include_edge_endpoint=False ):
+		for l in self:
+			l.tag = True
+			
+		for i in range( len( self ) ):
+			l = self[i]
+			for nl in l.vert.link_loops:
+				if not nl.tag and util.AlmostEqual_v2( l[self.uvlayer].uv, nl[self.uvlayer].uv ):
+					self.append( nl )
+
+			if include_edge_endpoint:
+				el = l.link_loop_next
+				if not el.tag:
+					self.append( el )
+					el.tag = True
+				for nl in el.vert.link_loops:
+					if not nl.tag and util.AlmostEqual_v2( el[self.uvlayer].uv, nl[self.uvlayer].uv ):
+						self.append( nl )
 
 		for l in self:
-			groupSet.add( l )
-			for nl in l.vert.link_loops:
-				if util.AlmostEqual_v2( l[self.uvlayer].uv, nl[self.uvlayer].uv ):
-					groupSet.add( nl )
-
-			el = l.link_loop_next
-			groupSet.add( el )
-			for nl in el.vert.link_loops:
-				if util.AlmostEqual_v2( el[self.uvlayer].uv, nl[self.uvlayer].uv ):
-					groupSet.add( nl )
-
-		self = rmUVLoopSet( groupSet, uvlayer=self.uvlayer )
+			l.tag = False
 	
 
 	def group_vertices( self, element=False ):
@@ -815,7 +820,7 @@ class rmUVLoopSet( list ):
 
 				#test link_loop adjacency
 				for nl in l.vert.link_loops:
-					if nl.tag:
+					if nl.tag or nl == l:
 						continue
 					if element or nl in self:
 						if util.AlmostEqual_v2( l[self.uvlayer].uv, nl[self.uvlayer].uv ):
@@ -837,7 +842,7 @@ class rmUVLoopSet( list ):
 					innerSet.add( nl )
 					nl.tag = True
 							
-			continuous_groups.append( rmUVLoopSet( list( innerSet ), uvlayer=self.uvlayer ) )
+			continuous_groups.append( rmUVLoopSet( innerSet, uvlayer=self.uvlayer ) )
 
 		for group in continuous_groups:
 			for l in group:
