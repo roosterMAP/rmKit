@@ -3,6 +3,13 @@ from bpy_extras import view3d_utils
 from rmKit.rmlib import util
 import mathutils
 
+def shared_edge( p1, p2 ):
+	intersection_set = set( p1.edges ).intersection( set( p2.edges ) )
+	if len( intersection_set ) == 0:
+		return None
+	return intersection_set.pop()
+
+
 class rmPolygonSet( list ):
 	"""
 	Utility class for lists of bmesh.types.BMFace objects
@@ -139,7 +146,7 @@ class rmPolygonSet( list ):
 		for p in self:
 			p.select = True
 			
-	def group( self, element=False ):
+	def group( self, element=False, use_seam=False ):
 		"""
 		Returns a list of 3d continuous PolygonSets.
 
@@ -169,7 +176,11 @@ class rmPolygonSet( list ):
 				for v in p.verts:
 					for np in v.link_faces:
 						if np.tag:
-							continue							
+							continue
+						if use_seam:
+							e = shared_edge( p, np )
+							if e is not None and e.seam:
+								continue
 						if element or np in self:
 							outerSet.add( np )
 							np.tag = True
