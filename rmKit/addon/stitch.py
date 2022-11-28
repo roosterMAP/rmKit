@@ -55,10 +55,9 @@ def lsf_line( poslist ):
 		p1 = mathutils.Vector( ( 1.0 / slope, y_intercept + 1.0 ) )
 		return ( p1 - p0 ).normalized(), p0
 	else:
-		x_intercept = sum_y / n
+		x_intercept = sum_x / n
 		p0 = mathutils.Vector( ( x_intercept, 0.0 ) )
-		p1 = mathutils.Vector( ( p0[0], p0[1] + 1.0 ) )
-		return ( p1 - p0 ).normalized(), p0
+		return mathutils.Vector( ( 0.0, 1.0 ) ), p0
 
 
 def tri_area( tri_loops, uvlayer ):
@@ -82,7 +81,7 @@ def tri_area( tri_loops, uvlayer ):
 
 
 def ccw_angle2d( a, b ):
-	det = a[0] * b[1] - b[0] * b[1] #determinant
+	det = a[0] * b[1] - a[1] * b[0] #determinant
 	return math.atan2( det, a.dot( b ) )
 
 
@@ -309,7 +308,7 @@ class MESH_OT_uvstitcht( bpy.types.Operator ):
 
 			#stiched source loops to target loops
 			for i in range( len( source_groups ) ):				
-				print( '\t stitch {} to {}'.format( [ lp.vert.index for lp in source_groups[i] ], [ lp.vert.index for lp in target_groups[i] ] ) )
+				#print( '\t stitch {} to {}'.format( [ lp.vert.index for lp in source_groups[i] ], [ lp.vert.index for lp in target_groups[i] ] ) )
 				stitch( source_groups[i], target_groups[i], uvlayer )
 				
 			'''

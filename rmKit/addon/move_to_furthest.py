@@ -193,14 +193,18 @@ class MESH_OT_uvmovetofurthest( bpy.types.Operator ):
 					loop_selection = rmlib.rmUVLoopSet( vert_selection.loops, uvlayer=uvlayer )
 					if self.local:
 						loop_groups += loop_selection.group_vertices()
+					else:
+						loop_groups.append( loop_selection )
 
 				elif sel_mode[1]:
 					edge_selection = rmlib.rmEdgeSet.from_selection( rmmesh )
 					loop_selection = rmlib.rmUVLoopSet( edge_selection.vertices.loops, uvlayer=uvlayer )
 					if self.local:
 						loop_groups += loop_selection.group_vertices()
+					else:
+						loop_groups.append( loop_selection )
 
-				else:
+				elif sel_mode[2]:
 					face_selection = rmlib.rmPolygonSet.from_selection( rmmesh )
 					loopset = set()
 					for f in face_selection:
@@ -208,6 +212,8 @@ class MESH_OT_uvmovetofurthest( bpy.types.Operator ):
 					loop_selection = rmlib.rmUVLoopSet( loopset, uvlayer=uvlayer )
 					if self.local:
 						loop_groups += loop_selection.group_vertices()
+					else:
+						loop_groups.append( loop_selection )
 
 			else:
 				sel_mode = context.tool_settings.uv_select_mode
