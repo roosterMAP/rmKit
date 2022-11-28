@@ -41,10 +41,9 @@ class MESH_OT_quickmaterial( bpy.types.Operator ):
 			if rmmesh is None:
 				return { 'FINISHED' }
 			with rmmesh as rmmesh:
-				
 				match_found = False
 				for i, mat in enumerate( rmmesh.mesh.materials ):
-					if mat.name_full == material.name_full:
+					if mat is not None  and mat.name_full == material.name_full:
 						match_found = True
 						break
 				if match_found:
@@ -94,7 +93,10 @@ class MESH_OT_quickmaterial( bpy.types.Operator ):
 					print( 'ERROR :: QuickMat INVOKE :: from_mos failed' )
 					return { 'CANCELLED' }
 				mat_idx = source_poly.material_index
-			material = obj.data.materials[mat_idx]
+			try:
+				material = obj.data.materials[mat_idx]
+			except IndexError:
+				material = obj.data.materials[0]
 			bpy.context.scene.quickmatprops["prop_mat"] = material
 			bpy.context.scene.quickmatprops["prop_col"] = material.diffuse_color
 			bpy.context.scene.quickmatprops["prop_met"] = material.metallic

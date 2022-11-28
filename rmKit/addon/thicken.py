@@ -29,11 +29,14 @@ def BridgeSurfaces( bm, faces1, faces2 ):
 			min_idx = i
 		
 	#bridge the loops
+	new_faces = rmlib.rmPolygonSet( [] )
 	vcount = len( loops[0] )
 	for i in range( vcount ):
 		j = ( min_idx + i ) % vcount
 		quad = ( loops[0][i-1], loops[0][i], loops[1][j], loops[1][j-1] )
-		bm.faces.new( quad, faces1[0] )
+		new_faces.append( bm.faces.new( quad, faces1[0] ) )
+
+	return new_faces
 
 
 class MESH_OT_thicken( bpy.types.Operator ):
@@ -89,7 +92,7 @@ class MESH_OT_thicken( bpy.types.Operator ):
 			bm.verts.ensure_lookup_table()
 			
 			#bridget the two surfaces
-			BridgeSurfaces( bm, faces1, faces2 )			
+			bridge_faces = BridgeSurfaces( bm, faces1, faces2 )			
 
 			#offset verts
 			if self.center:
@@ -98,15 +101,13 @@ class MESH_OT_thicken( bpy.types.Operator ):
 				for v in faces2.vertices:
 					v.co -= mathutils.Vector( v.normal ) * abs( self.thickness ) * 0.5
 			else:
-				if self.thickness > 0.0:
-					for v in faces1.vertices:
-						v.co += mathutils.Vector( v.normal ) * self.thickness
-				else:
-					for v in faces2.vertices:
-						v.co -= mathutils.Vector( v.normal ) * self.thickness
+				for v in faces1.vertices:
+					v.co += mathutils.Vector( v.normal ) * self.thickness
 
 			#flip faces2
 			bmesh.ops.reverse_faces( bm, faces=faces2, flip_multires=True )
+			if self.thickness < 0.0:
+				bmesh.ops.reverse_faces( bm, faces=( bridge_faces + faces1 + faces2 ), flip_multires=True )
 
 		#delete original geo
 		bmesh.ops.delete( bm, geom=polys, context='FACES' )
