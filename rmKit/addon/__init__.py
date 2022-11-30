@@ -35,6 +35,7 @@ from . import cursor
 from . import thicken
 from . import stitch
 from . import panel
+from . import gridify
 
 def register():
 	bpy.utils.register_class( rmKitPannel )
@@ -63,6 +64,7 @@ def register():
 	panel.register()
 	vnormals.register()
 	stitch.register()
+	gridify.register()
 
 def unregister():
 	bpy.utils.unregister_class( rmKitPannel )
@@ -91,3 +93,4 @@ def unregister():
 	panel.unregister()
 	vnormals.unregister()
 	stitch.unregister()
+	gridify.unregister()
