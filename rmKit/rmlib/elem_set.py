@@ -147,61 +147,61 @@ class rmPolygonSet( list ):
 		for p in self:
 			p.select = True
 			
-def group( self, element=False, use_seam=False ):
-	"""
-	Returns a list of 3d continuous PolygonSets.
+	def group( self, element=False, use_seam=False ):
+		"""
+		Returns a list of 3d continuous PolygonSets.
 
-	Args:
-		element (bool): When True, all polys 3d continuouse to self are visited.
+		Args:
+			element (bool): When True, all polys 3d continuouse to self are visited.
 
-	Returns:
-		[PolygonSet,]: List of PolygonSets.
-	"""
-	
-	continuous_groups = []
-	
-	for p in self:
-		p.tag = False
-		if use_seam:
-			for e in p.edges:
-				if e.seam:
-					v1, v2 = e.verts
-					v1.tag = True
-					v2.tag = True
-			
-	for poly in self:
-		if poly.tag:
-			continue
-			
-		innerSet = rmPolygonSet()
-		poly.tag = True
-		outerSet = set( [ poly ] )
+		Returns:
+			[PolygonSet,]: List of PolygonSets.
+		"""
 		
-		while len( outerSet ) > 0:
-			p = outerSet.pop()
-			innerSet.append( p )
-			for v in p.verts:
-				for np in v.link_faces:
-					if np.tag:
-						continue
-					if use_seam and v.tag:
-						e = shared_edge( p, np )
-						if e is None or e.seam:
-							continue
-					if element or np in self:
-						outerSet.add( np )
-						np.tag = True
-						
-		continuous_groups.append( innerSet )
+		continuous_groups = []
 		
-	for group in continuous_groups:
-		for p in group:
+		for p in self:
 			p.tag = False
 			if use_seam:
+				for e in p.edges:
+					if e.seam:
+						v1, v2 = e.verts
+						v1.tag = True
+						v2.tag = True
+				
+		for poly in self:
+			if poly.tag:
+				continue
+				
+			innerSet = rmPolygonSet()
+			poly.tag = True
+			outerSet = set( [ poly ] )
+			
+			while len( outerSet ) > 0:
+				p = outerSet.pop()
+				innerSet.append( p )
 				for v in p.verts:
-					v.tag = False
-		
-	return continuous_groups
+					for np in v.link_faces:
+						if np.tag:
+							continue
+						if use_seam and v.tag:
+							e = shared_edge( p, np )
+							if e is None or e.seam:
+								continue
+						if element or np in self:
+							outerSet.add( np )
+							np.tag = True
+							
+			continuous_groups.append( innerSet )
+			
+		for group in continuous_groups:
+			for p in group:
+				p.tag = False
+				if use_seam:
+					for v in p.verts:
+						v.tag = False
+			
+		return continuous_groups
 
 
 
