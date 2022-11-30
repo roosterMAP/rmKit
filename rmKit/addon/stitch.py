@@ -1,6 +1,6 @@
 import bpy, bmesh, mathutils
 import rmKit.rmlib as rmlib
-import math, sys
+import math
 
 
 def sort_loop_chain( loops ):
@@ -28,39 +28,6 @@ def sort_loop_chain( loops ):
 	return rmlib.rmUVLoopSet( sorted_loops, uvlayer=loops.uvlayer )
 
 
-def lsf_line( poslist ):
-	#uses least fit square to find a 2d line that best fits the poslist
-	sum_x = 0.0
-	sum_y = 0.0
-	sum_xy = 0.0
-	sum_xx = 0.0
-	sum_yy = 0.0
-	for p in poslist:
-		sum_x += p[0]
-		sum_y += p[1]
-		sum_xy += p[0] * p[1]
-		sum_xx += p[0] * p[0]
-		sum_yy += p[1] * p[1]
-		
-	n = float( len( poslist ) )
-	
-	denom = n * sum_xx - sum_x * sum_x
-	if denom > 0.00000001:
-		slope = ( n * sum_xy - sum_x * sum_y ) / denom
-		sign = 1.0
-		if slope < 0.0:
-			sign = -1.0
-		y_intercept = ( sum_y - slope * sum_x ) / n
-		p0 = mathutils.Vector( ( 0.0, y_intercept ) )
-		p1 = mathutils.Vector( ( 1.0 / slope, y_intercept + 1.0 ) )
-		return ( p1 - p0 ).normalized(), p0
-	else:
-		x_intercept = sum_y / n
-		p0 = mathutils.Vector( ( x_intercept, 0.0 ) )
-		p1 = mathutils.Vector( ( p0[0], p0[1] + 1.0 ) )
-		return ( p1 - p0 ).normalized(), p0
-
-
 def tri_area( tri_loops, uvlayer ):
 	#uses triangle determinant to compute triangle area. sign determines swizzle of verts
 	p1 = tri_loops[0][uvlayer].uv
@@ -82,7 +49,7 @@ def tri_area( tri_loops, uvlayer ):
 
 
 def ccw_angle2d( a, b ):
-	det = a[0] * b[1] - b[0] * b[1] #determinant
+	det = a[0] * b[1] - a[1] * b[0] #determinant
 	return math.atan2( det, a.dot( b ) )
 
 
@@ -99,130 +66,127 @@ def clear_all_tags( bmesh ):
 	
 
 def stitch( source_loops, target_loops, uvlayer ):
+	#determines if we should stitch at midpoint between source and target loops
 	target_loops_selected = True
 	for tl in target_loops:
 		if not tl[uvlayer].select_edge:
 			target_loops_selected = False
 			break
 		
-	source_loops.add_overlapping_loops( True )
-	target_loops.add_overlapping_loops( True )
+	#complete lists of source and target loops so that their very lists match
+	source_loops.append( source_loops[-1].link_loop_next )
 	target_loops.reverse()
-	target_island = target_loops.group_vertices( element=True )[0]
+	target_loops.append( target_loops[-1].link_loop_next )
 	
-	#print( '\tsource_loops :: {}'.format( source_loops ) )
-	#print( '\ttarget_loops :: {}'.format( target_loops ) )
-	#print( '\ttarget_island :: {}\n'.format( target_island ) )
-
+	#determine if source and target are the same loop
+	target_island = target_loops.group_vertices( element=True )[0]
 	is_same_island = source_loops[0] in target_island
-
+	
+	#transform target island such that the endpoints of target_loops lie on top of the endpoints of source_loops
 	if not is_same_island:
 		source_poslist = [ mathutils.Vector( l[uvlayer].uv.copy() ) for l in source_loops ]
 		target_poslist = [ mathutils.Vector( l[uvlayer].uv.copy() ) for l in target_loops ]
-	
-		#compute the amt by which the target island must be scales
-		source_scale = ( source_poslist[0] - source_poslist[-1] ).length
-		target_scale = ( target_poslist[0] - target_poslist[-1] ).length
-		scale_factor = source_scale / target_scale
-
-		#compuite the amt by which the target island must be rotated
-		source_lfs_vec, source_lfs_pos = lsf_line( source_poslist )
-		target_lfs_vec, target_lfs_pos = lsf_line( target_poslist )
-		rotation_angle = ccw_angle2d( target_lfs_vec, source_lfs_vec )
 		
-		#print( 'source_lfs_pos :: {}'.format( source_lfs_pos ) )
-		#print( 'target_lfs_pos :: {}'.format( target_lfs_pos ) )
-		#print( 'source_lfs_vec :: {}'.format( source_lfs_vec ) )
-		#print( 'target_lfs_vec :: {}'.format( target_lfs_vec ) )
+		source_avg = mathutils.Vector( ( 0.0, 0.0 ) )
+		for pos in source_poslist:
+			source_avg += pos
+		source_avg /= len( source_poslist )
+		target_avg = mathutils.Vector( ( 0.0, 0.0 ) )
+		for pos in target_poslist:
+			target_avg += pos
+		target_avg /= len( target_poslist )
 		
-		#check if target island needs to be rotated an additional 180 degrees
-		intersection_2d = mathutils.geometry.intersect_line_line_2d( source_poslist[0], target_poslist[0], source_poslist[-1], target_poslist[-1] )
-		if intersection_2d is not None:
+		source_vec = source_poslist[0] - source_poslist[-1]
+		source_pos = ( source_poslist[0] + source_poslist[-1] + source_avg ) * 0.33333
+		target_vec = target_poslist[0] - target_poslist[-1]
+		target_pos = ( target_poslist[0] + target_poslist[-1] + target_avg ) * 0.33333
+		
+		#compute scale
+		scale_factor = source_vec.length / target_vec.length
+		
+		source_vec.normalize()
+		target_vec.normalize()
+		
+		#compute rotation
+		rotation_angle = ccw_angle2d( target_vec, source_vec )
+		r1 = [ math.cos( rotation_angle ), -math.sin( rotation_angle ) ]
+		r2 = [ math.sin( rotation_angle ), math.cos( rotation_angle ) ]
+		rot = mathutils.Matrix( [ r1, r2 ] )
+		target_vec = rot @ target_vec
+		if source_vec.dot( target_vec ) > 0:
 			rotation_angle += math.pi
-			
-		#print( 'rotation_angle :: {}'.format( math.degrees( rotation_angle ) ) )
-
-		'''
-		#determine if target island needs to be flipped
-		source_tri = source_loops[0].face.loops[:3]
-		source_flipped = tri_area( source_tri, uvlayer )
-		target_tri = source_loops[0].face.loops[:3]
-		target_flipped = tri_area( target_tri, uvlayer )
-		if ( source_flipped < 0.0 and target_flipped < 0.0 ) or ( source_flipped > 0.0 and target_flipped > 0.0  ):
-			scale_factor *= -1.0
-			rotation_angle = math.pi - rotation_angle
-			print( 'inverted island' )
-		'''
-			
-		#print( 'scale_factor :: {}'.format( scale_factor ) )
-
-		#compute the transform required to move the target island into position for stitching
-		source_midpoint = ( source_poslist[0] + source_poslist[-1] ) * 0.5
-		target_midpoint = ( target_poslist[0] + target_poslist[-1] ) * 0.5
-		source_v = source_midpoint - source_lfs_pos
-		source_center = source_lfs_pos + rmlib.util.ProjectVector( source_v, source_lfs_vec )
-		target_v = target_midpoint - target_lfs_pos
-		target_center = target_lfs_pos + rmlib.util.ProjectVector( target_v, target_lfs_vec )
-		offset = source_center - target_center
-				
-		#print( 'source_center :: {}'.format( source_center ) )
-		#print( 'target_center :: {}'.format( target_center ) )
 		
+		#compute translation
+		offset = source_pos - target_pos
+		
+		#scale offset by half if we are stitching at midpoint
 		if target_loops_selected:
 			rotation_angle *= 0.5
 			scale_factor *= 0.5
-			offset *= 0.5			
+			offset *= 0.5	
 		
+		#build orientation matrix
 		r1 = [ math.cos( rotation_angle ), -math.sin( rotation_angle ) ]
 		r2 = [ math.sin( rotation_angle ), math.cos( rotation_angle ) ]
 		rot = mathutils.Matrix( [ r1, r2 ] )
 		scl = mathutils.Matrix( [ [ scale_factor, 0.0 ], [ 0.0, scale_factor ] ] )
 		targ_mat = scl @ rot
-
-		#transform target island into position
+		
+		#transform target island into position		
 		for l in target_island:
 			new_uv = mathutils.Vector( l[uvlayer].uv )
-			new_uv -= target_center
+			new_uv -= target_pos
 			new_uv = targ_mat @ new_uv
-			new_uv += target_center + offset
+			new_uv += target_pos + offset
 			l[uvlayer].uv = new_uv
 			
+		#transform source island by inverse of target island transform if we are stitching at midpoint
 		if target_loops_selected:
 			source_island = source_loops.group_vertices( element=True )[0]
-			src_mat = targ_mat.transposed()			
+			src_mat = targ_mat.inverted()			
 			for l in source_island:
 				new_uv = mathutils.Vector( l[uvlayer].uv )
-				new_uv -= source_center
+				new_uv -= source_pos
 				new_uv = src_mat @ new_uv
-				new_uv += source_center - offset
+				new_uv += source_pos - offset
 				l[uvlayer].uv = new_uv
-			
-			
-	#stitch target loops to source loops
-	tl_idx = 0
-	for sl in source_loops:
+		
+	#stitch target loops to source loops		
+	tagged_loops = set()
+	for i in range( len( source_loops ) ):
+		sl = source_loops[i]		
 		sv = sl.vert
 		if sv.tag:
 			continue
-		for i in range( tl_idx, len( target_loops ) ):
-			tl = target_loops[i]
+		sl_uv = sl[uvlayer].uv
+		s_linkloops = []
+		for nl in sv.link_loops:
+			if rmlib.util.AlmostEqual_v2( sl[uvlayer].uv, nl[uvlayer].uv ):
+				s_linkloops.append( nl )
+				tagged_loops.add( nl )
+		for j in range( len( target_loops ) ):
+			tl = target_loops[j]
 			tv = tl.vert
-			if tv != sv:
-				break
+			if tl.tag or sv != tv:
+				continue
+			t_linkloops = []
+			for nl in tv.link_loops:
+				if rmlib.util.AlmostEqual_v2( tl[uvlayer].uv, nl[uvlayer].uv ):
+					t_linkloops.append( nl )
+					tagged_loops.add( nl )
 			if is_same_island:
-				mid_pt = ( tl[uvlayer].uv + sl[uvlayer].uv ) * 0.5
-				tl[uvlayer].uv = mid_pt
-				sl[uvlayer].uv = mid_pt
+				mp_uv = ( sl_uv + tl[uvlayer].uv ) * 0.5
+				for l in s_linkloops + t_linkloops:
+					l[uvlayer].uv = mp_uv
 			else:
-				tl[uvlayer].uv = sl[uvlayer].uv
-			tl_idx += 1
+				for l in s_linkloops + t_linkloops:
+					l[uvlayer].uv = sl_uv
+			tv.tag = True
 		sv.tag = True
 
 	#untag stitched loops
-	for l in source_loops:
+	for l in tagged_loops:
 		l.vert.tag = False
-		l.tag = False
-	for l in target_island:
 		l.tag = False
 
 
@@ -252,8 +216,6 @@ class MESH_OT_uvstitcht( bpy.types.Operator ):
 			edgeloop_selection = rmlib.rmUVLoopSet.from_edge_selection( rmmesh, uvlayer=uvlayer )
 			border_edgeloop_selection = rmlib.rmUVLoopSet( [ l for l in edgeloop_selection if len( l.edge.link_faces ) > 1 ], uvlayer=uvlayer ).border_loops()
 			
-			#print( '\n' )
-			
 			#break up into groups
 			edgeloop_groups = border_edgeloop_selection.group_edges()
 
@@ -265,8 +227,6 @@ class MESH_OT_uvstitcht( bpy.types.Operator ):
 				#start by sorting each edgeloop group
 				loop_chain = sort_loop_chain( group )
 				
-				#print( 'loop_chain :: {}'.format( [ l.vert.index for l in loop_chain ] ) )
-
 				#its is possible for a loop group to stitch to multiple other uv islands.
 				#we iterate through each edge loop (source) and find the edge loop it stitches to (target).
 				#use check if the current target is continuous with the previous target using the continuity_test_loop.
@@ -284,8 +244,9 @@ class MESH_OT_uvstitcht( bpy.types.Operator ):
 							continue
 						processed_loops.add( nl )
 						
-						tl = nl
-						if ( len( source_loops ) == 0 and len( target_loops ) == 0 ) or rmlib.util.AlmostEqual_v2( continuity_test_loop[uvlayer].uv, nl[uvlayer].uv ):
+						tl = nl.link_loop_next
+						if ( ( len( source_loops ) == 0 and len( target_loops ) == 0 ) or
+						rmlib.util.AlmostEqual_v2( continuity_test_loop[uvlayer].uv, tl[uvlayer].uv ) ):
 							source_loops.append( l )
 							target_loops.append( nl )
 						else:
@@ -296,36 +257,15 @@ class MESH_OT_uvstitcht( bpy.types.Operator ):
 
 						continuity_test_loop = nl
 
-					if len( source_loops ) > 0 and len( target_loops ) > 0:
-						source_groups.append( source_loops )
-						target_groups.append( target_loops )
-						source_loops = rmlib.rmUVLoopSet( [], uvlayer=uvlayer )
-						target_loops = rmlib.rmUVLoopSet( [], uvlayer=uvlayer )
-					
-			#print( 'STITCH START ::' )
-			
-			#for f in rmmesh.bmesh.faces:				
-			#	print( 'f:{} -> {}  {}'.format( f.index, [ v.index for v in f.verts ], [ l.index for l in f.loops ] ) )
+				if len( source_loops ) > 0 and len( target_loops ) > 0:
+					source_groups.append( source_loops )
+					target_groups.append( target_loops )
+					source_loops = rmlib.rmUVLoopSet( [], uvlayer=uvlayer )
+					target_loops = rmlib.rmUVLoopSet( [], uvlayer=uvlayer )
 
 			#stiched source loops to target loops
-			for i in range( len( source_groups ) ):				
-				print( '\t stitch {} to {}'.format( [ lp.vert.index for lp in source_groups[i] ], [ lp.vert.index for lp in target_groups[i] ] ) )
+			for i in range( len( source_groups ) ):
 				stitch( source_groups[i], target_groups[i], uvlayer )
-				
-			'''
-			for v in rmmesh.bmesh.verts:
-				if v.tag: print( 'v' )
-				v.tag = False
-			for e in rmmesh.bmesh.edges:
-				if e.tag: print( 'e' )
-				e.tag = False
-			for f in rmmesh.bmesh.faces:
-				f.tag = False
-				if f.tag: print( 'f' )
-				for l in f.loops:
-					if l.tag: print( 'l' )
-					l.tag = False
-			'''
 
 		return { 'FINISHED' }
 
