@@ -10,6 +10,15 @@ def clear_tags( rmmesh ):
 		f.tag = False
 		for l in f.loops:
 			l.tag = False
+			
+def is_boundary( l ):
+	if l.edge.seam or l.edge.is_boundary:
+		return True
+	else:
+		for nf in l.edge.link_faces:
+			if nf != l.face and not nf.tag:
+				return True
+	return False
 
 class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 	"""Map the uv verts of the selected UV Islands to a Grid"""
@@ -19,11 +28,10 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 
 	@classmethod
 	def poll( cls, context ):
-		return ( context.area.type == 'IMAGE_EDITOR' and
+		return ( ( context.area.type == 'VIEW_3D' or context.area.type == 'IMAGE_EDITOR' ) and
 				context.active_object is not None and
 				context.active_object.type == 'MESH' and
-				context.object.data.is_editmode and
-				context.tool_settings.use_uv_select_sync )
+				context.object.data.is_editmode )
 
 	def execute( self, context ):
 		rmmesh = rmlib.rmMesh.GetActive( context )
@@ -31,49 +39,89 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 			return { 'CANCELLED' }
 		
 		with rmmesh as rmmesh:
-			clear_tags( rmmesh )
-			
-			sel_mode = context.tool_settings.mesh_select_mode[:]
-			if not sel_mode[2]:
+			uvlayer = rmmesh.active_uv
+			clear_tags( rmmesh )			
+
+			faces = rmlib.rmPolygonSet()
+			sel_sync = context.tool_settings.use_uv_select_sync
+			if sel_sync or context.area.type == 'VIEW_3D':
+				sel_mode = context.tool_settings.mesh_select_mode[:]
+				if sel_mode[2]:
+					faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+				else:
+					return { 'CANCELLED' }
+			else:
+				sel_mode = context.tool_settings.uv_select_mode
+				if sel_mode == 'FACE':
+					loops = rmlib.rmUVLoopSet.from_selection( rmmesh, uvlayer=uvlayer )
+					loop_faces = set()
+					for l in loops:
+						loop_faces.add( l.face )
+						l.tag = True
+					for f in loop_faces:
+						all_loops_tagged = True
+						for l in f.loops:
+							if not l.tag:
+								all_loops_tagged = False
+							else:
+								l.tag = False
+						if all_loops_tagged:
+							faces.append( f )
+				else:
+					return { 'CANCELLED' }
+
+			if len( faces ) < 1:
 				return { 'CANCELLED' }
 
-			uvlayer = rmmesh.active_uv
-
-			faces = rmlib.rmPolygonSet.from_selection( rmmesh )
-			for group in faces.group():
-
+			for group in faces.group( use_seam=True ):
+				#set tags
+				for f in group:
+					f.tag = True
+				
 				#validate topology of group
 				valid_topo = True
 				for v in group.vertices:
-					fcount = len( v.link_faces )
+					fcount = 0
+					for f in v.link_faces:
+						if f.tag:
+							fcount += 1
 					if fcount == 3 or fcount > 4:
 						valid_topo = False
 						break
-				if not valid_topo:
-					continue
 				for f in group:
 					if len( f.verts ) != 4:
 						valid_topo = False
 						break
 				if not valid_topo:
+					for f in group:
+						f.tag = False
 					continue
-
-				#initialize start_loop	
-				start_loop = f.loops[0]
+				
+				#initialize start_loop
+				start_loop = None
 				for f in group:
-					outer_edge_count = 0
 					for l in f.loops:
-						if l.edge.seam or l.edge.is_boundary :
-							start_loop = l							
-							outer_edge_count += 1
-						else:
-							for nf in l.edge.link_faces:
-								if nf != f and nf not in group:
-									start_loop = l
-									outer_edge_count += 1
-									break
-					if outer_edge_count == 2:
+						if is_boundary( l ) and is_boundary( l.link_loop_prev ):
+							start_loop = l
+							break
+					if start_loop is not None:
 						break
+				if start_loop is None:
+					start_loop = group[0].loops[0]
+									
+				#mark boundary edges
+				for f in group:
+					for e in f.edges:
+						if e.seam or e.is_boundary:
+							e.tag = True
+						for nf in e.link_faces:
+							if nf != f and not nf.tag:
+								e.tag = True
+								break
+							
+				#clear tags	
+				for f in group:
+					f.tag = False
 
 				#build lists of ring loops
 				loop_rings = []
@@ -86,7 +134,7 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 						loop = next_loop
 						next_loop = None
 						for f in loop.edge.link_faces:
-							if f.tag:
+							if f.tag or loop.edge.tag:
 								continue
 							if f != loop.face:
 								for l in f.loops:
@@ -96,7 +144,7 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 										break
 								if next_loop is not None:
 									break
-						if next_loop is None:
+						if next_loop is None:							
 							final_loop = loop
 							final_loop.face.tag = True
 							ring.append( loop )
@@ -111,7 +159,7 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 						
 					start_loop = None
 					for f in bridge_loop.edge.link_faces:
-						if f.tag:
+						if f.tag or bridge_loop.edge.tag:
 							continue
 						if f != final_loop.face:
 							for l in f.loops:
@@ -139,7 +187,7 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 							ring.append( l.link_loop_next.vert )						
 					rings.append( ring )
 				rings[-1] = rings[-1][::-1]
-						
+										
 				#compute aspect ratio of grid
 				avg_ring_len = 0.0
 				avg_loop_len = 0.0
