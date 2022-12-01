@@ -1,6 +1,21 @@
 import bpy, bmesh, mathutils
 import rmKit.rmlib as rmlib
 
+BACKGROUND_LAYERNAME = 'rm_background'
+
+def GetSelsetEdges( bm, layername ):
+	intlayers = bm.edges.layers.int
+	selset = intlayers.get( layername, None )
+	if selset is None:
+		return rmlib.rmEdgeSet()
+	return rmlib.rmEdgeSet( [ e for e in bm.edges if bool( e[selset] ) ] )
+
+def VecFromEdge( v, e ):
+	pos1 = mathutils.Vector( v.co.copy() )
+	v2 = e.other_vert( v )
+	pos2 = mathutils.Vector( v2.co.copy() )
+	return ( pos2 - pos1 ).normalized()
+
 class MESH_OT_cursortoselection( bpy.types.Operator ):
 	"""Move and orient the 3D Cursor to the vert/edge/face selection."""
 	bl_idname = 'view3d.rm_cursor_to_selection'
@@ -25,14 +40,32 @@ class MESH_OT_cursortoselection( bpy.types.Operator ):
 					sel_verts = rmlib.rmVertexSet.from_selection( rmmesh )
 					if len( sel_verts ) > 0:
 						v = sel_verts[0]
+						link_edges = rmlib.rmEdgeSet( list( v.link_edges ) )
 
-						v_n = v.normal
+						selected_edges = GetSelsetEdges( rmmesh.bmesh, BACKGROUND_LAYERNAME )
+						first_edge = None
+						if len( selected_edges ) > 0:
+							first_edge = selected_edges[0]
+							for i, e in enumerate( link_edges ):
+								if e in selected_edges:
+									first_edge = link_edges.pop( i )
+									break
+						if first_edge is None:
+							if len( link_edges ) > 1:
+								first_edge = link_edges[1]
 
-						v_t = mathutils.Vector( ( 0.0, 0.0001, 1.0 ) )
-						for e in v.link_edges:
-							v1, v2 = e.verts
-							v_t = v2.co - v1.co
-							v_t = v_n.cross( v_t.normalized() )
+						if first_edge is None or len( link_edges ) < 1:
+							v_n = v.normal
+							v_t = mathutils.Vector( ( 0.0, 0.0001, 1.0 ) )
+							for e in v.link_edges:
+								v1, v2 = e.verts
+								v_t = v2.co - v1.co
+								v_t = v_n.cross( v_t.normalized() )
+						else:
+							v_t = VecFromEdge( v, first_edge )
+							v_n = VecFromEdge( v, link_edges[0] )
+							crossvec = v_t.cross( v_n ).normalized()
+							v_n = crossvec.cross( v_t ).normalized()
 
 						v_p = rmmesh.world_transform @ v.co.copy()
 						v_t = rmmesh.world_transform.to_3x3() @ v_t
@@ -40,7 +73,6 @@ class MESH_OT_cursortoselection( bpy.types.Operator ):
 						m4 = rmlib.util.LookAt( v_n, v_t, v_p )
 						context.scene.cursor.matrix = m4
 						context.scene.cursor.location = v_p
-
 
 				elif sel_mode[1]:
 					sel_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
@@ -86,6 +118,62 @@ class MESH_OT_cursortoselection( bpy.types.Operator ):
 			#needed to refresh cursor viewport draw
 			obj.select_set( False )
 			obj.select_set( True )
+
+		return { 'FINISHED' }
+
+
+class MESH_OT_unrotatefromcursor( bpy.types.Operator ):
+	"""Unrotate selection baed on cursor orientation."""
+	bl_idname = 'view3d.rm_unrotate_relative_to_cursor'
+	bl_label = 'Unrotate Relative to Cursor'
+	bl_options = { 'UNDO' }
+	
+	@classmethod
+	def poll( cls, context ):
+		return ( context.area.type == 'VIEW_3D' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' )
+
+	def execute( self, context ):
+		cursor_pos = mathutils.Vector( context.scene.cursor.location )
+		cursor_rot = mathutils.Matrix( context.scene.cursor.matrix )
+		cursor_rot_inv = cursor_rot.inverted()
+
+		if context.mode == 'EDIT_MESH':
+			sel_mode = context.tool_settings.mesh_select_mode[:]
+			rmmesh = rmlib.rmMesh.GetActive( context )
+			if rmmesh is None:
+				return { 'CANCELLED' }
+			with rmmesh as rmmesh:
+				cursor_pos_obj = rmmesh.world_transform.inverted() @ cursor_pos
+
+				if sel_mode[0]:
+					sel_verts = rmlib.rmVertexSet.from_selection( rmmesh )
+					for group in sel_verts.group( True ):
+						for v in group:
+							v.co = cursor_rot_inv @ v.co
+							v.co += cursor_pos_obj
+
+				elif sel_mode[1]:
+					sel_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
+					for egroup in sel_edges.group( True ):
+						group = egroup.vertices
+						for v in group:
+							v.co = cursor_rot_inv @ v.co
+							v.co += cursor_pos_obj
+
+				elif sel_mode[2]:
+					sel_faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+					for fgroup in sel_faces.group( True ):
+						group = fgroup.vertices
+						for v in group:
+							v.co = cursor_rot_inv @ v.co
+							v.co += cursor_pos_obj
+
+		elif context.object is not None and context.mode == 'OBJECT':
+			obj = context.object
+			obj.matrix_world = cursor_rot_inv @ obj.matrix_world
+			obj.location += cursor_pos
 
 		return { 'FINISHED' }
 
@@ -172,20 +260,26 @@ class VIEW3D_MT_PIE_cursor( bpy.types.Menu ):
 
 		pie.operator( 'view3d.snap_cursor_to_center', text='Cursor to Origin' )
 
+		pie.operator( 'view3d.rm_unrotate_relative_to_cursor', text='Unrotate Relative to Cursor' )
+
 	
 def register():
 	print( 'register :: {}'.format( MESH_OT_cursortoselection.bl_idname ) )
 	print( 'register :: {}'.format( MESH_OT_origintocursor.bl_idname ) )
 	print( 'register :: {}'.format( VIEW3D_MT_PIE_cursor.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_unrotatefromcursor.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_cursortoselection )
 	bpy.utils.register_class( MESH_OT_origintocursor )
 	bpy.utils.register_class( VIEW3D_MT_PIE_cursor )
+	bpy.utils.register_class( MESH_OT_unrotatefromcursor )
 	
 	
 def unregister():
 	print( 'unregister :: {}'.format( MESH_OT_cursortoselection.bl_idname ) )
 	print( 'unregister :: {}'.format( MESH_OT_origintocursor.bl_idname ) )
 	print( 'unregister :: {}'.format( VIEW3D_MT_PIE_cursor.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_unrotatefromcursor.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_cursortoselection )
 	bpy.utils.unregister_class( MESH_OT_origintocursor )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_cursor )
+	bpy.utils.register_class( MESH_OT_unrotatefromcursor )
