@@ -36,6 +36,7 @@ from . import thicken
 from . import stitch
 from . import panel
 from . import gridify
+from . import relativeislands
 
 def register():
 	bpy.utils.register_class( rmKitPannel )
@@ -65,6 +66,7 @@ def register():
 	vnormals.register()
 	stitch.register()
 	gridify.register()
+	relativeislands.register()
 
 def unregister():
 	bpy.utils.unregister_class( rmKitPannel )
@@ -94,3 +96,4 @@ def unregister():
 	vnormals.unregister()
 	stitch.unregister()
 	gridify.unregister()
+	relativeislands.unregister()
