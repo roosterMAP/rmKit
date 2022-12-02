@@ -517,6 +517,14 @@ class rmVertexSet( list ):
 					polys.add( p )
 		return rmPolygonSet( polys )
 
+	@property
+	def loops( self ):
+		loops = set()
+		for v in self:
+			for l in v.link_loops:
+				loops.add( l )
+		return loops
+
 	def tag( self, b ):
 		for v in self:
 			v.tag = b

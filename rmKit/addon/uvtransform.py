@@ -1,6 +1,65 @@
 import bpy, bmesh, mathutils
 from bpy.app.handlers import persistent
 import rmKit.rmlib as rmlib
+import math
+
+ANCHOR_PROP_LIST = ( 'uv_anchor_nw', 'uv_anchor_n', 'uv_anchor_ne',
+			'uv_anchor_w', 'uv_anchor_c', 'uv_anchor_e',
+			'uv_anchor_sw', 'uv_anchor_s', 'uv_anchor_se' )
+
+def GetLoopGroups( context, rmmesh, uvlayer, local ):
+	loop_groups = []
+	sel_sync = context.tool_settings.use_uv_select_sync
+	if sel_sync:
+		sel_mode = context.tool_settings.mesh_select_mode[:]
+		if sel_mode[0]:
+			vert_selection = rmlib.rmVertexSet.from_selection( rmmesh )
+			loop_selection = rmlib.rmUVLoopSet( vert_selection.loops, uvlayer=uvlayer )
+			if local:
+				loop_groups += loop_selection.group_vertices()
+			else:
+				loop_groups.append( loop_selection )
+
+		elif sel_mode[1]:
+			edge_selection = rmlib.rmEdgeSet.from_selection( rmmesh )
+			loop_selection = rmlib.rmUVLoopSet( edge_selection.vertices.loops, uvlayer=uvlayer )
+			if local:
+				loop_groups += loop_selection.group_vertices()
+			else:
+				loop_groups.append( loop_selection )
+
+		elif sel_mode[2]:
+			face_selection = rmlib.rmPolygonSet.from_selection( rmmesh )
+			loopset = set()
+			for f in face_selection:
+				loopset |= set( f.loops )
+			loop_selection = rmlib.rmUVLoopSet( loopset, uvlayer=uvlayer )
+			if local:
+				loop_groups += loop_selection.group_vertices()
+			else:
+				loop_groups.append( loop_selection )
+
+	else:
+		sel_mode = context.tool_settings.uv_select_mode
+		if sel_mode == 'VERT' and local:
+			loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+			loop_groups += loop_selection.group_vertices()
+			
+		elif sel_mode == 'EDGE' and local:
+			loop_selection = rmlib.rmUVLoopSet.from_edge_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+			loop_groups = loop_selection.group_edges()
+			for i in range( len( loop_groups ) ):
+				loop_groups[i].add_overlapping_loops( True )
+
+		elif sel_mode == 'FACE' and local:
+			loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+			loop_groups += loop_selection.group_faces()
+
+		else:
+			loop_groups = [ rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer ) ]
+
+	return loop_groups
+
 
 class MESH_OT_uvmove( bpy.types.Operator ):
 	"""Move selection in uv space."""
@@ -29,11 +88,68 @@ class MESH_OT_uvmove( bpy.types.Operator ):
 				context.object.data.is_editmode )
 
 	def execute( self, context ):
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		if rmmesh is None:
+			return { 'CANCELLED' }
+		
+		with rmmesh as rmmesh:
+			uvlayer = rmmesh.active_uv
+
+			#get loop groups	
+			groups = GetLoopGroups( context, rmmesh, uvlayer, False )
+
+			#compute offset vec
+			offset = context.scene.uv_uvmove_offset
+			offset_vec = mathutils.Vector( ( 0.0, 0.0 ) )
+			if 'n' in self.dir:
+				offset_vec[1] += 1.0
+			if 's' in self.dir:
+				offset_vec[1] -= 1.0
+			if 'w' in self.dir:
+				offset_vec[0] -= 1.0
+			if 'e' in self.dir:
+				offset_vec[0] += 1.0
+			offset_vec *= offset
+
+			#offset loops
+			for g in groups:
+				for l in g:
+					uv = mathutils.Vector( l[uvlayer].uv.copy() )
+					l[uvlayer].uv = uv + offset_vec
+
 		return { 'FINISHED' }
+
+
+def GetActiveAnchorStr( context ):
+	for a in ANCHOR_PROP_LIST:
+		try:
+			if context.scene.anchorprops[a]:
+				return a[9:]
+		except KeyError:
+			pass
+	return ''
+
+
+def GetUVBounds( loops, uvlayer ):
+	bbmin = loops[0][uvlayer].uv.copy()
+	bbmax = loops[0][uvlayer].uv.copy()
+	for i in range( 1, len( loops ) ):
+		l = loops[i]
+		uv = l[uvlayer].uv.copy()
+		if uv[0] < bbmin[0]:
+			bbmin[0] = uv[0]
+		if uv[1] < bbmin[1]:
+			bbmin[1] = uv[1]
+		if uv[0] > bbmax[0]:
+			bbmax[0] = uv[0]
+		if uv[1] > bbmax[1]:
+			bbmax[1] = uv[1]
+	return ( mathutils.Vector( bbmin ), mathutils.Vector( bbmax ) )
+
 
 class MESH_OT_uvslam( bpy.types.Operator ):
 	"""Move selection in uv space."""
-	bl_idname = 'mesh.rm_uvmove'
+	bl_idname = 'mesh.rm_uvslam'
 	bl_label = 'Smal UVs'
 	bl_options = { 'UNDO' }
 
@@ -66,6 +182,62 @@ class MESH_OT_uvslam( bpy.types.Operator ):
 				context.object.data.is_editmode )
 
 	def execute( self, context ):
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		if rmmesh is None:
+			return { 'CANCELLED' }
+		
+		with rmmesh as rmmesh:
+			uvlayer = rmmesh.active_uv
+
+			anchor_str = GetActiveAnchorStr( context )
+
+			#get loop groups	
+			groups = GetLoopGroups( context, rmmesh, uvlayer, 'l' in self.dir )
+			
+			for g in groups:
+				#compute the anchor pos
+				bbmin, bbmax = GetUVBounds( g, uvlayer )
+				bbcenter = ( bbmin + bbmax ) * 0.5
+
+				#compute target position
+				target_pos = bbcenter.copy()
+				if 'n' in self.dir:
+					target_pos[1] = 1.0
+				if 's' in self.dir:
+					target_pos[1] = 0.0
+				if 'e' in self.dir:
+					target_pos[0] = 1.0
+				if 'w' in self.dir:
+					target_pos[0] = 0.0
+
+				anchor_pos = bbcenter.copy()
+				if anchor_str == '':
+					if 'n' in self.dir:
+						anchor_pos[1] = bbmax[1]
+					if 's' in self.dir:
+						anchor_pos[1] = bbmin[1]
+					if 'e' in self.dir:
+						anchor_pos[0] = bbmax[0]
+					if 'w' in self.dir:
+						anchor_pos[0] = bbmin[0]
+				else:
+					if 'n' in anchor_str:
+						anchor_pos[1] = bbmax[1]
+					if 's' in anchor_str:
+						anchor_pos[1] = bbmin[1]
+					if 'e' in anchor_str:
+						anchor_pos[0] = bbmax[0]
+					if 'w' in anchor_str:
+						anchor_pos[0] = bbmin[0]
+
+				print( '{} ::  {}'.format( anchor_str, anchor_pos ) )
+
+				#transform loops
+				for l in g:
+					uv = mathutils.Vector( l[uvlayer].uv.copy() )
+					uv += target_pos - anchor_pos
+					l[uvlayer].uv = uv
+
 		return { 'FINISHED' }
 
 
@@ -92,6 +264,49 @@ class MESH_OT_uvrotate( bpy.types.Operator ):
 				context.object.data.is_editmode )
 
 	def execute( self, context ):
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		if rmmesh is None:
+			return { 'CANCELLED' }
+		
+		with rmmesh as rmmesh:
+			uvlayer = rmmesh.active_uv
+
+			anchor_str = GetActiveAnchorStr( context )
+			
+			#compute affine transform
+			angle_offset = context.scene.uv_uvrotation_offset
+			theta = math.radians( angle_offset )
+			if 'ccw' not in self.dir:
+				theta *= -1.0
+			r1 = [ math.cos( theta ), -math.sin( theta ) ]
+			r2 = [ math.sin( theta ), math.cos( theta ) ]
+			rot_mat = mathutils.Matrix( [ r1, r2 ] )
+
+			#get loop groups	
+			groups = GetLoopGroups( context, rmmesh, uvlayer, 'l' in self.dir )
+			
+			for g in groups:
+				#compute the anchor pos
+				bbmin, bbmax = GetUVBounds( g, uvlayer )
+				bbcenter = ( bbmin + bbmax ) * 0.5
+				anchor_pos = bbcenter.copy()
+				if 'n' in anchor_str:
+					anchor_pos[1] = bbmax[1]
+				if 's' in anchor_str:
+					anchor_pos[1] = bbmin[1]
+				if 'e' in anchor_str:
+					anchor_pos[0] = bbmax[0]
+				if 'w' in anchor_str:
+					anchor_pos[0] = bbmin[0]
+
+				#transform loops
+				for l in g:
+					uv = mathutils.Vector( l[uvlayer].uv )
+					uv -= anchor_pos
+					uv = rot_mat @ uv
+					uv += anchor_pos
+					l[uvlayer].uv = uv
+					
 		return { 'FINISHED' }
 
 
@@ -126,6 +341,52 @@ class MESH_OT_uvscale( bpy.types.Operator ):
 				context.object.data.is_editmode )
 
 	def execute( self, context ):
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		if rmmesh is None:
+			return { 'CANCELLED' }
+		
+		with rmmesh as rmmesh:
+			uvlayer = rmmesh.active_uv
+
+			anchor_str = GetActiveAnchorStr( context )
+			
+			#compute affine transform
+			scale_factor = context.scene.uv_uvscale_factor
+			scl_mat = mathutils.Matrix.Identity( 2 )
+			if 'u' in self.dir:
+				scl_mat[0][0] = scale_factor
+				if '-' in self.dir:
+					scl_mat[0][0] = 1.0 / scl_mat[0][0]				
+			if 'v' in self.dir:
+				scl_mat[1][1] = scale_factor
+				if '-' in self.dir:
+					scl_mat[1][1] = 1.0 / scl_mat[1][1]
+			
+			#get loop groups	
+			groups = GetLoopGroups( context, rmmesh, uvlayer, 'l' in self.dir )
+			
+			for g in groups:
+				#compute the anchor pos
+				bbmin, bbmax = GetUVBounds( g, uvlayer )
+				bbcenter = ( bbmin + bbmax ) * 0.5
+				anchor_pos = bbcenter.copy()
+				if 'n' in anchor_str:
+					anchor_pos[1] = bbmax[1]
+				if 's' in anchor_str:
+					anchor_pos[1] = bbmin[1]
+				if 'e' in anchor_str:
+					anchor_pos[0] = bbmax[0]
+				if 'w' in anchor_str:
+					anchor_pos[0] = bbmin[0]
+
+				#transform loops
+				for l in g:
+					uv = mathutils.Vector( l[uvlayer].uv )
+					uv -= anchor_pos
+					uv = scl_mat @ uv
+					uv += anchor_pos
+					l[uvlayer].uv = uv
+					
 		return { 'FINISHED' }
 
 
@@ -152,6 +413,47 @@ class MESH_OT_uvflip( bpy.types.Operator ):
 				context.object.data.is_editmode )
 
 	def execute( self, context ):
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		if rmmesh is None:
+			return { 'CANCELLED' }
+		
+		with rmmesh as rmmesh:
+			uvlayer = rmmesh.active_uv
+
+			anchor_str = GetActiveAnchorStr( context )
+			
+			#compute affine transform
+			scl_mat = mathutils.Matrix.Identity( 2 )
+			if 'u' in self.dir:
+				scl_mat[0][0] *= -1.0
+			if 'v' in self.dir:
+				scl_mat[1][1] *= -1.0
+			
+			#get loop groups	
+			groups = GetLoopGroups( context, rmmesh, uvlayer, 'l' in self.dir )
+			
+			for g in groups:
+				#compute the anchor pos
+				bbmin, bbmax = GetUVBounds( g, uvlayer )
+				bbcenter = ( bbmin + bbmax ) * 0.5
+				anchor_pos = bbcenter.copy()
+				if 'n' in anchor_str:
+					anchor_pos[1] = bbmax[1]
+				if 's' in anchor_str:
+					anchor_pos[1] = bbmin[1]
+				if 'e' in anchor_str:
+					anchor_pos[0] = bbmax[0]
+				if 'w' in anchor_str:
+					anchor_pos[0] = bbmin[0]
+
+				#transform loops
+				for l in g:
+					uv = mathutils.Vector( l[uvlayer].uv )
+					uv -= anchor_pos
+					uv = scl_mat @ uv
+					uv += anchor_pos
+					l[uvlayer].uv = uv
+					
 		return { 'FINISHED' }
 
 
@@ -379,26 +681,21 @@ def uv_startup_handler( dummy ):
 	bpy.ops.view3d.rm_modkey_uvtools( 'INVOKE_DEFAULT' )
 
 
-ANCHOR_PROP_LIST = ( 'uv_anchor_nw', 'uv_anchor_n', 'uv_anchor_ne',
-			'uv_anchor_w', 'uv_anchor_c', 'uv_anchor_e',
-			'uv_anchor_sw', 'uv_anchor_s', 'uv_anchor_se' )
-
 def anchor_update( prop, context ):
 	prev_value = context.scene.anchor_val_prev
-	try:
-		if not prop[prev_value]:
-			prop[prev_value] = True
-			return
-	except KeyError:
-		pass
-	prop[prev_value] = False	
+	if prev_value != '':
+		prop[prev_value] = False
+	all_false = True
 	for a in ANCHOR_PROP_LIST:
 		try:
 			if prop[a]:
+				all_false = False
 				context.scene.anchor_val_prev = a
 				break
 		except KeyError:
-			pass
+			continue
+	if all_false:
+		context.scene.anchor_val_prev = ''
 
 
 class AnchorProps( bpy.types.PropertyGroup ):
@@ -429,7 +726,7 @@ def register():
 	bpy.utils.register_class( MESH_OT_uvflip )
 	bpy.types.Scene.uv_uvmove_offset = bpy.props.FloatProperty( name='Offset', default=1.0 )
 	bpy.types.Scene.uv_uvrotation_offset = bpy.props.FloatProperty( name='RotationOffset', default=15.0, min=0.0, max=180.0 )
-	bpy.types.Scene.uv_uvscale_factor = bpy.props.FloatProperty( name='Offset', default=1.0 )
+	bpy.types.Scene.uv_uvscale_factor = bpy.props.FloatProperty( name='Offset', default=2.0 )
 	bpy.types.Scene.anchor_val_prev = bpy.props.StringProperty( name='Anchor Prev Val', default=ANCHOR_PROP_LIST[4] )
 	bpy.utils.register_class( AnchorProps )
 	bpy.types.Scene.anchorprops = bpy.props.PointerProperty( type=AnchorProps )	

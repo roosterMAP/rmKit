@@ -227,7 +227,7 @@ class MESH_OT_uvstitcht( bpy.types.Operator ):
 				#start by sorting each edgeloop group
 				loop_chain = sort_loop_chain( group )
 				
-				#its is possible for a loop group to stitch to multiple other uv islands.
+				#its is possible for a chain of loops group to stitch to multiple other uv islands.
 				#we iterate through each edge loop (source) and find the edge loop it stitches to (target).
 				#use check if the current target is continuous with the previous target using the continuity_test_loop.
 				#if we find a discontinuity, we stitch what we have and start over as we work down the edgeloop group
