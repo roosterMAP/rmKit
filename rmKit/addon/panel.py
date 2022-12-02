@@ -26,6 +26,27 @@ class VIEW3D_PT_UTILS( bpy.types.Panel ):
 		r3 = layout.row()
 		r3.alignment = 'EXPAND'
 		r3.operator( 'wm.call_menu_pie', text='3D Cursor Pie' ).name = 'VIEW3D_MT_PIE_cursor'
+
+
+class UV_PT_UVTOOLS( bpy.types.Panel ):
+	bl_parent_id = 'UV_PT_RMKIT_PARENT'
+	bl_idname = 'UV_PT_UVTOOLS'
+	bl_label = 'UV Operations'
+	bl_region_type = 'UI'
+	bl_space_type = 'IMAGE_EDITOR'
+	bl_options = { 'HIDE_HEADER' }
+
+	def draw( self, context ):
+		layout = self.layout
+
+		r1 = layout.row()
+		r1.alignment = 'EXPAND'
+		r1.operator( 'mesh.rm_uvloop', text='UV Loop' )
+		r1.operator( 'mesh.rm_uvring', text='UV Ring' )
+		
+		layout.operator( 'mesh.rm_uvgridify', text='Gridify' )
+		layout.operator( 'mesh.rm_relativeislands', text='Relative Islands' )
+		layout.operator( 'mesh.rm_stitch', text='Stitch' )
 		
 
 class VIEW3D_PT_SELECTION( bpy.types.Panel ):
@@ -144,6 +165,7 @@ def register():
 	bpy.utils.register_class( VIEW3D_PT_MESHEDIT )
 	bpy.utils.register_class( VIEW3D_PT_LAYERS )
 	bpy.utils.register_class( VIEW3D_PT_MATERIALS )
+	bpy.utils.register_class( UV_PT_UVTOOLS )
 	
 
 def unregister():
@@ -152,3 +174,4 @@ def unregister():
 	bpy.utils.unregister_class( VIEW3D_PT_MESHEDIT )
 	bpy.utils.unregister_class( VIEW3D_PT_LAYERS )
 	bpy.utils.unregister_class( VIEW3D_PT_MATERIALS )
+	bpy.utils.unregister_class( UV_PT_UVTOOLS )

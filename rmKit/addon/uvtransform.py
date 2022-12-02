@@ -129,6 +129,32 @@ class MESH_OT_uvscale( bpy.types.Operator ):
 		return { 'FINISHED' }
 
 
+class MESH_OT_uvflip( bpy.types.Operator ):
+	"""Flip selection in uv space."""
+	bl_idname = 'mesh.rm_uvflip'
+	bl_label = 'Flip UVs'
+	bl_options = { 'UNDO' }
+
+	dir: bpy.props.EnumProperty(
+		items=[ ( "u", "U", "", 1 ),
+				( "v", "V", "", 2 ),
+				( "lu", "LU", "", 3 ),
+				( "lv", "LV", "", 4 ) ],
+		name="Direction",
+		default="u"
+	)
+
+	@classmethod
+	def poll( cls, context ):
+		return ( context.area.type == 'IMAGE_EDITOR' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
+				context.object.data.is_editmode )
+
+	def execute( self, context ):
+		return { 'FINISHED' }
+
+
 def redraw_view3d( context ):
 	for window in context.window_manager.windows:
 		for area in window.screen.areas:
@@ -187,6 +213,8 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 		box = layout.box()
 
 		if MESH_OT_uvmodkey.mod_state[0] and not MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
+			box.label( text='Slam Local' )
+
 			r1 = box.row()
 			r1.alignment = 'EXPAND'
 			r1.operator( MESH_OT_uvslam.bl_idname, text='LNW' ).dir = 'lnw'
@@ -206,6 +234,8 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			r3.operator( MESH_OT_uvslam.bl_idname, text='LSE' ).dir = 'lse'
 
 		elif not MESH_OT_uvmodkey.mod_state[0] and MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
+			box.label( text='Slam' )
+
 			r1 = box.row()
 			r1.alignment = 'EXPAND'
 			r1.operator( MESH_OT_uvslam.bl_idname, text='^NW' ).dir = 'nw'
@@ -225,6 +255,8 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			r3.operator( MESH_OT_uvslam.bl_idname, text='^SE' ).dir = 'se'
 
 		elif not MESH_OT_uvmodkey.mod_state[0] and not MESH_OT_uvmodkey.mod_state[1] and MESH_OT_uvmodkey.mod_state[2]:
+			box.label( text='Anchor' )
+
 			r1 = box.row()
 			r1.alignment = 'EXPAND'
 			r1.prop( context.scene.anchorprops, 'uv_anchor_nw', toggle=1 )
@@ -244,6 +276,8 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			r3.prop( context.scene.anchorprops, 'uv_anchor_se', toggle=1 )
 
 		else:
+			box.label( text='Move' )
+
 			r1 = box.row()
 			r1.alignment = 'EXPAND'
 			r1.operator( MESH_OT_uvmove.bl_idname, text='NW' ).dir = 'nw'
@@ -266,6 +300,8 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 		box = layout.box()
 
 		if MESH_OT_uvmodkey.mod_state[0] and not MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
+			box.label( text='Rotate Local' )
+
 			box.prop( context.scene, 'uv_uvrotation_offset' )
 			r4 = box.row()
 			r4.alignment = 'EXPAND'
@@ -273,6 +309,8 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			r4.operator( MESH_OT_uvrotate.bl_idname, text='LCCW' ).dir = 'lccw'
 
 		else:
+			box.label( text='Rotate' )
+
 			box.prop( context.scene, 'uv_uvrotation_offset' )
 			r4 = box.row()
 			r4.alignment = 'EXPAND'
@@ -283,6 +321,8 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 		box = layout.box()
 
 		if MESH_OT_uvmodkey.mod_state[0] and not MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
+			box.label( text='Scale Local' )
+
 			box.prop( context.scene, 'uv_uvscale_factor' )
 			r5 = box.row()
 			r5.alignment = 'EXPAND'
@@ -298,6 +338,8 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			r7.operator( MESH_OT_uvscale.bl_idname, text='LV+' ).dir = 'lv+'
 
 		else:
+			box.label( text='Scale' )
+
 			box.prop( context.scene, 'uv_uvscale_factor' )
 			r5 = box.row()
 			r5.alignment = 'EXPAND'
@@ -311,6 +353,25 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			r7.alignment = 'EXPAND'
 			r7.operator( MESH_OT_uvscale.bl_idname, text='V-' ).dir = 'v-'
 			r7.operator( MESH_OT_uvscale.bl_idname, text='V+' ).dir = 'v+'
+
+		layout.separator( factor=0.1 )
+		box = layout.box()
+
+		if MESH_OT_uvmodkey.mod_state[0] and not MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
+			box.label( text='Flip Local' )
+
+			r8 = box.row()
+			r8.alignment = 'EXPAND'
+			r8.operator( MESH_OT_uvflip.bl_idname, text='LU' ).dir = 'lu'
+			r8.operator( MESH_OT_uvflip.bl_idname, text='LV' ).dir = 'lv'
+
+		else:
+			box.label( text='Flip' )
+
+			r8 = box.row()
+			r8.alignment = 'EXPAND'
+			r8.operator( MESH_OT_uvflip.bl_idname, text='U' ).dir = 'u'
+			r8.operator( MESH_OT_uvflip.bl_idname, text='V' ).dir = 'v'
 
 
 @persistent
@@ -356,12 +417,16 @@ def register():
 	print( 'register :: {}'.format( UV_PT_UVTransformTools.bl_idname ) )
 	print( 'register :: {}'.format( MESH_OT_uvmove.bl_idname ) )
 	print( 'register :: {}'.format( MESH_OT_uvslam.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_uvrotate.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_uvscale.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_uvflip.bl_idname ) )
 	print( 'register :: {}'.format( MESH_OT_uvmodkey.bl_idname ) )
 	bpy.utils.register_class( UV_PT_UVTransformTools )
 	bpy.utils.register_class( MESH_OT_uvmove )
 	bpy.utils.register_class( MESH_OT_uvslam )
 	bpy.utils.register_class( MESH_OT_uvrotate )
 	bpy.utils.register_class( MESH_OT_uvscale )
+	bpy.utils.register_class( MESH_OT_uvflip )
 	bpy.types.Scene.uv_uvmove_offset = bpy.props.FloatProperty( name='Offset', default=1.0 )
 	bpy.types.Scene.uv_uvrotation_offset = bpy.props.FloatProperty( name='RotationOffset', default=15.0, min=0.0, max=180.0 )
 	bpy.types.Scene.uv_uvscale_factor = bpy.props.FloatProperty( name='Offset', default=1.0 )
@@ -376,12 +441,16 @@ def unregister():
 	print( 'unregister :: {}'.format( UV_PT_UVTransformTools.bl_idname ) )
 	print( 'unregister :: {}'.format( MESH_OT_uvmove.bl_idname ) )
 	print( 'unregister :: {}'.format( MESH_OT_uvslam.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_uvrotate.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_uvscale.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_uvflip.bl_idname ) )
 	print( 'unregister :: {}'.format( MESH_OT_uvmodkey.bl_idname ) )
 	bpy.utils.unregister_class( UV_PT_UVTransformTools )
 	bpy.utils.unregister_class( MESH_OT_uvmove )
 	bpy.utils.unregister_class( MESH_OT_uvslam )
 	bpy.utils.unregister_class( MESH_OT_uvrotate )
-	bpy.utils.register_class( MESH_OT_uvscale )
+	bpy.utils.unregister_class( MESH_OT_uvscale )
+	bpy.utils.unregister_class( MESH_OT_uvflip )
 	del bpy.types.Scene.uv_uvmove_offset
 	del bpy.types.Scene.uv_uvrotation_offset
 	del bpy.types.Scene.uv_uvscale_factor
