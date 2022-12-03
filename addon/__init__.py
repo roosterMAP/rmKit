@@ -48,6 +48,7 @@ from . import panel
 from . import gridify
 from . import relativeislands
 from . import uvtransform
+from . import unrotate
 
 def register():
 	bpy.utils.register_class( rmKitPannel )
@@ -79,7 +80,8 @@ def register():
 	stitch.register()
 	gridify.register()
 	relativeislands.register()
-	uvtransform.register()
+	unrotate.register()
+	uvtransform.register()	
 
 def unregister():
 	bpy.utils.unregister_class( rmKitPannel )
@@ -111,4 +113,5 @@ def unregister():
 	stitch.unregister()
 	gridify.unregister()
 	relativeislands.unregister()
+	unrotate.unregister()
 	uvtransform.unregister()

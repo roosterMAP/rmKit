@@ -217,7 +217,7 @@ class MESH_OT_uvmovetofurthest( bpy.types.Operator ):
 
 			else:
 				sel_mode = context.tool_settings.uv_select_mode
-				if sel_mode == 'VERT' and self.local:
+				if sel_mode == 'VERTEX' and self.local:
 					loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
 					loop_groups += loop_selection.group_vertices()
 					
@@ -252,8 +252,6 @@ class MESH_OT_uvmovetofurthest( bpy.types.Operator ):
 						
 				avg_u = ( min_u + max_u ) * 0.5
 				avg_v = ( min_v + max_v ) * 0.5
-
-				print( len( g ) )
 				
 				for l in g:
 					u, v = l[uvlayer].uv

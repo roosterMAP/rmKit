@@ -48,11 +48,6 @@ def tri_area( tri_loops, uvlayer ):
 	return m.determinant()
 
 
-def ccw_angle2d( a, b ):
-	det = a[0] * b[1] - a[1] * b[0] #determinant
-	return math.atan2( det, a.dot( b ) )
-
-
 def clear_all_tags( bmesh ):
 	#should not be needed unless theres a bug in a previously run op
 	for v in bmesh.verts:
@@ -108,7 +103,7 @@ def stitch( source_loops, target_loops, uvlayer ):
 		target_vec.normalize()
 		
 		#compute rotation
-		rotation_angle = ccw_angle2d( target_vec, source_vec )
+		rotation_angle = rmlib.util.CCW_Angle2D( target_vec, source_vec )
 		r1 = [ math.cos( rotation_angle ), -math.sin( rotation_angle ) ]
 		r2 = [ math.sin( rotation_angle ), math.cos( rotation_angle ) ]
 		rot = mathutils.Matrix( [ r1, r2 ] )

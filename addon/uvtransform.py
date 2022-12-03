@@ -1,4 +1,4 @@
-import bpy, bmesh, mathutils
+import bpy, mathutils
 from bpy.app.handlers import persistent
 import rmKit.rmlib as rmlib
 import math
@@ -41,7 +41,7 @@ def GetLoopGroups( context, rmmesh, uvlayer, local ):
 
 	else:
 		sel_mode = context.tool_settings.uv_select_mode
-		if sel_mode == 'VERT' and local:
+		if sel_mode == 'VERTEX' and local:
 			loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
 			loop_groups += loop_selection.group_vertices()
 			
@@ -618,6 +618,7 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			r4.alignment = 'EXPAND'
 			r4.operator( MESH_OT_uvrotate.bl_idname, text='CW' ).dir = 'cw'
 			r4.operator( MESH_OT_uvrotate.bl_idname, text='CCW' ).dir = 'ccw'
+			box.operator( 'mesh.rm_uvunrotate', text='Unrotate' )
 
 		layout.separator( factor=0.1 )
 		box = layout.box()
@@ -703,7 +704,7 @@ class AnchorProps( bpy.types.PropertyGroup ):
 	uv_anchor_n: bpy.props.BoolProperty( name='AN', default=False, update=lambda self, context : anchor_update( self, context ) )
 	uv_anchor_ne: bpy.props.BoolProperty( name='ANE', default=False, update=lambda self, context : anchor_update( self, context ) )
 	uv_anchor_w: bpy.props.BoolProperty( name='AW', default=False, update=lambda self, context : anchor_update( self, context ) )
-	uv_anchor_c: bpy.props.BoolProperty( name='AC', default=True, update=lambda self, context : anchor_update( self, context ) )
+	uv_anchor_c: bpy.props.BoolProperty( name='AC', default=False, update=lambda self, context : anchor_update( self, context ) )
 	uv_anchor_e: bpy.props.BoolProperty( name='AE', default=False, update=lambda self, context : anchor_update( self, context ) )
 	uv_anchor_sw: bpy.props.BoolProperty( name='ASW', default=False, update=lambda self, context : anchor_update( self, context ) )
 	uv_anchor_s: bpy.props.BoolProperty( name='AS', default=False, update=lambda self, context : anchor_update( self, context ) )

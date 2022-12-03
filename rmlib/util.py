@@ -173,3 +173,7 @@ def AlmostEqual_v2( v1, v2 ):
 def ProjectVector( a, b ):
 	#returns vector produced by projecting a onto b.
 	return b * ( a.dot( b ) / b.dot( b ) )
+
+def CCW_Angle2D( a, b ):
+	det = a[0] * b[1] - a[1] * b[0] #determinant
+	return math.atan2( det, a.dot( b ) )
