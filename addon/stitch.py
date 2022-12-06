@@ -22,7 +22,7 @@ def sort_loop_chain( loops ):
 			prev_loop = nl.link_loop_prev
 			if prev_loop.tag:
 				sorted_loops.insert( 0, prev_loop )
-				nl.tag = False
+				prev_loop.tag = False
 				break	
 		
 	return rmlib.rmUVLoopSet( sorted_loops, uvlayer=loops.uvlayer )

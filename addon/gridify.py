@@ -220,7 +220,7 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 								continue
 							if j == len( r ) - 1 and l.face not in last_loop_faces:
 								continue
-							if l.face in faces:
+							if l.face in group:
 								if aspect_ratio < 1.0:
 									l[uvlayer].uv = ( u_step * i , v_step * j * aspect_ratio )
 								else:

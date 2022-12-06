@@ -11,16 +11,16 @@ def sort_loop_chain( loops ):
 	for i in range( 1, len( loops ) ):
 		next_front_loop = sorted_loops[-1].link_loop_next
 		for nl in next_front_loop.vert.link_loops:
-			if nl.tag and nl in loops:
+			if nl.tag:
 				sorted_loops.append( nl )
 				nl.tag = False
 				break
 
 		for nl in sorted_loops[0].vert.link_loops:
 			prev_loop = nl.link_loop_prev
-			if prev_loop.tag and nl in loops:
+			if prev_loop.tag:
 				sorted_loops.insert( 0, prev_loop )
-				nl.tag = False
+				prev_loop.tag = False
 				break	
 		
 	return rmlib.rmUVLoopSet( sorted_loops, uvlayer=loops.uvlayer )
@@ -67,11 +67,16 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 			uvlayer = rmmesh.active_uv
 			clear_tags( rmmesh )
 
+			initial_selection = set()
+			initial_loop_selection = set()
+
 			#get selection of faces
 			faces = rmlib.rmPolygonSet()
 			sel_sync = context.tool_settings.use_uv_select_sync
+			sel_mode = context.tool_settings.mesh_select_mode[:]
+			uv_sel_mode = context.tool_settings.uv_select_mode
 			if sel_sync or context.area.type == 'VIEW_3D':
-				sel_mode = context.tool_settings.mesh_select_mode[:]
+				
 				if sel_mode[2]:
 					faces = rmlib.rmPolygonSet.from_selection( rmmesh )
 				else:
@@ -79,34 +84,65 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 				for f in rmmesh.bmesh.faces:
 					f.select = False
 			else:
-				return { 'CANCELLED' }
+				sel_mode = context.tool_settings.mesh_select_mode[:]
+				if sel_mode[0]:
+					for v in rmmesh.bmesh.verts:
+						if v.select:
+							initial_selection.add( v )
+				elif sel_mode[1]:
+					for e in rmmesh.bmesh.edges:
+						if e.select:
+							initial_selection.add( e )
+				elif sel_mode[2]:
+					for f in rmmesh.bmesh.faces:
+						if f.select:
+							initial_selection.add( f )
+
+				if uv_sel_mode == 'FACE':
+					loops = rmlib.rmUVLoopSet.from_selection( rmmesh, uvlayer=uvlayer )
+					initial_loop_selection = set( [ l for l in loops ] )
+					loop_faces = set()
+					for l in loops:
+						loop_faces.add( l.face )
+						l.tag = True
+					for f in loop_faces:
+						all_loops_tagged = True
+						for l in f.loops:
+							if not l.tag:
+								all_loops_tagged = False
+							else:
+								l.tag = False
+						if all_loops_tagged:
+							faces.append( f )
+
+					context.tool_settings.use_uv_select_sync = True
+					bpy.ops.mesh.select_mode( type='FACE' )
+					bpy.ops.mesh.select_all( action = 'DESELECT' )
+
+				else:
+					return { 'CANCELLED' }
 
 			if len( faces ) < 1:
 				return { 'CANCELLED' }
 			
-			bpy.ops.uv.unwrap( 'INVOKE_DEFAULT', method='CONFORMAL' )
-			
-			for group in faces.group( use_seam=True ):				
+			for group in faces.group( use_seam=True ):
+				clear_tags( rmmesh )
+
 				#tag faces in group
 				for f in group:
 					f.tag = True
-					
-				print( '*********************************' )
 					
 				#get list of boundary loops
 				bounary_loops = set()
 				for f in group:
 					for l in f.loops:
-						e = l.edge
 						if is_boundary( l ):
 							bounary_loops.add( l )
 				if len( bounary_loops ) < 4:
 					continue
 
 				#identify the four corners
-				print( [ l.vert.index for l in list( bounary_loops ) ] )
 				sorted_boundary_loops = sort_loop_chain( rmlib.rmUVLoopSet( bounary_loops, uvlayer=uvlayer ) )
-				print( [ l.vert.index for l in sorted_boundary_loops ] )
 				sorted_tuples = []
 				lcount = len( sorted_boundary_loops )
 				for i, l in enumerate( sorted_boundary_loops ):
@@ -120,13 +156,10 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 
 				#compute the distance between the cornders
 				distance_between_corners = []
-				poop = []
 				starting_idx = sorted_boundary_loops.index( corner_loops[0] )
 				for i in range( lcount ):
 					l = sorted_boundary_loops[ ( starting_idx + i ) % lcount ]
-					poop.append( l.vert.index )
 					if l in corner_loops:
-						print( l.vert.index )
 						distance_between_corners.append( 0.0 )
 					next_l = sorted_boundary_loops[ ( starting_idx + i + 1 ) % lcount ]
 					d = ( mathutils.Vector( next_l.vert.co ) - mathutils.Vector( l.vert.co ) ).length
@@ -154,17 +187,14 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 					for nl in l.vert.link_loops:
 						if not nl.face.tag:
 							continue
-						print( "{}  {}".format( nl.vert.index, corner_uvs[corner_count] ) )
 						nl[uvlayer].uv = corner_uvs[corner_count]
 						nl[uvlayer].pin_uv = True
 						pinned_loops.add( nl )
 					
 				#unwrap
 				for f in group:
-					f.select = True
-					
+					f.select = True					
 				bpy.ops.uv.unwrap( 'INVOKE_DEFAULT', method='CONFORMAL' )
-					
 				corner_count = -1
 				for i in range( lcount ):
 					l = sorted_boundary_loops[ ( starting_idx + i ) % lcount ]
@@ -172,7 +202,7 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 					if l in corner_loops:
 						corner_count += 1
 					for nl in l.vert.link_loops:
-						if not nl.face.tag:
+						if nl.face not in group:
 							continue
 						if corner_count == 0:							
 							nl[uvlayer].uv = ( uv[0], 0.0 )
@@ -181,11 +211,11 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 						elif corner_count == 2:
 							nl[uvlayer].uv = ( uv[0], h )
 						else:
-							l[uvlayer].uv = ( 0.0, uv[1] )
+							nl[uvlayer].uv = ( 0.0, uv[1] )
 						nl[uvlayer].pin_uv = True
 				
 						
-				#unwrap
+				#unwrap				
 				bpy.ops.uv.unwrap( 'INVOKE_DEFAULT', method='CONFORMAL' )
 				for f in group:
 					f.select = False
@@ -194,9 +224,25 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 				
 				clear_tags( rmmesh )
 			
-			for f in faces:
-				f.select = True
-			
+			#restore selection if not in sync_mode
+			if not sel_sync and uv_sel_mode == 'FACE':
+				context.tool_settings.use_uv_select_sync = False
+				if sel_mode[0]:
+					bpy.ops.mesh.select_mode( type='VERT' )
+				elif sel_mode[1]:
+					bpy.ops.mesh.select_mode( type='EDGE' )
+				elif sel_mode[2]:
+					bpy.ops.mesh.select_mode( type='FACE' )
+				bpy.ops.mesh.select_all( action = 'DESELECT' )
+				for elem in initial_selection:
+					elem.select = True
+				for l in initial_loop_selection:
+					l[uvlayer].select = True
+			else:
+				for f in faces:
+					f.select = True
+
+
 		return { 'FINISHED' }
 
 
