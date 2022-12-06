@@ -49,6 +49,7 @@ from . import gridify
 from . import relativeislands
 from . import uvtransform
 from . import unrotate
+from . import rectangularize
 
 def register():
 	bpy.utils.register_class( rmKitPannel )
@@ -81,7 +82,8 @@ def register():
 	gridify.register()
 	relativeislands.register()
 	unrotate.register()
-	uvtransform.register()	
+	uvtransform.register()
+	rectangularize.register()
 
 def unregister():
 	bpy.utils.unregister_class( rmKitPannel )
@@ -115,3 +117,4 @@ def unregister():
 	relativeislands.unregister()
 	unrotate.unregister()
 	uvtransform.unregister()
+	rectangularize.unregister()

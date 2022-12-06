@@ -46,6 +46,7 @@ class UV_PT_UVTOOLS( bpy.types.Panel ):
 		
 		layout.operator( 'wm.call_menu_pie', text='UV Move To Furthest' ).name = 'IMAGE_EDITOR_MT_PIE_uvmovetofurthest'
 		layout.operator( 'mesh.rm_uvgridify', text='Gridify' )
+		layout.operator( 'mesh.rm_uvrectangularize', text='Rectangularize' )
 		layout.operator( 'mesh.rm_relativeislands', text='Relative Islands' )
 		layout.operator( 'mesh.rm_stitch', text='Stitch' )
 		
@@ -154,10 +155,10 @@ class VIEW3D_PT_LAYERS( bpy.types.Panel ):
 
 	def draw( self, context ):
 		layout = self.layout
-
-		r1 = layout.row()
-		r1.alignment = 'EXPAND'
-		r1.operator( 'wm.call_menu_pie', text='Edge Weight Pie' ).name = 'VIEW3D_MT_PIE_setedgeweight_crease'
+		
+		layout.operator( 'wm.call_menu_pie', text='Edge Weight Pie' ).name = 'VIEW3D_MT_PIE_setedgeweight_crease'
+		layout.operator( 'mesh.rm_uvgridify', text='UV Gridify' )
+		layout.operator( 'mesh.rm_uvrectangularize', text='UV Rectangularize' )
 	
 	
 def register():
