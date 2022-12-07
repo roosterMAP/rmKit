@@ -73,6 +73,44 @@ def shortest_path( source, end_verts, verts ):
 	return shortest_path[::-1]
 
 
+def next_boundary_loop( loop ):
+	next_loop = loop.link_loop_next
+	while not is_boundary( next_loop ):
+		l = next_loop
+		next_loop = None
+		for other_f in l.edge.link_faces:
+			if other_f != l.face:
+				break
+		for nl in other_f.loops:
+			if nl.edge == l.edge:
+				next_loop = nl.link_loop_next
+				break
+		if next_loop is None:
+			next_loop = l
+			break
+	return next_loop
+
+
+def prev_boundary_loop( loop ):
+	prev_loops = [ loop.link_loop_prev ]
+	prev_loop = prev_loops[0]
+	while not is_boundary( prev_loop ):
+		l = prev_loop
+		prev_loop = None
+		for other_f in l.edge.link_faces:
+			if other_f != l.face:
+				break
+		for nl in other_f.loops:
+			if nl.edge == l.edge:
+				prev_loop = nl.link_loop_prev
+				prev_loops.append( prev_loop )
+				break
+		if prev_loop is None:
+			prev_loop = l
+			break
+	return prev_loops
+
+
 def sort_loop_chain( loops ):
 	#sorts the loops by the "flow" of the winding of the member faces.
 	for l in loops:
@@ -81,21 +119,27 @@ def sort_loop_chain( loops ):
 	sorted_loops = [ loops[0] ]
 	loops[0].tag = False
 	for i in range( 1, len( loops ) ):
-		next_front_loop = sorted_loops[-1].link_loop_next
-		for nl in next_front_loop.vert.link_loops:
-			if nl.tag:
-				sorted_loops.append( nl )
-				nl.tag = False
-				break
 
-		for nl in sorted_loops[0].vert.link_loops:
-			prev_loop = nl.link_loop_prev
-			if prev_loop.tag:
-				sorted_loops.insert( 0, prev_loop )
-				prev_loop.tag = False
-				break	
+		#append to end
+		nl = next_boundary_loop( sorted_loops[-1] )
+		if nl.tag:
+			nl.tag = False
+			sorted_loops.append( nl )
+
+		#insert to start
+		pls = prev_boundary_loop( sorted_loops[0] )
+		pl = pls[-1]
+		if pl.tag:
+			pl.tag = False
+			sorted_loops.insert( 0, pl )
+
+		if len( sorted_loops ) >= len( loops ):
+			break
+
+	print( [ l.vert.index for l in sorted_loops ] )
 		
 	return rmlib.rmUVLoopSet( sorted_loops, uvlayer=loops.uvlayer )
+
 
 def clear_tags( rmmesh ):
 	for v in rmmesh.bmesh.verts:
@@ -220,7 +264,6 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 				#if there are exactly two boundary_loop_groups then we assume the shape a cylinder and
 				#we need to add seam edges to map it to a plane.
 				boundary_edge_groups = rmlib.rmEdgeSet( [ l.edge for l in bounary_loops ] ).chain()
-				print( len( boundary_edge_groups ) )
 				if ( len( boundary_edge_groups ) == 2 and
 				boundary_edge_groups[0][0][0] == boundary_edge_groups[0][-1][-1] and
 				boundary_edge_groups[-1][0][0] == boundary_edge_groups[-1][-1][-1] ):
@@ -228,13 +271,14 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 					end_verts = [ pair[0] for pair in boundary_edge_groups[-1] ]
 					all_verts = group.vertices
 					path_verts = shortest_path( starting_vert, end_verts, all_verts )
-					print( [ v.index for v in path_verts ] )
 					for i in range( 1, len( path_verts ) ):
 						e = rmlib.rmEdgeSet.from_endpoints( path_verts[i-1], path_verts[i] )
 						e.seam = True
 					bounary_loops = GetBoundaryLoops( group )
 					if len( bounary_loops ) < 4:
 							continue
+
+				print( 'boundary_edge_groups :: {}'.format( len( boundary_edge_groups ) ) )
 
 				#identify the four corners
 				sorted_boundary_loops = sort_loop_chain( rmlib.rmUVLoopSet( bounary_loops, uvlayer=uvlayer ) )
@@ -279,27 +323,27 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 						continue
 					corner_count += 1
 					uv = l[uvlayer].uv.copy()
-					for nl in l.vert.link_loops:
-						if not nl.face.tag:
-							continue
+					pls = prev_boundary_loop( l )
+					for nl in pls:
+						nl = nl.link_loop_next
 						nl[uvlayer].uv = corner_uvs[corner_count]
 						nl[uvlayer].pin_uv = True
 						pinned_loops.add( nl )
 					
 				#unwrap
 				for f in group:
-					f.select = True					
+					f.select = True
 				bpy.ops.uv.unwrap( 'INVOKE_DEFAULT', method='CONFORMAL' )
+
 				corner_count = -1
 				for i in range( lcount ):
 					l = sorted_boundary_loops[ ( starting_idx + i ) % lcount ]
 					uv = l[uvlayer].uv.copy()
 					if l in corner_loops:
 						corner_count += 1
-					for nl in l.vert.link_loops:
-						if nl.face not in group:
-							continue
-						if corner_count == 0:							
+					for nl in prev_boundary_loop( l ):
+						nl = nl.link_loop_next
+						if corner_count == 0:
 							nl[uvlayer].uv = ( uv[0], 0.0 )
 						elif corner_count == 1:
 							nl[uvlayer].uv = ( w, uv[1] )
@@ -308,7 +352,6 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 						else:
 							nl[uvlayer].uv = ( 0.0, uv[1] )
 						nl[uvlayer].pin_uv = True
-				
 						
 				#unwrap				
 				bpy.ops.uv.unwrap( 'INVOKE_DEFAULT', method='CONFORMAL' )
@@ -347,5 +390,3 @@ def register():
 
 def unregister():
 	bpy.utils.unregister_class( MESH_OT_uvrectangularize )
-	
-register()
