@@ -1,7 +1,7 @@
 import bpy, mathutils
 from bpy.app.handlers import persistent
 import rmKit.rmlib as rmlib
-import math
+import math, os
 
 ANCHOR_PROP_LIST = ( 'uv_anchor_nw', 'uv_anchor_n', 'uv_anchor_ne',
 			'uv_anchor_w', 'uv_anchor_c', 'uv_anchor_e',
@@ -512,169 +512,146 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 
 	def draw( self, context ):
 		layout = self.layout
-		box = layout.box()
+		pcoll = preview_collections['main']
+		flow = layout.grid_flow( columns=3, even_columns=True, align=True )
 
 		if MESH_OT_uvmodkey.mod_state[0] and not MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
-			box.label( text='Slam Local' )
+			c1 = flow.column()
+			c1.alignment = 'EXPAND'
+			c1.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['nw_c'].icon_id ).dir = 'lnw'
+			c1.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['w_c'].icon_id ).dir = 'lw'
+			c1.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['sw_c'].icon_id ).dir = 'lsw'
 
-			r1 = box.row()
-			r1.alignment = 'EXPAND'
-			r1.operator( MESH_OT_uvslam.bl_idname, text='LNW' ).dir = 'lnw'
-			r1.operator( MESH_OT_uvslam.bl_idname, text='LN' ).dir = 'ln'
-			r1.operator( MESH_OT_uvslam.bl_idname, text='LNE' ).dir = 'lne'
-
-			r2 = box.row()
-			r2.alignment = 'EXPAND'
-			r2.operator( MESH_OT_uvslam.bl_idname, text='LW' ).dir = 'lw'
-			r2.prop( context.scene, 'uv_uvmove_offset' )
-			r2.operator( MESH_OT_uvslam.bl_idname, text='LE' ).dir = 'le'
-
-			r3 = box.row()
-			r3.alignment = 'EXPAND'
-			r3.operator( MESH_OT_uvslam.bl_idname, text='LSW' ).dir = 'lsw'
-			r3.operator( MESH_OT_uvslam.bl_idname, text='LS' ).dir = 'ls'
-			r3.operator( MESH_OT_uvslam.bl_idname, text='LSE' ).dir = 'lse'
+			c2 = flow.column()
+			c2.alignment = 'EXPAND'
+			c2.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['n_c'].icon_id ).dir = 'ln'
+			c2.prop( context.scene, 'uv_uvmove_offset', text='' )
+			c2.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['s_c'].icon_id ).dir = 'ls'
+			
+			c3 = flow.column()
+			c3.alignment = 'EXPAND'			
+			c3.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['ne_c'].icon_id ).dir = 'lne'
+			c3.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['e_c'].icon_id ).dir = 'le'			
+			c3.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['se_c'].icon_id ).dir = 'lse'
 
 		elif not MESH_OT_uvmodkey.mod_state[0] and MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
-			box.label( text='Slam' )
+			c1 = flow.column()
+			c1.alignment = 'EXPAND'
+			c1.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['nw_b'].icon_id ).dir = 'nw'
+			c1.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['w_b'].icon_id ).dir = 'w'
+			c1.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['sw_b'].icon_id ).dir = 'sw'
 
-			r1 = box.row()
-			r1.alignment = 'EXPAND'
-			r1.operator( MESH_OT_uvslam.bl_idname, text='^NW' ).dir = 'nw'
-			r1.operator( MESH_OT_uvslam.bl_idname, text='^N' ).dir = 'n'
-			r1.operator( MESH_OT_uvslam.bl_idname, text='^NE' ).dir = 'ne'
-
-			r2 = box.row()
-			r2.alignment = 'EXPAND'
-			r2.operator( MESH_OT_uvslam.bl_idname, text='^W' ).dir = 'w'
-			r2.prop( context.scene, 'uv_uvmove_offset' )
-			r2.operator( MESH_OT_uvslam.bl_idname, text='^E' ).dir = 'e'
-
-			r3 = box.row()
-			r3.alignment = 'EXPAND'
-			r3.operator( MESH_OT_uvslam.bl_idname, text='^SW' ).dir = 'sw'
-			r3.operator( MESH_OT_uvslam.bl_idname, text='^S' ).dir = 's'
-			r3.operator( MESH_OT_uvslam.bl_idname, text='^SE' ).dir = 'se'
+			c2 = flow.column()
+			c2.alignment = 'EXPAND'
+			c2.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['n_b'].icon_id ).dir = 'n'
+			c2.prop( context.scene, 'uv_uvmove_offset', text='' )
+			c2.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['s_b'].icon_id ).dir = 's'
+			
+			c3 = flow.column()
+			c3.alignment = 'EXPAND'			
+			c3.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['ne_b'].icon_id ).dir = 'ne'
+			c3.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['e_b'].icon_id ).dir = 'e'			
+			c3.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['se_b'].icon_id ).dir = 'se'
 
 		elif not MESH_OT_uvmodkey.mod_state[0] and not MESH_OT_uvmodkey.mod_state[1] and MESH_OT_uvmodkey.mod_state[2]:
-			box.label( text='Anchor' )
+			c1 = flow.column()
+			c1.alignment = 'EXPAND'
+			c1.prop( context.scene.anchorprops, 'uv_anchor_nw', toggle=1, icon_only =True, icon_value=pcoll['anch_nw'].icon_id )
+			c1.prop( context.scene.anchorprops, 'uv_anchor_w', toggle=1, icon_only =True, icon_value=pcoll['anch_w'].icon_id )
+			c1.prop( context.scene.anchorprops, 'uv_anchor_sw', toggle=1, icon_only =True, icon_value=pcoll['anch_sw'].icon_id )
 
-			r1 = box.row()
-			r1.alignment = 'EXPAND'
-			r1.prop( context.scene.anchorprops, 'uv_anchor_nw', toggle=1 )
-			r1.prop( context.scene.anchorprops, 'uv_anchor_n', toggle=1 )
-			r1.prop( context.scene.anchorprops, 'uv_anchor_ne', toggle=1 )
+			c2 = flow.column()
+			c2.alignment = 'EXPAND'
+			c2.prop( context.scene.anchorprops, 'uv_anchor_n', toggle=1, icon_only =True, icon_value=pcoll['anch_n'].icon_id )
+			c2.prop( context.scene.anchorprops, 'uv_anchor_c', toggle=1, icon_only =True, icon_value=pcoll['anch_c'].icon_id )
+			c2.prop( context.scene.anchorprops, 'uv_anchor_s', toggle=1, icon_only =True, icon_value=pcoll['anch_s'].icon_id )
 
-			r2 = box.row()
-			r2.alignment = 'EXPAND'
-			r2.prop( context.scene.anchorprops, 'uv_anchor_w', toggle=1 )
-			r2.prop( context.scene.anchorprops, 'uv_anchor_c', toggle=1 )
-			r2.prop( context.scene.anchorprops, 'uv_anchor_e', toggle=1 )
-
-			r3 = box.row()
-			r3.alignment = 'EXPAND'
-			r3.prop( context.scene.anchorprops, 'uv_anchor_sw', toggle=1 )
-			r3.prop( context.scene.anchorprops, 'uv_anchor_s', toggle=1 )
-			r3.prop( context.scene.anchorprops, 'uv_anchor_se', toggle=1 )
+			c3 = flow.column()
+			c3.alignment = 'EXPAND'
+			c3.prop( context.scene.anchorprops, 'uv_anchor_ne', toggle=1, icon_only =True, icon_value=pcoll['anch_ne'].icon_id )
+			c3.prop( context.scene.anchorprops, 'uv_anchor_e', toggle=1, icon_only =True, icon_value=pcoll['anch_e'].icon_id )
+			c3.prop( context.scene.anchorprops, 'uv_anchor_se', toggle=1, icon_only =True, icon_value=pcoll['anch_se'].icon_id )
 
 		else:
-			box.label( text='Move' )
+			c1 = flow.column()
+			c1.alignment = 'EXPAND'
+			c1.operator( MESH_OT_uvmove.bl_idname, text='', icon_value=pcoll['nw_a'].icon_id ).dir = 'nw'
+			c1.operator( MESH_OT_uvmove.bl_idname, text='', icon_value=pcoll['w_a'].icon_id ).dir = 'w'
+			c1.operator( MESH_OT_uvmove.bl_idname, text='', icon_value=pcoll['sw_a'].icon_id ).dir = 'sw'
 
-			r1 = box.row()
-			r1.alignment = 'EXPAND'
-			r1.operator( MESH_OT_uvmove.bl_idname, text='NW' ).dir = 'nw'
-			r1.operator( MESH_OT_uvmove.bl_idname, text='N' ).dir = 'n'
-			r1.operator( MESH_OT_uvmove.bl_idname, text='NE' ).dir = 'ne'
+			c2 = flow.column()
+			c2.alignment = 'EXPAND'
+			c2.operator( MESH_OT_uvmove.bl_idname, text='', icon_value=pcoll['n_a'].icon_id ).dir = 'n'
+			c2.prop( context.scene, 'uv_uvmove_offset', text='' )
+			c2.operator( MESH_OT_uvmove.bl_idname, text='', icon_value=pcoll['s_a'].icon_id ).dir = 's'
+			
+			c3 = flow.column()
+			c3.alignment = 'EXPAND'			
+			c3.operator( MESH_OT_uvmove.bl_idname, text='', icon_value=pcoll['ne_a'].icon_id ).dir = 'ne'
+			c3.operator( MESH_OT_uvmove.bl_idname, text='', icon_value=pcoll['e_a'].icon_id ).dir = 'e'			
+			c3.operator( MESH_OT_uvmove.bl_idname, text='', icon_value=pcoll['se_a'].icon_id ).dir = 'se'
 
-			r2 = box.row()
-			r2.alignment = 'EXPAND'
-			r2.operator( MESH_OT_uvmove.bl_idname, text='W' ).dir = 'w'
-			r2.prop( context.scene, 'uv_uvmove_offset' )
-			r2.operator( MESH_OT_uvmove.bl_idname, text='E' ).dir = 'e'
-
-			r3 = box.row()
-			r3.alignment = 'EXPAND'
-			r3.operator( MESH_OT_uvmove.bl_idname, text='SW' ).dir = 'sw'
-			r3.operator( MESH_OT_uvmove.bl_idname, text='S' ).dir = 's'
-			r3.operator( MESH_OT_uvmove.bl_idname, text='SE' ).dir = 'se'
-
-		layout.separator( factor=0.1 )
-		box = layout.box()
+		layout.separator( factor=0.2 )
+		rot_grid = layout.grid_flow( columns=3, even_columns=True, align=True )
 
 		if MESH_OT_uvmodkey.mod_state[0] and not MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
-			box.label( text='Rotate Local' )
-
-			box.prop( context.scene, 'uv_uvrotation_offset' )
-			r4 = box.row()
-			r4.alignment = 'EXPAND'
-			r4.operator( MESH_OT_uvrotate.bl_idname, text='LCW' ).dir = 'lcw'
-			r4.operator( MESH_OT_uvrotate.bl_idname, text='LCCW' ).dir = 'lccw'
-
-		else:
-			box.label( text='Rotate' )
-
-			box.prop( context.scene, 'uv_uvrotation_offset' )
-			r4 = box.row()
-			r4.alignment = 'EXPAND'
-			r4.operator( MESH_OT_uvrotate.bl_idname, text='CW' ).dir = 'cw'
-			r4.operator( MESH_OT_uvrotate.bl_idname, text='CCW' ).dir = 'ccw'
-			box.operator( 'mesh.rm_uvunrotate', text='Unrotate' )
-
-		layout.separator( factor=0.1 )
-		box = layout.box()
-
-		if MESH_OT_uvmodkey.mod_state[0] and not MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
-			box.label( text='Scale Local' )
-
-			box.prop( context.scene, 'uv_uvscale_factor' )
-			r5 = box.row()
-			r5.alignment = 'EXPAND'
-			r5.operator( MESH_OT_uvscale.bl_idname, text='LUV-' ).dir = 'luv-'
-			r5.operator( MESH_OT_uvscale.bl_idname, text='LUV+' ).dir = 'luv+'
-			r6 = box.row()
-			r6.alignment = 'EXPAND'
-			r6.operator( MESH_OT_uvscale.bl_idname, text='LU-' ).dir = 'lu-'
-			r6.operator( MESH_OT_uvscale.bl_idname, text='LU+' ).dir = 'lu+'
-			r7 = box.row()
-			r7.alignment = 'EXPAND'
-			r7.operator( MESH_OT_uvscale.bl_idname, text='LV-' ).dir = 'lv-'
-			r7.operator( MESH_OT_uvscale.bl_idname, text='LV+' ).dir = 'lv+'
+			c1 = rot_grid.column()
+			c1.alignment = 'EXPAND'
+			c1.operator( MESH_OT_uvrotate.bl_idname, text='', icon_value=pcoll['lcw'].icon_id ).dir = 'lcw'
+			c2 = rot_grid.column()			
+			c2.alignment = 'EXPAND'
+			c2.prop( context.scene, 'uv_uvrotation_offset', text='' )
+			c3 = rot_grid.column()
+			c3.alignment = 'EXPAND'
+			c3.operator( MESH_OT_uvrotate.bl_idname, text='', icon_value=pcoll['lccw'].icon_id ).dir = 'lccw'
 
 		else:
-			box.label( text='Scale' )
+			c1 = rot_grid.column()
+			c1.alignment = 'EXPAND'
+			c1.operator( MESH_OT_uvrotate.bl_idname, text='', icon_value=pcoll['cw'].icon_id ).dir = 'cw'
+			c2 = rot_grid.column()
+			c2.alignment = 'EXPAND'
+			c2.prop( context.scene, 'uv_uvrotation_offset', text='' )
+			c3 = rot_grid.column()
+			c3.alignment = 'EXPAND'
+			c3.operator( MESH_OT_uvrotate.bl_idname, text='', icon_value=pcoll['ccw'].icon_id ).dir = 'ccw'
 
-			box.prop( context.scene, 'uv_uvscale_factor' )
-			r5 = box.row()
-			r5.alignment = 'EXPAND'
-			r5.operator( MESH_OT_uvscale.bl_idname, text='UV-' ).dir = 'uv-'
-			r5.operator( MESH_OT_uvscale.bl_idname, text='UV+' ).dir = 'uv+'
-			r6 = box.row()
-			r6.alignment = 'EXPAND'
-			r6.operator( MESH_OT_uvscale.bl_idname, text='U-' ).dir = 'u-'
-			r6.operator( MESH_OT_uvscale.bl_idname, text='U+' ).dir = 'u+'
-			r7 = box.row()
-			r7.alignment = 'EXPAND'
-			r7.operator( MESH_OT_uvscale.bl_idname, text='V-' ).dir = 'v-'
-			r7.operator( MESH_OT_uvscale.bl_idname, text='V+' ).dir = 'v+'
+		layout.separator( factor=0.2 )
+		scl_grid = layout.grid_flow( columns=3, even_columns=True, align=True )
 
-		layout.separator( factor=0.1 )
-		box = layout.box()
-
-		if MESH_OT_uvmodkey.mod_state[0] and not MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
-			box.label( text='Flip Local' )
-
-			r8 = box.row()
-			r8.alignment = 'EXPAND'
-			r8.operator( MESH_OT_uvflip.bl_idname, text='LU' ).dir = 'lu'
-			r8.operator( MESH_OT_uvflip.bl_idname, text='LV' ).dir = 'lv'
+		if MESH_OT_uvmodkey.mod_state[0] and not MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:			
+			c1 = scl_grid.column()
+			c1.alignment = 'EXPAND'
+			c1.operator( MESH_OT_uvscale.bl_idname, text='', icon_value=pcoll['LUV+'].icon_id ).dir = 'luv+'
+			c1.operator( MESH_OT_uvscale.bl_idname, text='', icon_value=pcoll['LU+'].icon_id ).dir = 'lu+'
+			c1.operator( MESH_OT_uvscale.bl_idname, text='', icon_value=pcoll['LV+'].icon_id ).dir = 'lv+'
+			c2 = scl_grid.column()
+			c2.alignment = 'EXPAND'
+			c2.operator( MESH_OT_uvscale.bl_idname, text='', icon_value=pcoll['LUV-'].icon_id ).dir = 'luv-'
+			c2.operator( MESH_OT_uvscale.bl_idname, text='', icon_value=pcoll['LU-'].icon_id ).dir = 'lu-'
+			c2.operator( MESH_OT_uvscale.bl_idname, text='', icon_value=pcoll['LV-'].icon_id ).dir = 'lv-'
+			c3 = scl_grid.column()
+			c3.alignment = 'EXPAND'
+			c3.prop( context.scene, 'uv_uvscale_factor', text='' )
+			c3.operator( MESH_OT_uvflip.bl_idname, text='LU' ).dir = 'lu'
+			c3.operator( MESH_OT_uvflip.bl_idname, text='LV' ).dir = 'lv'
 
 		else:
-			box.label( text='Flip' )
-
-			r8 = box.row()
-			r8.alignment = 'EXPAND'
-			r8.operator( MESH_OT_uvflip.bl_idname, text='U' ).dir = 'u'
-			r8.operator( MESH_OT_uvflip.bl_idname, text='V' ).dir = 'v'
+			c1 = scl_grid.column()
+			c1.alignment = 'EXPAND'
+			c1.operator( MESH_OT_uvscale.bl_idname, text='', icon_value=pcoll['UV+'].icon_id ).dir = 'uv+'
+			c1.operator( MESH_OT_uvscale.bl_idname, text='', icon_value=pcoll['U+'].icon_id ).dir = 'u+'
+			c1.operator( MESH_OT_uvscale.bl_idname, text='', icon_value=pcoll['V+'].icon_id ).dir = 'v+'
+			c2 = scl_grid.column()
+			c2.alignment = 'EXPAND'
+			c2.operator( MESH_OT_uvscale.bl_idname, text='', icon_value=pcoll['UV-'].icon_id ).dir = 'uv-'
+			c2.operator( MESH_OT_uvscale.bl_idname, text='', icon_value=pcoll['U-'].icon_id ).dir = 'u-'
+			c2.operator( MESH_OT_uvscale.bl_idname, text='', icon_value=pcoll['V-'].icon_id ).dir = 'v-'
+			c3 = scl_grid.column()
+			c3.alignment = 'EXPAND'
+			c3.prop( context.scene, 'uv_uvscale_factor', text='' )
+			c3.operator( MESH_OT_uvflip.bl_idname, text='U' ).dir = 'u'
+			c3.operator( MESH_OT_uvflip.bl_idname, text='V' ).dir = 'v'
 
 
 @persistent
@@ -710,8 +687,67 @@ class AnchorProps( bpy.types.PropertyGroup ):
 	uv_anchor_s: bpy.props.BoolProperty( name='AS', default=False, update=lambda self, context : anchor_update( self, context ) )
 	uv_anchor_se: bpy.props.BoolProperty( name='ASE', default=False, update=lambda self, context : anchor_update( self, context ) )
 	
+preview_collections = {}
+
+def load_icons():
+	import bpy.utils.previews
+	pcoll = bpy.utils.previews.new()
+	icons_dir = os.path.join( os.path.dirname( __file__ ), 'icons' )
+	pcoll.load( 'n_a', os.path.join( icons_dir, 'n_a.png' ), 'IMAGE' )
+	pcoll.load( 's_a', os.path.join( icons_dir, 's_a.png' ), 'IMAGE' )
+	pcoll.load( 'e_a', os.path.join( icons_dir, 'e_a.png' ), 'IMAGE' )
+	pcoll.load( 'w_a', os.path.join( icons_dir, 'w_a.png' ), 'IMAGE' )
+	pcoll.load( 'ne_a', os.path.join( icons_dir, 'ne_a.png' ), 'IMAGE' )
+	pcoll.load( 'nw_a', os.path.join( icons_dir, 'nw_a.png' ), 'IMAGE' )
+	pcoll.load( 'se_a', os.path.join( icons_dir, 'se_a.png' ), 'IMAGE' )
+	pcoll.load( 'sw_a', os.path.join( icons_dir, 'sw_a.png' ), 'IMAGE' )
+	pcoll.load( 'n_b', os.path.join( icons_dir, 'n_b.png' ), 'IMAGE' )
+	pcoll.load( 's_b', os.path.join( icons_dir, 's_b.png' ), 'IMAGE' )
+	pcoll.load( 'e_b', os.path.join( icons_dir, 'e_b.png' ), 'IMAGE' )
+	pcoll.load( 'w_b', os.path.join( icons_dir, 'w_b.png' ), 'IMAGE' )
+	pcoll.load( 'ne_b', os.path.join( icons_dir, 'ne_b.png' ), 'IMAGE' )
+	pcoll.load( 'nw_b', os.path.join( icons_dir, 'nw_b.png' ), 'IMAGE' )
+	pcoll.load( 'se_b', os.path.join( icons_dir, 'se_b.png' ), 'IMAGE' )
+	pcoll.load( 'sw_b', os.path.join( icons_dir, 'sw_b.png' ), 'IMAGE' )
+	pcoll.load( 'n_c', os.path.join( icons_dir, 'n_c.png' ), 'IMAGE' )
+	pcoll.load( 's_c', os.path.join( icons_dir, 's_c.png' ), 'IMAGE' )
+	pcoll.load( 'e_c', os.path.join( icons_dir, 'e_c.png' ), 'IMAGE' )
+	pcoll.load( 'w_c', os.path.join( icons_dir, 'w_c.png' ), 'IMAGE' )
+	pcoll.load( 'ne_c', os.path.join( icons_dir, 'ne_c.png' ), 'IMAGE' )
+	pcoll.load( 'nw_c', os.path.join( icons_dir, 'nw_c.png' ), 'IMAGE' )
+	pcoll.load( 'se_c', os.path.join( icons_dir, 'se_c.png' ), 'IMAGE' )
+	pcoll.load( 'sw_c', os.path.join( icons_dir, 'sw_c.png' ), 'IMAGE' )
+	pcoll.load( 'anch_n', os.path.join( icons_dir, 'anch_n.png' ), 'IMAGE' )
+	pcoll.load( 'anch_ne', os.path.join( icons_dir, 'anch_ne.png' ), 'IMAGE' )
+	pcoll.load( 'anch_nw', os.path.join( icons_dir, 'anch_nw.png' ), 'IMAGE' )
+	pcoll.load( 'anch_e', os.path.join( icons_dir, 'anch_e.png' ), 'IMAGE' )
+	pcoll.load( 'anch_w', os.path.join( icons_dir, 'anch_w.png' ), 'IMAGE' )
+	pcoll.load( 'anch_se', os.path.join( icons_dir, 'anch_se.png' ), 'IMAGE' )
+	pcoll.load( 'anch_s', os.path.join( icons_dir, 'anch_s.png' ), 'IMAGE' )
+	pcoll.load( 'anch_sw', os.path.join( icons_dir, 'anch_sw.png' ), 'IMAGE' )
+	pcoll.load( 'anch_c', os.path.join( icons_dir, 'anch_c.png' ), 'IMAGE' )
+	pcoll.load( 'cw', os.path.join( icons_dir, 'cw.png' ), 'IMAGE' )
+	pcoll.load( 'ccw', os.path.join( icons_dir, 'ccw.png' ), 'IMAGE' )
+	pcoll.load( 'lcw', os.path.join( icons_dir, 'lcw.png' ), 'IMAGE' )
+	pcoll.load( 'lccw', os.path.join( icons_dir, 'lccw.png' ), 'IMAGE' )
+	pcoll.load( 'U+', os.path.join( icons_dir, 'U+.png' ), 'IMAGE' )
+	pcoll.load( 'V+', os.path.join( icons_dir, 'V+.png' ), 'IMAGE' )
+	pcoll.load( 'UV+', os.path.join( icons_dir, 'UV+.png' ), 'IMAGE' )
+	pcoll.load( 'U-', os.path.join( icons_dir, 'U-.png' ), 'IMAGE' )
+	pcoll.load( 'V-', os.path.join( icons_dir, 'V-.png' ), 'IMAGE' )
+	pcoll.load( 'UV-', os.path.join( icons_dir, 'UV-.png' ), 'IMAGE' )
+	pcoll.load( 'LU+', os.path.join( icons_dir, 'LU+.png' ), 'IMAGE' )
+	pcoll.load( 'LV+', os.path.join( icons_dir, 'LV+.png' ), 'IMAGE' )
+	pcoll.load( 'LUV+', os.path.join( icons_dir, 'LUV+.png' ), 'IMAGE' )
+	pcoll.load( 'LU-', os.path.join( icons_dir, 'LU-.png' ), 'IMAGE' )
+	pcoll.load( 'LV-', os.path.join( icons_dir, 'LV-.png' ), 'IMAGE' )
+	pcoll.load( 'LUV-', os.path.join( icons_dir, 'LUV-.png' ), 'IMAGE' )
+
+	preview_collections['main'] = pcoll
 	
 def register():
+	load_icons()
+
 	print( 'register :: {}'.format( UV_PT_UVTransformTools.bl_idname ) )
 	print( 'register :: {}'.format( MESH_OT_uvmove.bl_idname ) )
 	print( 'register :: {}'.format( MESH_OT_uvslam.bl_idname ) )
@@ -736,6 +772,10 @@ def register():
 	
 
 def unregister():
+	for pcoll in preview_collections.values():
+		bpy.utils.previews.remove( pcoll )
+	preview_collections.clear()
+
 	print( 'unregister :: {}'.format( UV_PT_UVTransformTools.bl_idname ) )
 	print( 'unregister :: {}'.format( MESH_OT_uvmove.bl_idname ) )
 	print( 'unregister :: {}'.format( MESH_OT_uvslam.bl_idname ) )
