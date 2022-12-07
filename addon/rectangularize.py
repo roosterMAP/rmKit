@@ -1,5 +1,77 @@
 import bpy, bmesh, mathutils
 import rmKit.rmlib as rmlib
+import sys
+
+def shortest_path( source, end_verts, verts ):
+	for v in verts:
+		v.tag = True
+
+	#fill dist_lookup with max values
+	dist_lookup = {}
+	for v in verts:
+		dist_lookup[v] = sys.float_info.max
+	dist_lookup[source] = 0.0
+
+	innerSet = set( [ v for v in end_verts ] )
+
+	#expand and fill dist_lookup until an end vert is found
+	current = source
+	while len( innerSet ) > 0:
+		nearest_neighbor = None
+		smallest_tentative_dist = sys.float_info.max
+		for ne in current.link_edges:
+			neighbor = ne.other_vert( current )
+			if not neighbor.tag:
+				continue
+			dist = ( mathutils.Vector( current.co ) - mathutils.Vector( neighbor.co ) ).length
+			tentative_dist = dist_lookup[current] + dist
+			if tentative_dist < dist_lookup[neighbor]:
+				dist_lookup[neighbor] = tentative_dist
+			else:
+				tentative_dist = dist_lookup[neighbor]
+			if tentative_dist < smallest_tentative_dist:
+				smallest_tentative_dist = tentative_dist
+				nearest_neighbor = neighbor
+		if nearest_neighbor is None:
+			break
+		current.tag = False
+		current = nearest_neighbor
+		if current in innerSet:
+			innerSet.remove( current )
+
+	min_dist = sys.float_info.max
+	nearest_end_vert = None
+	for nv in end_verts:
+		if dist_lookup[nv] < min_dist:
+			min_dist = dist_lookup[nv]
+			nearest_end_vert = nv
+	if nearest_end_vert is None:
+		return []
+
+	#go backwards to find the shortest path
+	current = nearest_end_vert
+	shortest_path = []
+	while current != source:
+		min_dist = sys.float_info.max
+		prev_neighbor = None
+		for ne in current.link_edges:
+			neighbor = ne.other_vert( current )
+			if neighbor.tag:
+				continue
+			if dist_lookup[neighbor] < min_dist and dist_lookup[neighbor] < dist_lookup[current]:
+				min_dist = dist_lookup[neighbor]
+				prev_neighbor = neighbor
+		shortest_path.append( current )	
+		if prev_neighbor is None:
+			break
+		current = prev_neighbor
+	shortest_path.append( source )
+
+	for v in verts:
+		v.tag = False
+
+	return shortest_path[::-1]
+
 
 def sort_loop_chain( loops ):
 	#sorts the loops by the "flow" of the winding of the member faces.
@@ -43,6 +115,14 @@ def is_boundary( l ):
 			if nf != l.face and not nf.tag:
 				return True
 	return False
+
+def GetBoundaryLoops( faces ):
+	bounary_loops = set()
+	for f in faces:
+		for l in f.loops:
+			if is_boundary( l ):
+				bounary_loops.add( l )
+	return bounary_loops
 
 class MESH_OT_uvrectangularize( bpy.types.Operator ):
 	"""Map the selection to a box."""
@@ -133,13 +213,28 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 					f.tag = True
 					
 				#get list of boundary loops
-				bounary_loops = set()
-				for f in group:
-					for l in f.loops:
-						if is_boundary( l ):
-							bounary_loops.add( l )
+				bounary_loops = GetBoundaryLoops( group )
 				if len( bounary_loops ) < 4:
-					continue
+						continue
+
+				#if there are exactly two boundary_loop_groups then we assume the shape a cylinder and
+				#we need to add seam edges to map it to a plane.
+				boundary_edge_groups = rmlib.rmEdgeSet( [ l.edge for l in bounary_loops ] ).chain()
+				print( len( boundary_edge_groups ) )
+				if ( len( boundary_edge_groups ) == 2 and
+				boundary_edge_groups[0][0][0] == boundary_edge_groups[0][-1][-1] and
+				boundary_edge_groups[-1][0][0] == boundary_edge_groups[-1][-1][-1] ):
+					starting_vert = boundary_edge_groups[0][0][0]
+					end_verts = [ pair[0] for pair in boundary_edge_groups[-1] ]
+					all_verts = group.vertices
+					path_verts = shortest_path( starting_vert, end_verts, all_verts )
+					print( [ v.index for v in path_verts ] )
+					for i in range( 1, len( path_verts ) ):
+						e = rmlib.rmEdgeSet.from_endpoints( path_verts[i-1], path_verts[i] )
+						e.seam = True
+					bounary_loops = GetBoundaryLoops( group )
+					if len( bounary_loops ) < 4:
+							continue
 
 				#identify the four corners
 				sorted_boundary_loops = sort_loop_chain( rmlib.rmUVLoopSet( bounary_loops, uvlayer=uvlayer ) )
@@ -252,3 +347,5 @@ def register():
 
 def unregister():
 	bpy.utils.unregister_class( MESH_OT_uvrectangularize )
+	
+register()
