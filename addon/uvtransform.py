@@ -633,8 +633,8 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			c3 = scl_grid.column()
 			c3.alignment = 'EXPAND'
 			c3.prop( context.scene, 'uv_uvscale_factor', text='' )
-			c3.operator( MESH_OT_uvflip.bl_idname, text='LU' ).dir = 'lu'
-			c3.operator( MESH_OT_uvflip.bl_idname, text='LV' ).dir = 'lv'
+			c3.operator( MESH_OT_uvflip.bl_idname, text='', icon_value=pcoll['LU'].icon_id ).dir = 'lu'
+			c3.operator( MESH_OT_uvflip.bl_idname, text='', icon_value=pcoll['LV'].icon_id ).dir = 'lv'
 
 		else:
 			c1 = scl_grid.column()
@@ -650,8 +650,8 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			c3 = scl_grid.column()
 			c3.alignment = 'EXPAND'
 			c3.prop( context.scene, 'uv_uvscale_factor', text='' )
-			c3.operator( MESH_OT_uvflip.bl_idname, text='U' ).dir = 'u'
-			c3.operator( MESH_OT_uvflip.bl_idname, text='V' ).dir = 'v'
+			c3.operator( MESH_OT_uvflip.bl_idname, text='', icon_value=pcoll['U'].icon_id ).dir = 'u'
+			c3.operator( MESH_OT_uvflip.bl_idname, text='', icon_value=pcoll['V'].icon_id ).dir = 'v'
 
 
 @persistent
@@ -692,6 +692,7 @@ preview_collections = {}
 def load_icons():
 	import bpy.utils.previews
 	pcoll = bpy.utils.previews.new()
+
 	icons_dir = os.path.join( os.path.dirname( __file__ ), 'icons' )
 	pcoll.load( 'n_a', os.path.join( icons_dir, 'n_a.png' ), 'IMAGE' )
 	pcoll.load( 's_a', os.path.join( icons_dir, 's_a.png' ), 'IMAGE' )
@@ -742,6 +743,10 @@ def load_icons():
 	pcoll.load( 'LU-', os.path.join( icons_dir, 'LU-.png' ), 'IMAGE' )
 	pcoll.load( 'LV-', os.path.join( icons_dir, 'LV-.png' ), 'IMAGE' )
 	pcoll.load( 'LUV-', os.path.join( icons_dir, 'LUV-.png' ), 'IMAGE' )
+	pcoll.load( 'U', os.path.join( icons_dir, 'U.png' ), 'IMAGE' )
+	pcoll.load( 'V', os.path.join( icons_dir, 'V.png' ), 'IMAGE' )
+	pcoll.load( 'LU', os.path.join( icons_dir, 'LU.png' ), 'IMAGE' )
+	pcoll.load( 'LV', os.path.join( icons_dir, 'LV.png' ), 'IMAGE' )	
 
 	preview_collections['main'] = pcoll
 	
