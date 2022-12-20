@@ -639,6 +639,24 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 		return { 'FINISHED' }
 
 
+class UV_PT_UVHotspotTools( bpy.types.Panel ):
+	bl_parent_id = 'UV_PT_RMKIT_PARENT'
+	bl_idname = 'UV_PT_UVHotspotTools'
+	bl_label = 'Hotspot'
+	bl_region_type = 'UI'
+	bl_space_type = 'IMAGE_EDITOR'
+	bl_options = { 'DEFAULT_CLOSED' }
+
+	def draw( self, context ):
+		layout = self.layout		
+		layout.label( text="Atlas Object: ")
+		layout.prop_search( context.scene, "subrect_atlas", context.scene, "objects", text="", icon="MOD_MULTIRES" )
+		layout.operator( 'object.load_rect', text='Loat .rect' )
+		layout.operator( 'mesh.matchhotspot', text='Hotspot Match' )
+		layout.operator( 'mesh.nrsthotspot', text='Hotspot Nearest' )
+		layout.operator( 'mesh.moshotspot', text='Hotspot MOS' )
+
+
 def register():
 	bpy.utils.register_class( OBJECT_OT_loadrect )
 	bpy.utils.register_class( MESH_OT_matchhotspot )
@@ -646,7 +664,7 @@ def register():
 	bpy.utils.register_class( MESH_OT_moshotspot )
 	bpy.utils.register_class( MESH_OT_grabapplyuvbounds )
 	bpy.types.Scene.subrect_atlas = bpy.props.PointerProperty( name='atlas',type=bpy.types.Object,description='atlas object' )
-	
+	bpy.utils.register_class( UV_PT_UVHotspotTools )
 
 def unregister():
 	bpy.utils.unregister_class( OBJECT_OT_loadrect )
@@ -655,3 +673,4 @@ def unregister():
 	bpy.utils.unregister_class( MESH_OT_moshotspot )
 	bpy.utils.unregister_class( MESH_OT_grabapplyuvbounds )
 	del bpy.types.Scene.subrect_atlas
+	bpy.utils.unregister_class( UV_PT_UVHotspotTools )

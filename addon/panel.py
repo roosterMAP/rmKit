@@ -51,15 +51,6 @@ class UV_PT_UVTOOLS( bpy.types.Panel ):
 		layout.operator( 'mesh.rm_stitch', text='Stitch' )
 		layout.operator( 'mesh.rm_uvunrotate', text='Unrotate' )
 
-		layout.separator( factor=0.1 )
-
-		layout.label( text="Atlas Object: ")
-		layout.prop_search( context.scene, "subrect_atlas", context.scene, "objects", text="", icon="MOD_MULTIRES" )
-		layout.operator( 'object.load_rect', text='Loat .rect' )
-		layout.operator( 'mesh.matchhotspot', text='Hotspot Match' )
-		layout.operator( 'mesh.nrsthotspot', text='Hotspot Nearest' )
-		layout.operator( 'mesh.moshotspot', text='Hotspot MOS' )
-		
 
 class VIEW3D_PT_SELECTION( bpy.types.Panel ):
 	bl_parent_id = 'VIEW3D_PT_RMKIT_PARENT'
