@@ -26,6 +26,20 @@ def register_keyboard_keymap():
 		RM_GUI_NAMES.add( 'VIEW3D_MT_PIE_cursor' )
 		RM_3DVIEW_KEYMAP.append( ( km_3dview, kmi ) )
 
+		kmi = km_3dview.keymap_items.new( 'mesh.rm_changemodeto', 'NONE', 'PRESS' )
+		kmi.properties.mode_to = 'FACE'
+		RM_3DVIEW_KEYMAP.append( ( km_3dview, kmi ) )
+
+		kmi = km_3dview.keymap_items.new( 'mesh.rm_changemodeto', 'NONE', 'PRESS' )
+		kmi.properties.mode_to = 'EDGE'
+		RM_3DVIEW_KEYMAP.append( ( km_3dview, kmi ) )
+
+		kmi = km_3dview.keymap_items.new( 'mesh.rm_changemodeto', 'NONE', 'PRESS' )
+		kmi.properties.mode_to = 'VERT'
+		RM_3DVIEW_KEYMAP.append( ( km_3dview, kmi ) )
+
+
+
 
 		#MESH KEYMAPS
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_arcadjust', 'NONE', 'PRESS' ) ) )
@@ -40,10 +54,25 @@ def register_keyboard_keymap():
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_loop', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_ring', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_polypatch', 'NONE', 'PRESS' ) ) )
-		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_remove', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_invertcontinuous', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_targetweld', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_thicken', 'NONE', 'PRESS' ) ) )
+
+		kmi = km_mesh.keymap_items.new( 'mesh.rm_remove', 'NONE', 'PRESS' )
+		kmi.properties.reduce_mode = 'DIS'
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'mesh.rm_remove', 'NONE', 'PRESS' )
+		kmi.properties.reduce_mode = 'COL'
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'mesh.rm_remove', 'NONE', 'PRESS' )
+		kmi.properties.reduce_mode = 'POP'
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'mesh.rm_remove', 'NONE', 'PRESS' )
+		kmi.properties.reduce_mode = 'DEL'
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
 		
 		kmi = km_mesh.keymap_items.new( 'mesh.rm_copy', 'NONE', 'PRESS' )
 		kmi.properties.cut = True
@@ -56,20 +85,8 @@ def register_keyboard_keymap():
 		kmi = km_mesh.keymap_items.new( 'mesh.rm_paste', 'NONE', 'PRESS' )
 		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
 
-		kmi = km_mesh.keymap_items.new( 'mesh.rm_changemodeto', 'NONE', 'PRESS' )
-		kmi.properties.mode_to = 'VERT'
-		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'mesh.rm_changemodeto', 'NONE', 'PRESS' )
-		kmi.properties.mode_to = 'EDGE'
-		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'mesh.rm_changemodeto', 'NONE', 'PRESS' )
-		kmi.properties.mode_to = 'FACE'
-		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
-
 		kmi = km_mesh.keymap_items.new( 'mesh.rm_convertmodeto', 'NONE', 'PRESS' )
-		kmi.properties.mode_to = 'VERT'
+		kmi.properties.mode_to = 'FACE'
 		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
 
 		kmi = km_mesh.keymap_items.new( 'mesh.rm_convertmodeto', 'NONE', 'PRESS' )
@@ -77,7 +94,7 @@ def register_keyboard_keymap():
 		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
 
 		kmi = km_mesh.keymap_items.new( 'mesh.rm_convertmodeto', 'NONE', 'PRESS' )
-		kmi.properties.mode_to = 'FACE'
+		kmi.properties.mode_to = 'VERT'
 		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
 
 		kmi = km_mesh.keymap_items.new( 'mesh.rm_continuous', 'NONE', 'PRESS' )

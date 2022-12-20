@@ -36,7 +36,6 @@ from . import copypaste
 from . import workplane
 from . import selectionmode
 from . import radial_align
-from . import slide
 from . import edgeweight
 from . import grabapplymat
 from . import extend
@@ -71,7 +70,6 @@ def register():
 	workplane.register()
 	selectionmode.register()
 	radial_align.register()
-	slide.register()
 	edgeweight.register()
 	grabapplymat.register()
 	extend.register()
@@ -107,7 +105,6 @@ def unregister():
 	workplane.unregister()
 	selectionmode.unregister()
 	radial_align.unregister()
-	slide.unregister()
 	edgeweight.unregister()
 	grabapplymat.unregister()
 	extend.unregister()

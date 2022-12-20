@@ -413,7 +413,7 @@ class OBJECT_OT_loadrect( bpy.types.Operator ):
 
 class MESH_OT_grabapplyuvbounds( bpy.types.Operator ):
 	bl_idname = 'mesh.grabapplyuvbounds'
-	bl_label = 'GrabApply UVBounds MOS'
+	bl_label = 'GrabApplyUVBounds (MOS)'
 	bl_options = { 'UNDO' }
 
 	def __init__( self ):
@@ -482,7 +482,7 @@ class MESH_OT_grabapplyuvbounds( bpy.types.Operator ):
 
 class MESH_OT_moshotspot( bpy.types.Operator ):
 	bl_idname = 'mesh.moshotspot'
-	bl_label = 'Hotspot MOS'
+	bl_label = 'Hotspot (MOS)'
 	bl_options = { 'UNDO' }
 
 	def __init__( self ):
