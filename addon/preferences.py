@@ -1,124 +1,143 @@
 import bpy, rna_keymap_ui
 
-RM_KEYMAP = []
+RM_3DVIEW_KEYMAP = []
+RM_MESH_KEYMAP = []
+RM_UV_KEYMAP = []
+RM_GUI_NAMES = set()
 
 #https://docs.blender.org/api/current/bpy.types.KeyMapItems.html#bpy.types.KeyMapItems
 
 def register_keyboard_keymap():
 	kc = bpy.context.window_manager.keyconfigs.addon
-	if kc:
-		km_3dview = kc.keymaps.new( name='3D View', space_type='EMPTY' )
+	if kc:		
+		km_3dview = kc.keymaps.new( name='3D View', space_type='VIEW_3D' )
 		km_mesh = kc.keymaps.new( name='Mesh', space_type='EMPTY' )
 		km_uv = kc.keymaps.new( name='UV Editor', space_type='EMPTY' )
 
-		RM_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_togglegrid', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_workplane', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_cursor_to_selection', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_unrotate_relative_to_cursor', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_origin_to_cursor', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_arcadjust', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_connectedge', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_contextbevel', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_createtube', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_extend', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_grabapplymat', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_quickmaterial', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'messh.rm_radialalign', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.grabapplyuvbounds', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.moshotspot', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.nrsthotspot', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.matchhotspot', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_loop', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_ring', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvloop', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvring', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_polypatch', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvrectangularize', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvgridify', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_remove', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_relativeislands', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_invertcontinuous', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_stitch', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_targetweld', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_thicken', 'NONE', 'PRESS' ) ) )
-		RM_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvunrotate', 'NONE', 'PRESS' ) ) )
-
-		kmi = km_mesh.keymap_items.new( 'mesh.rm_copy', 'NONE', 'PRESS' )
-		kmi.properties.cut = True
-		RM_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'mesh.rm_copy', 'NONE', 'PRESS' )
-		kmi.properties.cut = False
-		RM_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'mesh.rm_paste', 'NONE', 'PRESS' )
-		RM_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'mesh.rm_changemodeto', 'NONE', 'PRESS' )
-		kmi.properties.mode_to = 'VERT'
-		RM_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'mesh.rm_changemodeto', 'NONE', 'PRESS' )
-		kmi.properties.mode_to = 'EDGE'
-		RM_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'mesh.rm_changemodeto', 'NONE', 'PRESS' )
-		kmi.properties.mode_to = 'FACE'
-		RM_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'mesh.rm_convertmodeto', 'NONE', 'PRESS' )
-		kmi.properties.mode_to = 'VERT'
-		RM_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'mesh.rm_convertmodeto', 'NONE', 'PRESS' )
-		kmi.properties.mode_to = 'EDGE'
-		RM_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'mesh.rm_convertmodeto', 'NONE', 'PRESS' )
-		kmi.properties.mode_to = 'FACE'
-		RM_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'mesh.rm_continuous', 'NONE', 'PRESS' )
-		kmi.properties.add = False
-		RM_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'mesh.rm_continuous', 'NONE', 'PRESS' )
-		kmi.properties.add = True
-		RM_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
-		kmi.properties.name = 'VIEW3D_MT_PIE_movetofurthest'
-		RM_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
-		kmi.properties.name = 'VIEW3D_MT_PIE_cursor'
-		RM_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
-		kmi.properties.name = 'VIEW3D_MT_PIE_setedgeweight_crease'
-		RM_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'wm.call_menu', 'NONE', 'PRESS' )
-		kmi.properties.name = 'OBJECT_MT_rm_knifescreen'
-		RM_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_uv.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
-		kmi.properties.name = 'IMAGE_EDITOR_MT_PIE_uvmovetofurthest'
-		RM_KEYMAP.append( ( km_uv, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
-		kmi.properties.name = 'OBJECT_MT_rm_screenreflect'
-		RM_KEYMAP.append( ( km_mesh, kmi ) )
+		#3D VIEW KEYMAPS
+		RM_3DVIEW_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_togglegrid', 'NONE', 'PRESS' ) ) )
+		RM_3DVIEW_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_workplane', 'NONE', 'PRESS' ) ) )
+		RM_3DVIEW_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_cursor_to_selection', 'NONE', 'PRESS' ) ) )
+		RM_3DVIEW_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_unrotate_relative_to_cursor', 'NONE', 'PRESS' ) ) )
+		RM_3DVIEW_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_origin_to_cursor', 'NONE', 'PRESS' ) ) )
 
 		kmi = km_3dview.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
 		kmi.properties.name = 'VIEW3D_MT_PIE_cursor'
-		RM_KEYMAP.append( ( km_3dview, kmi ) )
+		RM_GUI_NAMES.add( 'VIEW3D_MT_PIE_cursor' )
+		RM_3DVIEW_KEYMAP.append( ( km_3dview, kmi ) )
+
+
+		#MESH KEYMAPS
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_arcadjust', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_connectedge', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_contextbevel', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_createtube', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_extend', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_grabapplymat', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_quickmaterial', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_radialalign', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.grabapplyuvbounds', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_loop', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_ring', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_polypatch', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_remove', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_invertcontinuous', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_targetweld', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_thicken', 'NONE', 'PRESS' ) ) )
+		
+		kmi = km_mesh.keymap_items.new( 'mesh.rm_copy', 'NONE', 'PRESS' )
+		kmi.properties.cut = True
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'mesh.rm_copy', 'NONE', 'PRESS' )
+		kmi.properties.cut = False
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'mesh.rm_paste', 'NONE', 'PRESS' )
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'mesh.rm_changemodeto', 'NONE', 'PRESS' )
+		kmi.properties.mode_to = 'VERT'
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'mesh.rm_changemodeto', 'NONE', 'PRESS' )
+		kmi.properties.mode_to = 'EDGE'
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'mesh.rm_changemodeto', 'NONE', 'PRESS' )
+		kmi.properties.mode_to = 'FACE'
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'mesh.rm_convertmodeto', 'NONE', 'PRESS' )
+		kmi.properties.mode_to = 'VERT'
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'mesh.rm_convertmodeto', 'NONE', 'PRESS' )
+		kmi.properties.mode_to = 'EDGE'
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'mesh.rm_convertmodeto', 'NONE', 'PRESS' )
+		kmi.properties.mode_to = 'FACE'
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'mesh.rm_continuous', 'NONE', 'PRESS' )
+		kmi.properties.add = False
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'mesh.rm_continuous', 'NONE', 'PRESS' )
+		kmi.properties.add = True
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
+		kmi.properties.name = 'VIEW3D_MT_PIE_movetofurthest'
+		RM_GUI_NAMES.add( 'VIEW3D_MT_PIE_movetofurthest' )
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
+		kmi.properties.name = 'VIEW3D_MT_PIE_setedgeweight_crease'
+		RM_GUI_NAMES.add( 'VIEW3D_MT_PIE_setedgeweight_crease' )
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'wm.call_menu', 'NONE', 'PRESS' )
+		kmi.properties.name = 'OBJECT_MT_rm_knifescreen'
+		RM_GUI_NAMES.add( 'OBJECT_MT_rm_knifescreen' )
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
+		kmi.properties.name = 'OBJECT_MT_rm_screenreflect'
+		RM_GUI_NAMES.add( 'OBJECT_MT_rm_screenreflect' )
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+
+		#UV EDITOR KEYMAPS
+		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.moshotspot', 'NONE', 'PRESS' ) ) )
+		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.nrsthotspot', 'NONE', 'PRESS' ) ) )
+		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.matchhotspot', 'NONE', 'PRESS' ) ) )
+		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvloop', 'NONE', 'PRESS' ) ) )
+		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvring', 'NONE', 'PRESS' ) ) )
+		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvrectangularize', 'NONE', 'PRESS' ) ) )
+		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvgridify', 'NONE', 'PRESS' ) ) )
+		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_relativeislands', 'NONE', 'PRESS' ) ) )
+		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_stitch', 'NONE', 'PRESS' ) ) )
+		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvunrotate', 'NONE', 'PRESS' ) ) )
+
+		kmi = km_uv.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
+		kmi.properties.name = 'IMAGE_EDITOR_MT_PIE_uvmovetofurthest'
+		RM_GUI_NAMES.add( 'IMAGE_EDITOR_MT_PIE_uvmovetofurthest' )
+		RM_UV_KEYMAP.append( ( km_uv, kmi ) )
 
 
 def unregister_keyboard_keymap():
-	for km, kmi in RM_KEYMAP:
+	for km, kmi in RM_3DVIEW_KEYMAP:
 		km.keymap_items.remove( kmi )
-	RM_KEYMAP.clear()
+	for km, kmi in RM_MESH_KEYMAP:
+		km.keymap_items.remove( kmi )
+	for km, kmi in RM_UV_KEYMAP:
+		km.keymap_items.remove( kmi )
+	RM_3DVIEW_KEYMAP.clear()
+	RM_MESH_KEYMAP.clear()
+	RM_UV_KEYMAP.clear()
+	RM_GUI_NAMES.clear()
 
 
 class RMKITPreferences( bpy.types.AddonPreferences ):
@@ -137,21 +156,21 @@ class RMKITPreferences( bpy.types.AddonPreferences ):
 		row_view3d.label( text='3D View' )
 		if self.v3d_checkbox:
 			col = box.column( align=True )
-			self.draw_keymap_items( col, '3D View', RM_KEYMAP, {'KEYBOARD'}, False )
+			self.draw_keymap_items( col, '3D View', RM_3DVIEW_KEYMAP, {'KEYBOARD'}, False )
 
 		row_mesh = box.row()
 		row_mesh.prop( self, 'mesh_checkbox', icon='TRIA_DOWN' if self.mesh_checkbox else 'TRIA_RIGHT', icon_only=True, emboss=False )
 		row_mesh.label( text='Mesh' )
 		if self.mesh_checkbox:
 			col = box.column( align=True )
-			self.draw_keymap_items( col, 'Mesh', RM_KEYMAP, {'KEYBOARD'}, False )
+			self.draw_keymap_items( col, 'Mesh', RM_MESH_KEYMAP, {'KEYBOARD'}, False )
 
 		row_uv = box.row()
 		row_uv.prop( self, 'uv_checkbox', icon='TRIA_DOWN' if self.uv_checkbox else 'TRIA_RIGHT', icon_only=True, emboss=False )
 		row_uv.label( text='UV Editor' )
 		if self.uv_checkbox:
 			col = box.column( align=True )
-			self.draw_keymap_items( col, 'UV Editor', RM_KEYMAP, {'KEYBOARD'}, False )
+			self.draw_keymap_items( col, 'UV Editor', RM_UV_KEYMAP, {'KEYBOARD'}, False )
 
 	@staticmethod
 	def draw_keymap_items( col, km_name, keymap, map_type, allow_remove=False ):
@@ -161,9 +180,12 @@ class RMKITPreferences( bpy.types.AddonPreferences ):
 		if allow_remove:
 			col.context_pointer_set( 'keymap', km )
 
-		kmis = [ kmi for kmi in km.keymap_items if kmi.idname in kmi_idnames and kmi.map_type in map_type ]
-		for kmi in kmis:
-			rna_keymap_ui.draw_kmi( [], kc, km, kmi, col, 0 )
+		for kmi in km.keymap_items:
+			if kmi.idname in kmi_idnames and kmi.map_type in map_type:
+				if kmi.idname == 'wm.call_menu_pie' or kmi.idname == 'wm.call_menu':
+					if kmi.properties.name not in RM_GUI_NAMES:
+						continue
+				rna_keymap_ui.draw_kmi( ['ADDON', 'USER', 'DEFAULT'], kc, km, kmi, col, 0 )
 		
 
 def register():
