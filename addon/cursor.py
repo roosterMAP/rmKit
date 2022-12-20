@@ -282,4 +282,4 @@ def unregister():
 	bpy.utils.unregister_class( MESH_OT_cursortoselection )
 	bpy.utils.unregister_class( MESH_OT_origintocursor )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_cursor )
-	bpy.utils.register_class( MESH_OT_unrotatefromcursor )
+	bpy.utils.unregister_class( MESH_OT_unrotatefromcursor )

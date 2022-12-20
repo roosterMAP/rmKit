@@ -205,7 +205,7 @@ class rmPolygonSet( list ):
 
 
 
-	def island( self, uvlayer ):
+	def island( self, uvlayer, element=False ):
 		"""
 		Returns list of rmPolygonSets where each set is an uv island for the uvlayer dataset.
 
@@ -237,9 +237,10 @@ class rmPolygonSet( list ):
 						np = nl.face
 						if np.tag:
 							continue
-						if np in self and util.AlmostEqual_v2( l[uvlayer].uv, nl[uvlayer].uv ):
-							outerSet.add( np )
-							np.tag = True
+						if element or np in self:
+							if util.AlmostEqual_v2( l[uvlayer].uv, nl[uvlayer].uv ):
+								outerSet.add( np )
+								np.tag = True
 							
 			continuous_groups.append( innerSet )
 			

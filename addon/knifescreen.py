@@ -209,4 +209,3 @@ def unregister():
 	del bpy.types.Object.ks_alignment_topo
 	del bpy.types.Object.ks_alignment_grid
 	del bpy.types.Object.ks_alignment_screen
-	del bpy.types.Object.ks_mouse_pos

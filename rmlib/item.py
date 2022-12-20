@@ -1,6 +1,7 @@
 import bpy
 import bmesh
 import mathutils
+from bpy_extras import view3d_utils
 
 class rmMesh():
 	def __init__( self, object ):
@@ -20,6 +21,19 @@ class rmMesh():
 		if ao is None:
 			return None
 		return( cls( ao ) )
+
+	@classmethod
+	def from_mos( cls, context, mouse_pos ):
+		look_pos = view3d_utils.region_2d_to_origin_3d( context.region, context.region_data, mouse_pos )
+		look_vec = view3d_utils.region_2d_to_vector_3d( context.region, context.region_data, mouse_pos )
+
+		depsgraph = context.evaluated_depsgraph_get()
+		depsgraph.update()
+		hit, loc, nml, idx, obj, mat = context.scene.ray_cast( depsgraph, look_pos, look_vec )
+		if not hit:
+			return None
+
+		return cls( obj )
 	
 	def __enter__( self ):
 		if self.__mesh.is_editmode:

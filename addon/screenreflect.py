@@ -214,7 +214,7 @@ def unregister():
 	bpy.utils.unregister_class( MESH_OT_screenreflect )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_screenreflect )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_screenreflect_slice )
-	bpy.utils.unregister_class( VIEW3D_MT_PIE_screenreflect_reflect )
+	bpy.utils.unregister_class( VIEW3D_MT_PIE_screenreflect_noslice )
 	del bpy.types.Object.sr_0
 	del bpy.types.Object.sr_1
 	del bpy.types.Object.sr_2

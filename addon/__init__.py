@@ -50,10 +50,13 @@ from . import relativeislands
 from . import uvtransform
 from . import unrotate
 from . import rectangularize
+from . import hotspot
+from . import preferences
 
 def register():
 	bpy.utils.register_class( rmKitPannel )
 	bpy.utils.register_class( rmKitPannel_uv )
+	preferences.register()
 	polypatch.register()
 	reduce.register()
 	context_bevel.register()
@@ -84,10 +87,12 @@ def register():
 	unrotate.register()
 	uvtransform.register()
 	rectangularize.register()
+	hotspot.register()
 
 def unregister():
 	bpy.utils.unregister_class( rmKitPannel )
 	bpy.utils.unregister_class( rmKitPannel_uv )
+	preferences.unregister()
 	polypatch.unregister()
 	reduce.unregister()
 	context_bevel.unregister()
@@ -118,3 +123,4 @@ def unregister():
 	unrotate.unregister()
 	uvtransform.unregister()
 	rectangularize.unregister()
+	hotspot.unregister()
