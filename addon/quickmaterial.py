@@ -28,8 +28,8 @@ class MESH_OT_quickmaterial( bpy.types.Operator ):
 			material.diffuse_color = bpy.context.scene.quickmatprops["prop_col"]
 			material.metallic = bpy.context.scene.quickmatprops["prop_met"]
 			material.roughness = bpy.context.scene.quickmatprops["prop_rog"]
-			material["WorldMappingWidth_meters"] = bpy.context.scene.quickmatprops["prop_width"]
-			material["WorldMappingHeight_meters"] = bpy.context.scene.quickmatprops["prop_height"]
+			material["WorldMappingWidth_inches"] = bpy.context.scene.quickmatprops["prop_width"]
+			material["WorldMappingHeight_inches"] = bpy.context.scene.quickmatprops["prop_height"]
 			
 		if not context.object.data.is_editmode:
 			return { 'FINISHED' }
@@ -106,8 +106,8 @@ class MESH_OT_quickmaterial( bpy.types.Operator ):
 			bpy.context.scene.quickmatprops["prop_met"] = material.metallic
 			bpy.context.scene.quickmatprops["prop_rog"] = material.roughness
 			try:
-				bpy.context.scene.quickmatprops["prop_width"] = material["WorldMappingWidth_meters"]
-				bpy.context.scene.quickmatprops["prop_height"] = material["WorldMappingHeight_meters"]
+				bpy.context.scene.quickmatprops["prop_width"] = material["WorldMappingWidth_inches"]
+				bpy.context.scene.quickmatprops["prop_height"] = material["WorldMappingHeight_inches"]
 			except KeyError:
 				bpy.context.scene.quickmatprops["prop_width"] = 2.0
 				bpy.context.scene.quickmatprops["prop_height"] = 2.0
@@ -130,8 +130,8 @@ def mat_search_changed( self, context ):
 		self["prop_met"] = material.metallic
 		self["prop_rog"] = material.roughness
 		try:
-			self["prop_width"] = material["WorldMappingWidth_meters"]
-			self["prop_height"] = material["WorldMappingHeight_meters"]
+			self["prop_width"] = material["WorldMappingWidth_inches"]
+			self["prop_height"] = material["WorldMappingHeight_inches"]
 		except KeyError:
 			self["prop_width"] = 2.0
 			self["prop_height"] = 2.0

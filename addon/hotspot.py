@@ -234,7 +234,7 @@ def load_rect_chunk( current_idx, lines, chunk=None, prev_key=None ):
 
 		elif '[' in value and ']' in value:
 			flist = value[1:-1].split( ',' )
-			uv = mathutils.Vector( ( float( flist[0] ) / MAX_SHORT, float( flist[1] ) / MAX_SHORT ) )
+			uv = mathutils.Vector( ( float( flist[0] ) / MAX_SHORT, 1.0 - float( flist[1] ) / MAX_SHORT ) )
 			add_to_chunk( chunk, key, uv )
 
 		current_idx += 1

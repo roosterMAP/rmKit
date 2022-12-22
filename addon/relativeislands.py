@@ -193,7 +193,12 @@ class MESH_OT_scaletotexeldensity( bpy.types.Operator ):
 			if len( faces ) < 1:
 				return { 'CANCELLED' }
 
-			target_texel_density = context.scene.target_texel_density
+
+			meters_per_1024 = context.scene.target_texel_density
+			target_texel_density = 1024.0 / meters_per_1024
+			
+			print( 'meters_per_1024 :: {}'.format( meters_per_1024 ) )
+			print( 'target_texel_density :: {}'.format( target_texel_density ) )
 
 			#create list of uvislands and compute a density ( 3darea/uvarea ) for each
 			tri_loops = rmmesh.bmesh.calc_loop_triangles()
@@ -201,14 +206,14 @@ class MESH_OT_scaletotexeldensity( bpy.types.Operator ):
 			for island in islands:
 
 				#get the world space size of the material on the first poly of this island
-				material_size = [ 2.0, 2.0 ]
+				material_size = [ 6.5, 6.5 ]
 				try:
 					material = rmmesh.mesh.materials[island[0].material_index]
 				except IndexError:
 					pass
 				try:
-					material_size[0] = material["WorldMappingWidth_meters"]
-					material_size[1] = material["WorldMappingHeight_meters"]
+					material_size[0] = material["WorldMappingWidth_inches"] * 0.0254
+					material_size[1] = material["WorldMappingHeight_inches"] * 0.0254
 				except KeyError:
 					pass
 
@@ -236,8 +241,10 @@ class MESH_OT_scaletotexeldensity( bpy.types.Operator ):
 				island_center = island_center * ( 1.0 / lcount )
 				
 				#scale uv islands to target texel density
-				island_density = ( island_uvarea * material_size[0] * material_size[1] * target_texel_density ) / island_3darea
-				scale_factor = math.sqrt( target_texel_density / island_density )
+				current_texel_density = island_uvarea * material_size[0] * material_size[1] / island_3darea
+				scale_factor = target_texel_density / current_texel_density
+				print( 'current_texel_density :: {}'.format( current_texel_density ) )
+				print( 'target_texel_density :: {}'.format( target_texel_density ) )
 				for f in island:
 					for l in f.loops:
 						uv = mathutils.Vector( l[uvlayer].uv )
@@ -276,7 +283,7 @@ def register():
 	bpy.utils.register_class( MESH_OT_scaleislandrelative )
 	bpy.utils.register_class( MESH_OT_scaletotexeldensity )
 	bpy.utils.register_class( UV_PT_UVDensityTools )
-	bpy.types.Scene.target_texel_density = bpy.props.FloatProperty( name='Target Texel Density', default=640.0 )
+	bpy.types.Scene.target_texel_density = bpy.props.FloatProperty( name='Target Texel Density', default=0.6096, unit='LENGTH', subtype='DISTANCE' )
 	
 
 def unregister():
