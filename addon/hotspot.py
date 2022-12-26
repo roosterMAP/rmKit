@@ -1,8 +1,10 @@
 import rmKit.rmlib as rmlib
 import bpy, bmesh, mathutils
-import os, random, math
-from bpy_extras import view3d_utils
+import os, random, math, struct
+from binascii import hexlify
 
+MAT_CHUNK = 'MAT'
+HOT_CHUNK = 'HOT'
 MAX_SHORT = 32768.0
 
 
@@ -54,6 +56,60 @@ def GetFaceSelection( context, rmmesh ):
 	return faces
 
 
+def load_mat_subchunk( chunk, offset ):
+	'''
+	#Chunk layout described below:
+	3s(chunkname)
+	I(groupcount)
+		I(strcount for group)
+			I(charcount fror string)
+			{}s.format(charcount)(string)
+			...
+		...
+	'''
+	chunk_name = struct.unpack_from( '>3s', chunk, offset )[0].decode( 'utf-8' )
+	if chunk_name != MAT_CHUNK:
+		raise RuntimeError
+	offset += 3
+	str_list = []
+	group_count = struct.unpack_from( '>I', chunk, offset )[0]
+	offset += 4
+	str_groups = []
+	for i in range( group_count ):
+		str_count = struct.unpack_from( '>I', chunk, offset )[0]
+		offset += 4
+		str_list = []
+		for j in range( str_count ):
+			size = struct.unpack_from( '>I', chunk, offset )[0]
+			offset += 4
+			s = struct.unpack_from( '>{}s'.format( size ), chunk, offset )[0].decode( 'utf-8' )
+			str_list.append( s )
+			offset += size
+		str_groups.append( str_list )
+	return str_groups, offset
+
+
+def load_hot_chunk( chunk, offset ):
+	'''
+	#Chunk layout described below:
+	3s(chunkname)
+	I(hotspotcount)
+		hotspot data
+		...
+	'''
+	chunk_name = struct.unpack_from( '>3s', chunk, offset )[0].decode( 'utf-8' )
+	if chunk_name != HOT_CHUNK:
+		raise RuntimeError
+	offset += 3
+	hotspots = []
+	hotspot_count = struct.unpack_from( '>I', chunk, offset )[0]
+	offset += 4
+	for i in range( hotspot_count ):
+		new_hotspot, offset = Hotspot.unpack( chunk, offset )
+		hotspots.append( new_hotspot )
+	return hotspots, offset
+
+
 class Bounds2d():
 	def __init__( self, points, **kwargs ):
 		self.__min = mathutils.Vector( ( 0.0, 0.0 ) )
@@ -76,6 +132,16 @@ class Bounds2d():
 
 	def __repr__( self ):
 		return 'min:{}  max:{}'.format( self.__min, self.__max )
+
+	def __eq__( self, __o ):
+		return rmlib.util.AlmostEqual_v2( self.__min, __o.__min ) and rmlib.util.AlmostEqual_v2( self.__ax, __o.__min )
+
+	def __bytes__( self ):
+		fcomp = rmlib.util.Float16Compressor()
+		return struct.pack( '>HHHH', fcomp.compress( self.__min[0] ),
+									fcomp.compress( self.__min[1] ),
+									fcomp.compress( self.__max[0] ),
+									fcomp.compress( self.__max[1] ) )
 
 	@classmethod
 	def from_verts( cls, verts ):
@@ -123,19 +189,27 @@ class Bounds2d():
 		return self.width > self.height
 
 	@property
+	def tiling( self ):
+		if self.__max[0] - self.__min[0] == 1.0:
+			return 1
+		if self.__max[1] - self.__min[1] == 1.0:
+			return 2
+		return 0
+
+	@property
 	def corners( self ):
 		#return corner coords of self in (u,v) domain
 		return [ self.__min, mathutils.Vector( ( self.__max[0], self.__min[1] ) ), self.__max, mathutils.Vector( ( self.__min[0], self.__max[1] ) ) ]
 
-	def normalize( self ):
+	def normalized( self ):
 		#ensure bounds overlapps the 0-1 region
 		center = self.center
-		offset_u = center[0] - float( floor( center[0] ) )
-		offset_v = center[1] - float( floor( center[1] ) )
-		self.__min[0] -= offset_u
-		self.__min[1] -= offset_v
-		self.__max[0] -= offset_u
-		self.__max[1] -= offset_v
+		new_bounds = Bounds2d( [ self.__min, self.__max ] )
+		new_bounds.__min[0] -= float( math.floor( center[0] ) )
+		new_bounds.__min[1] -= float( math.floor( center[1] ) )
+		new_bounds.__max[0] -= float( math.floor( center[0] ) )
+		new_bounds.__max[1] -= float( math.floor( center[1] ) )
+		return new_bounds
 
 	def inside( self, point ):
 		#test if point is inside self
@@ -153,7 +227,7 @@ class Bounds2d():
 		max_y = min( self.__max[1], bounds.max[1] )
 		return ( max_x - min_x ) * ( max_y - min_y )
 
-	def transform( self, other ):
+	def transform( self, other, skip_rot=False, trim=False ):
 		#compute the 3x3 matrix that transforms bound 'other' to self
 		trans_mat = mathutils.Matrix.Identity( 3 )
 		trans_mat[0][2] = self.center[0] * -1.0
@@ -165,16 +239,36 @@ class Bounds2d():
 
 		rot_mat = mathutils.Matrix.Identity( 3 )
 		scl_mat = mathutils.Matrix.Identity( 3 )
-		if self.horizontal != other.horizontal:
-			rot_mat[0][0] = math.cos( math.pi  / 2.0 )
-			rot_mat[1][0] = math.sin( math.pi  / 2.0 ) * -1.0
-			rot_mat[0][1] = math.sin( math.pi  / 2.0 )
-			rot_mat[1][1] = math.cos( math.pi  / 2.0 )	
-			scl_mat[0][0] = other.width / self.height
-			scl_mat[1][1] = other.height / self.width
+		if trim and ( other.width >= 1.0 or other.height >= 1.0 ):
+			if self.horizontal != other.horizontal and not skip_rot:
+				rot_mat[0][0] = math.cos( math.pi  / 2.0 )
+				rot_mat[1][0] = math.sin( math.pi  / 2.0 ) * -1.0
+				rot_mat[0][1] = math.sin( math.pi  / 2.0 )
+				rot_mat[1][1] = math.cos( math.pi  / 2.0 )
+				if self.width >= 1.0:
+					scl_mat[0][0] = other.width / self.height
+					scl_mat[1][1] = scl_mat[0][0]
+				else:
+					scl_mat[0][0] = other.height / self.width
+					scl_mat[1][1] = scl_mat[0][0]
+			else:
+				if self.width >= 1.0:
+					scl_mat[0][0] = other.width / self.width
+					scl_mat[1][1] = scl_mat[0][0]
+				else:
+					scl_mat[0][0] = other.height / self.height
+					scl_mat[1][1] = scl_mat[0][0]
 		else:
-			scl_mat[0][0] = other.width / self.width
-			scl_mat[1][1] = other.height / self.height
+			if self.horizontal != other.horizontal and not skip_rot:
+				rot_mat[0][0] = math.cos( math.pi  / 2.0 )
+				rot_mat[1][0] = math.sin( math.pi  / 2.0 ) * -1.0
+				rot_mat[0][1] = math.sin( math.pi  / 2.0 )
+				rot_mat[1][1] = math.cos( math.pi  / 2.0 )
+				scl_mat[0][0] = other.width / self.height
+				scl_mat[1][1] = other.height / self.width
+			else:
+				scl_mat[0][0] = other.width / self.width
+				scl_mat[1][1] = other.height / self.height
 
 		return trans_mat_inverse @ scl_mat @ rot_mat @ trans_mat
 
@@ -247,7 +341,6 @@ class Hotspot():
 	def __init__( self, bounds2d_list, **kwargs ):
 		self.__name = ''
 		self.__properties = None
-		self.__td = 512.0 #texels per meter
 		self.__data = []
 		for b in bounds2d_list:
 			if b.area > 0.0:
@@ -257,16 +350,44 @@ class Hotspot():
 				self.__name = value
 			elif key == 'properties':
 				self.__properties = None
-			elif key == 'texel_density':
-				self.__td = value
 
 	def __repr__( self ):
 		s = 'HOTSPOT {}\n'.format( self.__name )
 		s += 'properties :: {}\n'.format( self.__properties )
-		s += 'texel density :: {}\n'.format( self.__td )
 		for i, r in enumerate( self.__data ):
 			s += '\t{} :: {}\n'.format( i, r )
 		return s
+
+	def __eq__( self, __o ):
+		for b in self.__data:
+			if b not in __o.__data:
+				return False
+		return True
+
+	def __bytes__( self ):
+		bounds_data = struct.pack( '>I', len( self.__data ) )
+		for b in self.__data:
+			bounds_data += bytes( b )
+		
+		return bounds_data
+
+	@staticmethod
+	def unpack( bytearray, offset ):
+		bounds_count = struct.unpack_from( '>I', bytearray, offset )[0]
+		offset += 4
+		data = []
+		fcomp = rmlib.util.Float16Compressor()
+		for i in range( bounds_count ):
+			bmin_x, bmin_y, bmax_x, bmax_y = struct.unpack_from( '>HHHH', bytearray, offset )
+			imin_x = struct.pack( '>I',fcomp.decompress( bmin_x ) )
+			imin_y = struct.pack( '>I',fcomp.decompress( bmin_y ) )
+			imax_x = struct.pack( '>I',fcomp.decompress( bmax_x ) )
+			imax_y = struct.pack( '>I',fcomp.decompress( bmax_y ) )			
+			min_pos = mathutils.Vector( ( struct.unpack( '>f', imin_x )[0], struct.unpack( '>f', imin_y )[0] ) )
+			max_pos = mathutils.Vector( ( struct.unpack( '>f', imax_x )[0], struct.unpack( '>f', imax_y )[0] ) )
+			data.append( Bounds2d( [ min_pos, max_pos ] ) )
+			offset += 8
+		return Hotspot( data ), offset
 
 	@classmethod
 	def from_bmesh( cls, rmmesh ):
@@ -297,6 +418,10 @@ class Hotspot():
 				hotspot.__data.append( bbox )
 
 			return hotspot
+
+	@property
+	def name( self ):
+		return self.__name
 
 	def save_bmesh( self, rmmesh ):
 		with rmmesh as rmmesh:
@@ -339,8 +464,7 @@ class Hotspot():
 		for tb in self.__data:
 			aspect = min( tb.aspect, 1.0 / tb.aspect )
 			target_coord = mathutils.Vector( ( math.sqrt( tb.area ), aspect ) )
-			dist = ( target_coord - best_coord ).length
-			if abs( dist - min_dist ) <= tollerance:
+			if ( target_coord - best_coord ).length <= tollerance:
 				if not random_orient and tb.horizontal == best_bounds.hotizontal:
 						target_list.append( tb )
 				else:
@@ -349,6 +473,10 @@ class Hotspot():
 		return random.choice( target_list )
 
 	def nearest( self, u, v ):
+		#normalize u and v
+		u -= math.floor( u )
+		v -= math.floor( v )
+
 		#find the bounds nearest to (u,v) coord
 		point = mathutils.Vector( ( u, v ) )
 		nearest_rect = self.__data[0]
@@ -367,16 +495,170 @@ class Hotspot():
 		return nearest_rect
 
 	def overlapping( self, bounds2d ):
+		b_in = bounds2d.normalized()
+
 		#find the bounds that most overlapps bounds2d
 		max_overlap_area = -1.0
 		overlap_bounds = self.__data[0]
 		for b in self.__data:
-			if b.overlapping( bounds2d ):
-				overlap_area = b.overlapping_area( bounds2d )
+			if b.overlapping( b_in ):
+				overlap_area = b.overlapping_area( b_in )
 				if overlap_area > max_overlap_area:
 					max_overlap_area = overlap_area
 					overlap_bounds = b
 		return overlap_bounds
+
+
+def write_default_file( file ):
+	bounds = []
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.5, 0.0 ) ), mathutils.Vector( ( 0.75, 0.5 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.9375, 0.0 ) ), mathutils.Vector( ( 0.96875, 0.5 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.75, 0.0 ) ), mathutils.Vector( ( 0.875, 0.5 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.0, 0.0 ) ), mathutils.Vector( ( 0.5, 0.5 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.875, 0.0 ) ), mathutils.Vector( ( 0.9375, 0.5 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.75, 0.5 ) ), mathutils.Vector( ( 0.875, 0.75 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.875, 0.5 ) ), mathutils.Vector( ( 0.9375, 0.75 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.0, 0.5 ) ), mathutils.Vector( ( 0.5, 0.75 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.5, 0.5 ) ), mathutils.Vector( ( 0.75, 0.75 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.9375, 0.5 ) ), mathutils.Vector( ( 0.96875, 0.75 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.875, 0.75 ) ), mathutils.Vector( ( 0.9375, 0.875 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.5, 0.75 ) ), mathutils.Vector( ( 0.75, 0.875 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.9375, 0.75 ) ), mathutils.Vector( ( 0.96875, 0.875 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.75, 0.75 ) ), mathutils.Vector( ( 0.875, 0.875 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.0, 0.75 ) ), mathutils.Vector( ( 0.5, 0.875 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.0, 0.875 ) ), mathutils.Vector( ( 0.5, 0.9375 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.5, 0.875 ) ), mathutils.Vector( ( 0.75, 0.9375 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.9375, 0.875 ) ), mathutils.Vector( ( 0.96875, 0.9375 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.875, 0.875 ) ), mathutils.Vector( ( 0.9375, 0.9375 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.75, 0.875 ) ), mathutils.Vector( ( 0.875, 0.9375 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.875, 0.9375 ) ), mathutils.Vector( ( 0.9375, 0.96875 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.9375, 0.9375 ) ), mathutils.Vector( ( 0.96875, 0.96875 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.75, 0.9375 ) ), mathutils.Vector( ( 0.875, 0.96875 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.0, 0.9375 ) ), mathutils.Vector( ( 0.5, 0.96875 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.5, 0.9375 ) ), mathutils.Vector( ( 0.75, 0.96875 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.984375, 0.9375 ) ), mathutils.Vector( ( 1.0, 0.96875 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.96875, 0.9375 ) ), mathutils.Vector( ( 0.984375, 0.96875 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.984375, 0.875 ) ), mathutils.Vector( ( 1.0, 0.9375 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.96875, 0.875 ) ), mathutils.Vector( ( 0.984375, 0.9375 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.984375, 0.75 ) ), mathutils.Vector( ( 1.0, 0.875 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.96875, 0.75 ) ), mathutils.Vector( ( 0.984375, 0.875 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.984375, 0.0 ) ), mathutils.Vector( ( 1.0, 0.5 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.96875, 0.0 ) ), mathutils.Vector( ( 0.984375, 0.5 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.984375, 0.5 ) ), mathutils.Vector( ( 1.0, 0.75 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.96875, 0.5 ) ), mathutils.Vector( ( 0.984375, 0.75 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.0, 0.984375 ) ), mathutils.Vector( ( 0.5, 1.0 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.0, 0.96875 ) ), mathutils.Vector( ( 0.5, 0.984375 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.96875, 0.96875 ) ), mathutils.Vector( ( 0.984375, 0.984375 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.96875, 0.984375 ) ), mathutils.Vector( ( 0.984375, 1.0 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.9375, 0.984375 ) ), mathutils.Vector( ( 0.96875, 1.0 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.9375, 0.96875 ) ), mathutils.Vector( ( 0.96875, 0.984375 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.984375, 0.984375 ) ), mathutils.Vector( ( 1.0, 1.0 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.984375, 0.96875 ) ), mathutils.Vector( ( 1.0, 0.984375 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.5, 0.984375 ) ), mathutils.Vector( ( 0.75, 1.0 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.5, 0.96875 ) ), mathutils.Vector( ( 0.75, 0.984375 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.75, 0.984375 ) ), mathutils.Vector( ( 0.875, 1.0 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.75, 0.96875 ) ), mathutils.Vector( ( 0.875, 0.984375 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.875, 0.984375 ) ), mathutils.Vector( ( 0.9375, 1.0 ) ) ] ) )
+	bounds.append( Bounds2d( [ mathutils.Vector( ( 0.875, 0.96875 ) ), mathutils.Vector( ( 0.9375, 0.984375 ) ) ] ) )
+	hotspot = Hotspot( bounds, name='default' )
+
+	with open( file, 'wb' ) as f:
+		#write material chunk
+		f.write( struct.pack( '>3s', bytes( MAT_CHUNK, 'utf-8' ) ) )
+		f.write( struct.pack( '>I', 1 ) )
+		for matgroup in [ [ 'default' ] ]:
+			f.write( struct.pack( '>I', len( matgroup ) ) )
+			for mat in matgroup:
+				size = len( mat )
+				f.write( struct.pack( '>I', size ) )
+				f.write( struct.pack( '>{}s'.format( size ), bytes( mat, 'utf-8' ) ) )
+
+		#write hotspot chunk
+		f.write( struct.pack( '>3s', bytes( HOT_CHUNK, 'utf-8' ) ) )
+		f.write( struct.pack( '>I', 1 ) )
+		f.write( bytes( hotspot ) )
+
+
+def write_hot_file( file, materials, hotspots ):
+	if len( hotspots ) != len( materials ):
+		raise RuntimeError
+
+	with open( file, 'wb' ) as f:
+		#write material chunk
+		f.write( struct.pack( '>3s', bytes( MAT_CHUNK, 'utf-8' ) ) )
+		f.write( struct.pack( '>I', len( materials ) ) )
+		for matgroup in materials:
+			f.write( struct.pack( '>I', len( matgroup ) ) )
+			for mat in matgroup:
+				size = len( mat )
+				f.write( struct.pack( '>I', size ) )
+				f.write( struct.pack( '>{}s'.format( size ), bytes( mat, 'utf-8' ) ) )
+
+		#write hotspot chunk
+		f.write( struct.pack( '>3s', bytes( HOT_CHUNK, 'utf-8' ) ) )
+		f.write( struct.pack( '>I', len( hotspots ) ) )
+		for h in hotspots:
+			f.write( bytes( h ) )
+
+
+def read_hot_file( file ):
+	materials = []
+	hotspots = []
+	with open( file, 'rb' ) as f:
+		data = f.read()
+
+		offset = 0
+		chunkname = struct.unpack_from( '>3s', data, offset )[0].decode( 'utf-8' )
+		if chunkname == MAT_CHUNK:
+			materials, offset = load_mat_subchunk( data, offset )
+		
+		chunkname = struct.unpack_from( '>3s', data, offset )[0].decode( 'utf-8' )
+		if chunkname == HOT_CHUNK:
+			hotspots, offset = load_hot_chunk( data, offset )
+
+	return materials, hotspots
+
+
+def get_hotfile_path():
+	filepath = os.path.dirname( os.path.dirname( rmlib.__file__ ) ) + '\\atlas_repo.hot'
+	if not os.path.isfile( filepath ):
+		write_default_file( filepath )
+	return filepath
+
+
+def load_hotspot_from_repo( material_name ):
+	#load hotspot repo file
+	hotfile = get_hotfile_path()
+	existing_materials, existing_hotspots = read_hot_file( hotfile )
+
+	hotspot_idx = -1
+	for i in range( len( existing_materials ) ):
+		if material_name in existing_materials[i]:
+			hotspot_idx = i
+			break
+	if hotspot_idx < 0:
+		return None
+
+	return existing_hotspots[hotspot_idx]
+
+
+def get_hotspot( context ):
+	if context.scene.use_subrect_atlas:
+		if context.scene.subrect_atlas is None:
+			return None
+		return Hotspot.from_bmesh( rmlib.rmMesh( context.scene.subrect_atlas ) )
+	
+	rmmesh = rmlib.rmMesh.GetActive( context )
+	if rmmesh is None:
+		return None
+
+	with rmmesh as rmmesh:
+		rmmesh.readonly = True
+		faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+		if len( faces ) <= 0:
+			return None
+		material_name = rmmesh.mesh.materials[ faces[0].material_index ].name
+		return load_hotspot_from_repo( material_name )
 
 
 class OBJECT_OT_loadrect( bpy.types.Operator ):
@@ -409,6 +691,60 @@ class OBJECT_OT_loadrect( bpy.types.Operator ):
 		wm = context.window_manager
 		wm.fileselect_add( self )
 		return { 'RUNNING_MODAL' }
+
+
+class OBJECT_OT_savehotspot( bpy.types.Operator ):
+	bl_idname = 'mesh.savehotspot'
+	bl_label = 'Create Hotspot'
+	bl_options = { 'UNDO' }
+
+	def execute( self, context ):
+		#generate new horspot obj from face selection
+		hotspot = None
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		with rmmesh as rmmesh:
+			rmmesh.readonly = True
+
+			if len( rmmesh.bmesh.loops.layers.uv.values() ) == 0:
+				return { 'CANCELLED' }
+			uvlayer = rmmesh.active_uv
+			
+			polys = rmlib.rmPolygonSet.from_selection( rmmesh )
+			if len( polys ) == 0:
+				return { 'CANCELLED' }
+
+			bounds = []
+			for f in polys:
+				uvlist = [ mathutils.Vector( l[uvlayer].uv.copy() ) for l in f.loops ]
+				pmin = mathutils.Vector( uvlist[0] )
+				pmax = mathutils.Vector( uvlist[0] )
+				for p in uvlist:
+					for i in range( 2 ):
+						pmin[i] = min( pmin[i], p[i] )
+						pmax[i] = max( pmax[i], p[i] )
+				bounds.append( Bounds2d( [ pmin, pmax ] ) )
+
+			hotspot = Hotspot( bounds, name=rmmesh.mesh.materials[ polys[0].material_index ].name )
+
+		#load hotspot repo file
+		hotfile = get_hotfile_path()
+		existing_materials, existing_hotspots = read_hot_file( hotfile )
+
+		#update hotspot database
+		hotspot_already_exists = False
+		for i, exhot in enumerate( existing_hotspots ):
+			if exhot == hotspot:
+				existing_materials[i].append( hotspot.name )
+				hotspot_already_exists = True
+				break
+		if not hotspot_already_exists:
+			existing_materials.append( [ hotspot.name ] )
+			existing_hotspots.append( hotspot )
+
+		#write updated database
+		write_hot_file( hotfile, existing_materials, existing_hotspots )
+
+		return  {'FINISHED' }
 
 
 class MESH_OT_grabapplyuvbounds( bpy.types.Operator ):
@@ -479,7 +815,6 @@ class MESH_OT_grabapplyuvbounds( bpy.types.Operator ):
 		return self.execute( context )
 
 
-
 class MESH_OT_moshotspot( bpy.types.Operator ):
 	bl_idname = 'mesh.moshotspot'
 	bl_label = 'Hotspot (MOS)'
@@ -496,15 +831,16 @@ class MESH_OT_moshotspot( bpy.types.Operator ):
 				context.object.data.is_editmode )
 
 	def execute( self, context ):
-		if context.scene.subrect_atlas is None:
-			self.report( { 'WARNING' }, 'No valid atlas selected!' )
-			return { 'CANCELLED' }
-
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 		if not sel_mode[2]:
 			return { 'CANCELLED' }
 
-		hotspot = Hotspot.from_bmesh( rmlib.rmMesh( context.scene.subrect_atlas ) )
+		hotspot = get_hotspot( context )
+		if hotspot is None:
+			return { 'CANCELLED' }
+
+		use_trim = context.scene.use_trim
+
 		target_bounds = hotspot.nearest( self.mos_uv[0], self.mos_uv[1] )
 
 		rmmesh = rmlib.rmMesh.GetActive( context )
@@ -522,7 +858,7 @@ class MESH_OT_moshotspot( bpy.types.Operator ):
 						loops.add( l )
 				source_bounds = Bounds2d.from_loops( loops, uvlayer )
 
-				mat = source_bounds.transform( target_bounds )		
+				mat = source_bounds.transform( target_bounds, skip_rot=True, trim=use_trim )		
 				for l in loops:
 					uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 					uv[2] = 1.0
@@ -549,15 +885,15 @@ class MESH_OT_nrsthotspot( bpy.types.Operator ):
 				context.object.data.is_editmode )
 
 	def execute( self, context ):
-		if context.scene.subrect_atlas is None:
-			self.report( { 'WARNING' }, 'No valid atlas selected!' )
-			return { 'CANCELLED' }
-
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 		if not sel_mode[2]:
 			return { 'CANCELLED' }
 
-		hotspot = Hotspot.from_bmesh( rmlib.rmMesh( context.scene.subrect_atlas ) )
+		hotspot = get_hotspot( context )
+		if hotspot is None:
+			return { 'CANCELLED' }
+
+		use_trim = context.scene.use_trim
 
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		with rmmesh as rmmesh:
@@ -574,8 +910,7 @@ class MESH_OT_nrsthotspot( bpy.types.Operator ):
 						loops.add( l )
 				source_bounds = Bounds2d.from_loops( loops, uvlayer )
 				target_bounds = hotspot.overlapping( source_bounds )
-
-				mat = source_bounds.transform( target_bounds )		
+				mat = source_bounds.transform( target_bounds, skip_rot=True, trim=use_trim )		
 				for l in loops:
 					uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 					uv[2] = 1.0
@@ -583,7 +918,7 @@ class MESH_OT_nrsthotspot( bpy.types.Operator ):
 					l[uvlayer].uv = uv.to_2d()
 
 		return { 'FINISHED' }
-
+	
 
 class MESH_OT_matchhotspot( bpy.types.Operator ):
 	bl_idname = 'mesh.matchhotspot'
@@ -603,38 +938,109 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 				context.object.data.is_editmode )
 
 	def execute( self, context ):
-		if context.scene.subrect_atlas is None:
-			self.report( { 'WARNING' }, 'No valid atlas selected!' )
-			return { 'CANCELLED' }
-
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 		if not sel_mode[2]:
 			return { 'CANCELLED' }
 
-		hotspot = Hotspot.from_bmesh( rmlib.rmMesh( context.scene.subrect_atlas ) )
+		hotspot = get_hotspot( context )
+		if hotspot is None:
+			return { 'CANCELLED' }
 
+		use_trim = context.scene.use_trim
+
+		#preprocess uvs
+		islands_as_indexes = []
+		if context.area.type == 'VIEW_3D': #if in 3dvp, scale to mat size then rectangularize/gridify uv islands
+			rmmesh = rmlib.rmMesh.GetActive( context )
+			with rmmesh as rmmesh:
+				rmmesh.readonly = True
+				if len( rmmesh.bmesh.loops.layers.uv.values() ) == 0:
+					return { 'CANCELLED' }
+
+				uvlayer = rmmesh.active_uv
+
+				faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+				if len( faces ) < 1:
+					return { 'CANCELLED' }
+
+				auto_smooth_angle = math.pi
+				if rmmesh.mesh.use_auto_smooth:
+					auto_smooth_angle = rmmesh.mesh.auto_smooth_angle
+
+				for island in faces.group( element=False, use_seam=True, use_material=True, use_sharp=True, use_angle=auto_smooth_angle ):
+					islands_as_indexes.append( [ f.index for f in island ] )					
+					island.select( replace=True )
+					result = bpy.ops.mesh.rm_uvgridify() #gridify
+					if result == { 'CANCELLED' }:
+						bpy.ops.mesh.rm_uvunrotate() #unrotate uv by longest edge in island
+						#bpy.ops.mesh.rm_uvrectangularize() #rectangularize
+					bpy.ops.mesh.rm_scaletomaterialsize() #scale to mat size
+
+		elif context.area.type == 'IMAGE_EDITOR': #iv in uvvp, scale to mat sizecomplete_failure
+			rmmesh = rmlib.rmMesh.GetActive( context )
+			with rmmesh as rmmesh:
+				rmmesh.readonly = True
+				if len( rmmesh.bmesh.loops.layers.uv.values() ) == 0:
+					return { 'CANCELLED' }
+
+				uvlayer = rmmesh.active_uv
+
+				faces = GetFaceSelection( context, rmmesh )
+				if len( faces ) < 1:
+					return { 'CANCELLED' }
+				for island in faces.island( uvlayer, use_seam=True ):
+					islands_as_indexes.append( [ f.index for f in island ] )
+					#island.select( replace=True )
+					#bpy.ops.mesh.rm_scaletomaterialsize() #scale to mat size
+					
+		#hotspot
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		with rmmesh as rmmesh:
 			uvlayer = rmmesh.active_uv
 
-			faces = GetFaceSelection( context, rmmesh )
-			if len( faces ) < 1:
-				return { 'CANCELLED' }
+			if context.area.type == 'VIEW_3D':
+				initial_selection = []
+				for pidx_list in islands_as_indexes:
+					island = [ rmmesh.bmesh.faces[pidx] for pidx in pidx_list ]
+					initial_selection += set( island )
+					loops = set()
+					for f in island:
+						for l in f.loops:
+							loops.add( l )
+					source_bounds = Bounds2d.from_loops( loops, uvlayer )
+					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance )
 
-			for island in faces.island( uvlayer ):
-				loops = set()
-				for f in island:
-					for l in f.loops:
-						loops.add( l )
-				source_bounds = Bounds2d.from_loops( loops, uvlayer )
-				target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance )
+					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim )		
+					for l in loops:
+						uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
+						uv[2] = 1.0
+						uv = mat @ uv
+						l[uvlayer].uv = uv.to_2d()
 
-				mat = source_bounds.transform( target_bounds )		
-				for l in loops:
-					uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
-					uv[2] = 1.0
-					uv = mat @ uv
-					l[uvlayer].uv = uv.to_2d()
+				for f in initial_selection:
+					f.select = True
+
+			elif context.area.type == 'IMAGE_EDITOR':
+				initial_selection = []
+				for pidx_list in islands_as_indexes:					
+					island = [ rmmesh.bmesh.faces[pidx] for pidx in pidx_list ]
+					initial_selection += set( island )
+					loops = set()
+					for f in island:
+						for l in f.loops:
+							loops.add( l )
+					source_bounds = Bounds2d.from_loops( loops, uvlayer )
+					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance )
+
+					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim )		
+					for l in loops:
+						uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
+						uv[2] = 1.0
+						uv = mat @ uv
+						l[uvlayer].uv = uv.to_2d()
+
+				for f in initial_selection:
+					f.select = True
 
 		return { 'FINISHED' }
 
@@ -648,29 +1054,39 @@ class UV_PT_UVHotspotTools( bpy.types.Panel ):
 	bl_options = { 'DEFAULT_CLOSED' }
 
 	def draw( self, context ):
-		layout = self.layout		
-		layout.label( text="Atlas Object: ")
-		layout.prop_search( context.scene, "subrect_atlas", context.scene, "objects", text="", icon="MOD_MULTIRES" )
-		layout.operator( 'object.load_rect', text='Loat .rect' )
+		layout = self.layout
+		layout.prop( context.scene, 'use_subrect_atlas' )
+		r = layout.row()
+		r.label( text="Atlas: ")
+		r.prop_search( context.scene, "subrect_atlas", context.scene, "objects", text="", icon="MOD_MULTIRES" )
+		r.enabled = context.scene.use_subrect_atlas
+		layout.prop( context.scene, 'use_trim' )
+		#layout.operator( 'object.load_rect', text='Loat .rect' )
+		layout.operator( 'mesh.savehotspot', text='Create Hotspot' )
 		layout.operator( 'mesh.matchhotspot', text='Hotspot Match' )
 		layout.operator( 'mesh.nrsthotspot', text='Hotspot Nearest' )
 		layout.operator( 'mesh.moshotspot', text='Hotspot MOS' )
 
-
 def register():
 	bpy.utils.register_class( OBJECT_OT_loadrect )
+	bpy.utils.register_class( OBJECT_OT_savehotspot )
 	bpy.utils.register_class( MESH_OT_matchhotspot )
 	bpy.utils.register_class( MESH_OT_nrsthotspot )
 	bpy.utils.register_class( MESH_OT_moshotspot )
 	bpy.utils.register_class( MESH_OT_grabapplyuvbounds )
-	bpy.types.Scene.subrect_atlas = bpy.props.PointerProperty( name='atlas',type=bpy.types.Object,description='atlas object' )
+	bpy.types.Scene.use_subrect_atlas = bpy.props.BoolProperty( name='Use Override Atlas' )
+	bpy.types.Scene.use_trim = bpy.props.BoolProperty( name='Use Trims' )
+	bpy.types.Scene.subrect_atlas = bpy.props.PointerProperty( name='Atlas', type=bpy.types.Object, description='atlas object' )
 	bpy.utils.register_class( UV_PT_UVHotspotTools )
 
 def unregister():
 	bpy.utils.unregister_class( OBJECT_OT_loadrect )
+	bpy.utils.unregister_class( OBJECT_OT_savehotspot )
 	bpy.utils.unregister_class( MESH_OT_matchhotspot )
 	bpy.utils.unregister_class( MESH_OT_nrsthotspot )
 	bpy.utils.unregister_class( MESH_OT_moshotspot )
 	bpy.utils.unregister_class( MESH_OT_grabapplyuvbounds )
+	del bpy.types.Scene.use_subrect_atlas
 	del bpy.types.Scene.subrect_atlas
+	del bpy.types.Scene.use_trim
 	bpy.utils.unregister_class( UV_PT_UVHotspotTools )

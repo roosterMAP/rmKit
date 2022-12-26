@@ -73,6 +73,7 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 			if len( faces ) < 1:
 				return { 'CANCELLED' }
 
+			complete_failure = True
 			for group in faces.group( use_seam=True ):
 				#set tags
 				for f in group:
@@ -227,6 +228,12 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 									l[uvlayer].uv = ( u_step * i / aspect_ratio , v_step * j )
 								
 				clear_tags( rmmesh )
+
+				complete_failure = False
+
+		#return failed if all poly groups failed to be gridified
+		if complete_failure:
+			return { 'CANCELLED' }
 			
 		return { 'FINISHED' }
 

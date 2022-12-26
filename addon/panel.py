@@ -49,6 +49,8 @@ class UV_PT_UVTOOLS( bpy.types.Panel ):
 		layout.operator( 'mesh.rm_uvrectangularize', text='Rectangularize' )
 		layout.operator( 'mesh.rm_stitch', text='Stitch' )
 		layout.operator( 'mesh.rm_uvunrotate', text='Unrotate' )
+		layout.operator( 'mesh.rm_relativeislands' )
+		layout.operator( 'mesh.rm_scaletomaterialsize' )
 
 
 class VIEW3D_PT_SELECTION( bpy.types.Panel ):

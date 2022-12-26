@@ -89,11 +89,12 @@ class MESH_OT_scaleislandrelative( bpy.types.Operator ):
 			for island in islands:
 				island_uvarea = 0.0
 				for tri in tri_loops:
-					uv1 = mathutils.Vector( tri[0][uvlayer].uv )
-					uv2 = mathutils.Vector( tri[1][uvlayer].uv )
-					uv3 = mathutils.Vector( tri[2][uvlayer].uv )
-					uvarea = mathutils.geometry.area_tri( uv1, uv2, uv3 )
-					island_uvarea += uvarea
+					if tri[0].face in island:
+						uv1 = mathutils.Vector( tri[0][uvlayer].uv )
+						uv2 = mathutils.Vector( tri[1][uvlayer].uv )
+						uv3 = mathutils.Vector( tri[2][uvlayer].uv )
+						uvarea = mathutils.geometry.area_tri( uv1, uv2, uv3 )
+						island_uvarea += uvarea
 
 				island_3darea = 0.0
 				for f in island:
@@ -139,10 +140,10 @@ class MESH_OT_scaleislandrelative( bpy.types.Operator ):
 		return { 'FINISHED' }
 
 
-class MESH_OT_scaletotexeldensity( bpy.types.Operator ):
-	"""Scale Selected UV Islands to target Texel Density"""
-	bl_idname = 'mesh.rm_scaletotexeldensity'
-	bl_label = 'Scale to Texel Density'
+class MESH_OT_scaletomaterialsize( bpy.types.Operator ):
+	"""Scale Selected UV Islands to the material size."""
+	bl_idname = 'mesh.rm_scaletomaterialsize'
+	bl_label = 'Scale to Material Size'
 	bl_options = { 'UNDO' }
 
 	@classmethod
@@ -193,38 +194,32 @@ class MESH_OT_scaletotexeldensity( bpy.types.Operator ):
 			if len( faces ) < 1:
 				return { 'CANCELLED' }
 
-
-			meters_per_1024 = context.scene.target_texel_density
-			target_texel_density = 1024.0 / meters_per_1024
-			
-			print( 'meters_per_1024 :: {}'.format( meters_per_1024 ) )
-			print( 'target_texel_density :: {}'.format( target_texel_density ) )
-
 			#create list of uvislands and compute a density ( 3darea/uvarea ) for each
 			tri_loops = rmmesh.bmesh.calc_loop_triangles()
 			islands = faces.island( uvlayer )
 			for island in islands:
 
 				#get the world space size of the material on the first poly of this island
-				material_size = [ 6.5, 6.5 ]
+				material_size = [ 1.5, 2.5 ]
 				try:
 					material = rmmesh.mesh.materials[island[0].material_index]
 				except IndexError:
 					pass
 				try:
-					material_size[0] = material["WorldMappingWidth_inches"] * 0.0254
-					material_size[1] = material["WorldMappingHeight_inches"] * 0.0254
+					material_size[0] = material["WorldMappingWidth"]
+					material_size[1] = material["WorldMappingHeight"]
 				except KeyError:
 					pass
 
 				#compute uv island area
 				island_uvarea = 0.0
 				for tri in tri_loops:
-					uv1 = mathutils.Vector( tri[0][uvlayer].uv )
-					uv2 = mathutils.Vector( tri[1][uvlayer].uv )
-					uv3 = mathutils.Vector( tri[2][uvlayer].uv )
-					uvarea = mathutils.geometry.area_tri( uv1, uv2, uv3 )
-					island_uvarea += uvarea
+					if tri[0].face in island:
+						uv1 = mathutils.Vector( tri[0][uvlayer].uv )
+						uv2 = mathutils.Vector( tri[1][uvlayer].uv )
+						uv3 = mathutils.Vector( tri[2][uvlayer].uv )
+						uvarea = mathutils.geometry.area_tri( uv1, uv2, uv3 )
+						island_uvarea += uvarea
 
 				#compute island 3d surface area
 				island_3darea = 0.0
@@ -240,11 +235,10 @@ class MESH_OT_scaletotexeldensity( bpy.types.Operator ):
 						lcount += 1
 				island_center = island_center * ( 1.0 / lcount )
 				
-				#scale uv islands to target texel density
-				current_texel_density = island_uvarea * material_size[0] * material_size[1] / island_3darea
-				scale_factor = target_texel_density / current_texel_density
-				print( 'current_texel_density :: {}'.format( current_texel_density ) )
-				print( 'target_texel_density :: {}'.format( target_texel_density ) )
+				target_uvarea = island_3darea / ( material_size[0] * material_size[1] )
+				scale_factor = math.sqrt( target_uvarea ) / math.sqrt( island_uvarea )
+
+				#scale uv islands to target texel density				
 				for f in island:
 					for l in f.loops:
 						uv = mathutils.Vector( l[uvlayer].uv )
@@ -258,38 +252,15 @@ class MESH_OT_scaletotexeldensity( bpy.types.Operator ):
 		return { 'FINISHED' }
 
 
-class UV_PT_UVDensityTools( bpy.types.Panel ):
-	bl_parent_id = 'UV_PT_RMKIT_PARENT'
-	bl_idname = 'UV_PT_UVDensityTools'
-	bl_label = 'Island Texel Scale'
-	bl_region_type = 'UI'
-	bl_space_type = 'IMAGE_EDITOR'
-	bl_options = { 'DEFAULT_CLOSED' }
-
-	def draw( self, context ):
-		layout = self.layout
-		r = layout.row()
-		r.alignment = 'EXPAND'
-		r.label( text='Target Density' )
-		r.prop( context.scene, 'target_texel_density', text='' )
-		layout.operator( MESH_OT_scaletotexeldensity.bl_idname, text='Texel Density' )
-		layout.operator( MESH_OT_scaleislandrelative.bl_idname )
-		
-
-
 def register():
 	print( 'register :: {}'.format( MESH_OT_scaleislandrelative.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_scaletotexeldensity.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_scaletomaterialsize.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_scaleislandrelative )
-	bpy.utils.register_class( MESH_OT_scaletotexeldensity )
-	bpy.utils.register_class( UV_PT_UVDensityTools )
-	bpy.types.Scene.target_texel_density = bpy.props.FloatProperty( name='Target Texel Density', default=0.6096, unit='LENGTH', subtype='DISTANCE' )
+	bpy.utils.register_class( MESH_OT_scaletomaterialsize )
 	
 
 def unregister():
 	print( 'unregister :: {}'.format( MESH_OT_scaleislandrelative.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_scaletotexeldensity.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_scaletomaterialsize.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_scaleislandrelative )
-	bpy.utils.register_class( MESH_OT_scaletotexeldensity )
-	bpy.utils.unregister_class( UV_PT_UVDensityTools )
-	del bpy.types.Scene.target_texel_density
+	bpy.utils.register_class( MESH_OT_scaletomaterialsize )

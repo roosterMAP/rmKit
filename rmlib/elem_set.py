@@ -2,6 +2,7 @@ import bpy
 from bpy_extras import view3d_utils
 from rmKit.rmlib import util
 import mathutils
+import math
 
 def shared_edge( p1, p2 ):
 	for e in p1.edges:
@@ -147,7 +148,7 @@ class rmPolygonSet( list ):
 		for p in self:
 			p.select = True
 			
-	def group( self, element=False, use_seam=False ):
+	def group( self, element=False, use_seam=False, use_material=False, use_sharp=False, use_angle=math.pi ):
 		"""
 		Returns a list of 3d continuous PolygonSets.
 
@@ -162,7 +163,7 @@ class rmPolygonSet( list ):
 		
 		for p in self:
 			p.tag = False
-			if use_seam:
+			if use_seam or use_sharp:
 				for e in p.edges:
 					if e.seam:
 						v1, v2 = e.verts
@@ -179,14 +180,24 @@ class rmPolygonSet( list ):
 			
 			while len( outerSet ) > 0:
 				p = outerSet.pop()
+				pn = mathutils.Vector( p.normal )
 				innerSet.append( p )
 				for v in p.verts:
 					for np in v.link_faces:
 						if np.tag:
 							continue
+						if use_material and np.material_index != poly.material_index:
+							continue
 						if use_seam and v.tag:
 							e = shared_edge( p, np )
 							if e is None or e.seam:
+								continue
+						if use_sharp and v.tag:
+							e = shared_edge( p, np )
+							if e is None or not e.smooth:
+								continue
+						if use_angle != 180.0:
+							if pn.angle( mathutils.Vector( np.normal ) ) >= use_angle:
 								continue
 						if element or np in self:
 							outerSet.add( np )
@@ -197,7 +208,7 @@ class rmPolygonSet( list ):
 		for group in continuous_groups:
 			for p in group:
 				p.tag = False
-				if use_seam:
+				if use_seam or use_sharp:
 					for v in p.verts:
 						v.tag = False
 			
@@ -205,7 +216,7 @@ class rmPolygonSet( list ):
 
 
 
-	def island( self, uvlayer, element=False ):
+	def island( self, uvlayer, element=False, use_seam=False, use_material=False, use_sharp=False, use_angle=math.pi ):
 		"""
 		Returns list of rmPolygonSets where each set is an uv island for the uvlayer dataset.
 
@@ -219,6 +230,12 @@ class rmPolygonSet( list ):
 		
 		for p in self:
 			p.tag = False
+			if use_seam or use_sharp:
+				for e in p.edges:
+					if e.seam or not e.smooth:
+						v1, v2 = e.verts
+						v1.tag = True
+						v2.tag = True
 				
 		for poly in self:
 			if poly.tag:
@@ -230,13 +247,27 @@ class rmPolygonSet( list ):
 			
 			while len( outerSet ) > 0:
 				p = outerSet.pop()
+				pn = mathutils.Vector( p.normal )
 				innerSet.append( p )
 				for l in p.loops:
 					v = l.vert
 					for nl in v.link_loops:
-						np = nl.face
+						np = nl.face						
 						if np.tag:
 							continue
+						if use_material and np.material_index != poly.material_index:
+							continue
+						if use_seam and v.tag:
+							e = shared_edge( p, np )
+							if e is None or e.seam:
+								continue
+						if use_sharp and v.tag:
+							e = shared_edge( p, np )
+							if e is None or not e.smooth:
+								continue
+						if use_angle != 180.0:
+							if pn.angle( mathutils.Vector( np.normal ) ) >= use_angle:
+								continue
 						if element or np in self:
 							if util.AlmostEqual_v2( l[uvlayer].uv, nl[uvlayer].uv ):
 								outerSet.add( np )
@@ -247,6 +278,9 @@ class rmPolygonSet( list ):
 		for group in continuous_groups:
 			for p in group:
 				p.tag = False
+				if use_seam or use_sharp:
+					for v in p.verts:
+						v.tag = False
 			
 		return continuous_groups
 	
