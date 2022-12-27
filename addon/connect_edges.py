@@ -5,7 +5,6 @@ import rmKit.rmlib as rmlib
 class CEVert( object ):
 	def __init__( self, vert ):
 		self.vert = vert
-		self.loop = None
 		self.index = vert.index
 		self.root_indexes = []
 		self.__rootverts = []
@@ -235,48 +234,56 @@ class CEPoly( object ):
 		"""
 		Sets the uv corrd of a vert on a poly. This is done by interpolating
 		between the endpoints of the edge on which the subvert resides.
-
-		Args:
-			subvert_vidx (int): The index of the vert in new_poly. This is the vert that gets its uv set.
-			start_vidx (int): The index of the start endpoint in self.polygon of the edge where the subvert exists.
-			new_poly ( bmesh.types.BFace ): The polygon whose vert is getting the uv coord.
-
 		"""
 		for i, vert in enumerate( verts ):
-			next_vert = verts[ ( i + 1 ) % len( verts ) ]
-				
-			start_vert, end_vert = vert.GetEndVerts( self.polygon )
-			start_3d = start_vert.co
-			end_3d = end_vert.co
-			length_3d = ( end_3d - start_3d ).length
-			weight = ( vert.co - start_3d ).length / length_3d
+			if vert.index != -1:
+				#if vert is not subvert, then just copy existing loop uv coord
+				for loop in self.loops:
+					if loop.vert == vert.vert:
+						break
 
-			loop = self.loops[-1]
-			for end_loop in self.loops:
-				if end_loop.vert == end_vert.vert:
-					break
-				loop = end_loop
+				for subvert_loop in new_poly.loops:
+					if subvert_loop.vert == vert.vert:
+						break
 
-			for subvert_loop in new_poly.loops:
-				if subvert_loop.vert == vert.vert:
-					break
-				
-			#asigne uv data
-			if CEPoly.BMesh.loops.layers.uv is not None:
-				#generate interpolated uv coord
-				for uvlayer in CEPoly.BMesh.loops.layers.uv.values():
-					start_uv = loop[uvlayer].uv
-					end_uv = end_loop[uvlayer].uv
-					vec_uv = end_uv - start_uv
-					interp_uv = start_uv + ( vec_uv * weight )
+				if CEPoly.BMesh.loops.layers.uv is not None:
+					for uvlayer in CEPoly.BMesh.loops.layers.uv.values():
+						subvert_loop[uvlayer].uv = loop[uvlayer].uv.copy()
+						
+			else:
+				#if vert is a subvert, then coompute interpolated uvcoord
+				start_vert, end_vert = vert.GetEndVerts( self.polygon )
+				start_3d = start_vert.co
+				end_3d = end_vert.co
+				length_3d = ( end_3d - start_3d ).length
+				weight = ( vert.co - start_3d ).length / length_3d
 
-				subvert_loop[uvlayer].uv = interp_uv
+				loop = self.loops[-1]
+				for end_loop in self.loops:
+					if end_loop.vert == end_vert.vert:
+						break
+					loop = end_loop
+
+				for subvert_loop in new_poly.loops:
+					if subvert_loop.vert == vert.vert:
+						break
+					
+				#asigne uv data
+				if CEPoly.BMesh.loops.layers.uv is not None:
+					#generate interpolated uv coord
+					for uvlayer in CEPoly.BMesh.loops.layers.uv.values():
+						start_uv = loop[uvlayer].uv
+						end_uv = end_loop[uvlayer].uv
+						vec_uv = end_uv - start_uv
+						interp_uv = start_uv + ( vec_uv * weight )
+					subvert_loop[uvlayer].uv = interp_uv
 			
 			#assign edge layer data
 			if subvert_loop.edge.tag:
 				continue
 
 			#edge data processing
+			next_vert = verts[ ( i + 1 ) % len( verts ) ]
 			if next_vert.GetEndVerts( self.polygon )[1] == end_vert or end_vert == next_vert:
 				#transfer crease weight
 				if CEPoly.BMesh.edges.layers.crease is not None:
