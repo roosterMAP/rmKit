@@ -52,6 +52,11 @@ class UV_PT_UVTOOLS( bpy.types.Panel ):
 		layout.operator( 'mesh.rm_relativeislands' )
 		layout.operator( 'mesh.rm_scaletomaterialsize' )
 
+		r2 = layout.row()
+		r2.alignment = 'EXPAND'
+		r2.operator( 'mesh.rm_normalizetexels', text='NmlTex U' ).horizontal = True
+		r2.operator( 'mesh.rm_normalizetexels', text='NmlTex V' ).horizontal = False
+
 
 class VIEW3D_PT_SELECTION( bpy.types.Panel ):
 	bl_parent_id = 'VIEW3D_PT_RMKIT_PARENT'

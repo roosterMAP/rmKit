@@ -50,7 +50,9 @@ def register_keyboard_keymap():
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_grabapplymat', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_quickmaterial', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_radialalign', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.matchhotspot', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.grabapplyuvbounds', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.savehotspot', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_loop', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_ring', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_polypatch', 'NONE', 'PRESS' ) ) )
@@ -130,6 +132,7 @@ def register_keyboard_keymap():
 		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.moshotspot', 'NONE', 'PRESS' ) ) )
 		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.nrsthotspot', 'NONE', 'PRESS' ) ) )
 		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.matchhotspot', 'NONE', 'PRESS' ) ) )
+		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.savehotspot', 'NONE', 'PRESS' ) ) )
 		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvloop', 'NONE', 'PRESS' ) ) )
 		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvring', 'NONE', 'PRESS' ) ) )
 		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvrectangularize', 'NONE', 'PRESS' ) ) )
@@ -137,6 +140,8 @@ def register_keyboard_keymap():
 		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_relativeislands', 'NONE', 'PRESS' ) ) )
 		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_stitch', 'NONE', 'PRESS' ) ) )
 		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvunrotate', 'NONE', 'PRESS' ) ) )
+		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_scaletomaterialsize', 'NONE', 'PRESS' ) ) )
+		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_normalizetexels', 'NONE', 'PRESS' ) ) )
 
 		kmi = km_uv.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
 		kmi.properties.name = 'IMAGE_EDITOR_MT_PIE_uvmovetofurthest'
