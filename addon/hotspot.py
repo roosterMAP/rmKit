@@ -1,11 +1,9 @@
 import rmKit.rmlib as rmlib
 import bpy, bmesh, mathutils
 import os, random, math, struct
-from binascii import hexlify
 
 MAT_CHUNK = 'MAT'
 HOT_CHUNK = 'HOT'
-MAX_SHORT = 32768.0
 
 
 def clear_tags( rmmesh ):
@@ -273,70 +271,6 @@ class Bounds2d():
 		return trans_mat_inverse @ scl_mat @ rot_mat @ trans_mat
 
 
-def add_to_chunk( chunk, key, value ):
-	if isinstance( chunk, dict ):
-		chunk[key] = value
-	elif isinstance( chunk, list ):
-		chunk.append( { key : value } )
-
-
-def load_rect_chunk( current_idx, lines, chunk=None, prev_key=None ):
-	active_key = prev_key
-	while current_idx < len( lines ):
-		line = lines[current_idx].strip()
-		if len( line ) == 0 or line.startswith( '<!--' ):
-			current_idx += 1
-			continue
-
-		if line == '[' or line == '{':			
-			if line == '[':
-				current_idx, subchunk = load_rect_chunk( current_idx+1, lines, list() )
-			elif line == '{':
-				current_idx, subchunk = load_rect_chunk( current_idx+1, lines, dict() )				
-			if isinstance( chunk, dict ):
-				chunk[active_key] = subchunk
-			elif isinstance( chunk, list ):
-				chunk.append( subchunk )
-			else:
-				chunk = subchunk
-			current_idx += 1
-			continue
-
-		if line == ']' or line == '],':
-			return ( current_idx, chunk )
-		elif line == '}' or line == '},':
-			return ( current_idx, chunk )
-
-		slist = line.split( '=' )
-		key = slist[0].strip()
-		value = slist[1].strip()
-		if len( value ) == 0:
-			if isinstance( chunk, dict ):
-				active_key = key
-
-		elif '\"' in value:
-			add_to_chunk( chunk, key, value[1:-1] )
-
-		elif value == 'null':
-			add_to_chunk( chunk, key, None )
-
-		elif value == 'false':
-			add_to_chunk( chunk, key, False )
-
-		elif value == 'true':
-			add_to_chunk( chunk, key, True )
-
-		elif '[' in value and ']' in value:
-			flist = value[1:-1].split( ',' )
-			uv = mathutils.Vector( ( float( flist[0] ) / MAX_SHORT, 1.0 - float( flist[1] ) / MAX_SHORT ) )
-			add_to_chunk( chunk, key, uv )
-
-		current_idx += 1
-
-	return ( current_idx, chunk )
-
-
-
 class Hotspot():
 	def __init__( self, bounds2d_list, **kwargs ):
 		self.__name = ''
@@ -400,25 +334,6 @@ class Hotspot():
 				boundslist.append( Bounds2d.from_loops( f.loops, uv_layer ) )
 		return cls( boundslist )
 
-	@classmethod
-	def from_file( cls, file ):
-		#load hotspot from .rect file
-		with open( file, 'r' ) as f:
-			lines = f.readlines()
-			current_idx = 0
-			while current_idx < len( lines ) and not lines[current_idx].strip().startswith( '{' ):
-				current_idx += 1
-			current_idx, data = load_rect_chunk( current_idx, lines, None )
-			
-			rect_name = data['RectangleSets'][0]['name']
-			rect_properties = data['RectangleSets'][0]['properties']
-			hotspot = cls( [], name=rect_name, properties=rect_properties )
-			for rectangle in data['RectangleSets'][0]['rectangles']:
-				bbox = Bounds2d( [ rectangle['min'], rectangle['max'] ], inset=rectangle['inset'], properties=rectangle['properties'] )
-				hotspot.__data.append( bbox )
-
-			return hotspot
-
 	@property
 	def name( self ):
 		return self.__name
@@ -437,11 +352,7 @@ class Hotspot():
 				for i, l in enumerate( f.loops ):
 					l[uvlayer].uv = corners[i]
 
-			bmesh.ops.delete( rmmesh.bmesh, geom=del_faces, context='FACES' )			
-			
-	def save_file( self, file ):
-		#save hotspot to new .rect file
-		pass
+			bmesh.ops.delete( rmmesh.bmesh, geom=del_faces, context='FACES' )
 
 	def match( self, source_bounds, tollerance=0.01, random_orient=True ):
 		#find the bound in this hotspot that best matches source
@@ -659,38 +570,6 @@ def get_hotspot( context ):
 			return None
 		material_name = rmmesh.mesh.materials[ faces[0].material_index ].name
 		return load_hotspot_from_repo( material_name )
-
-
-class OBJECT_OT_loadrect( bpy.types.Operator ):
-	bl_idname = 'object.load_rect'
-	bl_label = 'Load .rect'
-	bl_options = { 'UNDO' }
-	
-	filter_glob: bpy.props.StringProperty( default='*.rect', options={ 'HIDDEN' } )
-	filepath: bpy.props.StringProperty( name="File Path", description="Filepath used for importing txt files", maxlen= 1024, default= "" )
-	files: bpy.props.CollectionProperty( name = 'File Path', type = bpy.types.OperatorFileListElement )
-
-	def execute( self, context ):
-		hotspot = Hotspot.from_file( file=self.filepath )
-		
-		mesh = bpy.data.meshes.new( 'mesh' )
-		obj = bpy.data.objects.new( 'atlas', mesh )			
-		hotspot.save_bmesh( rmlib.rmMesh( obj ) )
-
-		context.scene.subrect_atlas = obj
-		context.view_layer.active_layer_collection.collection.objects.link( obj )
-		context.view_layer.objects.active = obj
-		obj.select_set( True )
-
-		return  {'FINISHED' }
-
-	def draw( self, context ):
-		self.layout.operator( 'file.select_all_toggle' )
-
-	def invoke( self, context, event ):
-		wm = context.window_manager
-		wm.fileselect_add( self )
-		return { 'RUNNING_MODAL' }
 
 
 class OBJECT_OT_savehotspot( bpy.types.Operator ):
@@ -1061,14 +940,12 @@ class UV_PT_UVHotspotTools( bpy.types.Panel ):
 		r.prop_search( context.scene, "subrect_atlas", context.scene, "objects", text="", icon="MOD_MULTIRES" )
 		r.enabled = context.scene.use_subrect_atlas
 		layout.prop( context.scene, 'use_trim' )
-		#layout.operator( 'object.load_rect', text='Loat .rect' )
 		layout.operator( 'mesh.savehotspot', text='Create Hotspot' )
 		layout.operator( 'mesh.matchhotspot', text='Hotspot Match' )
 		layout.operator( 'mesh.nrsthotspot', text='Hotspot Nearest' )
 		layout.operator( 'mesh.moshotspot', text='Hotspot MOS' )
 
 def register():
-	bpy.utils.register_class( OBJECT_OT_loadrect )
 	bpy.utils.register_class( OBJECT_OT_savehotspot )
 	bpy.utils.register_class( MESH_OT_matchhotspot )
 	bpy.utils.register_class( MESH_OT_nrsthotspot )
@@ -1080,7 +957,6 @@ def register():
 	bpy.utils.register_class( UV_PT_UVHotspotTools )
 
 def unregister():
-	bpy.utils.unregister_class( OBJECT_OT_loadrect )
 	bpy.utils.unregister_class( OBJECT_OT_savehotspot )
 	bpy.utils.unregister_class( MESH_OT_matchhotspot )
 	bpy.utils.unregister_class( MESH_OT_nrsthotspot )
