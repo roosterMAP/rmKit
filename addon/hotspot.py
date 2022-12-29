@@ -1,10 +1,11 @@
 import rmKit.rmlib as rmlib
 import bpy, bmesh, mathutils
-import os, random, math, struct
+import os, random, math, struct, ctypes
 
 MAT_CHUNK = 'MAT'
 HOT_CHUNK = 'HOT'
 
+MAX_SHORT = 1 << 15 #32768
 
 def clear_tags( rmmesh ):
 	for v in rmmesh.bmesh.verts:
@@ -115,31 +116,32 @@ class Bounds2d():
 		if len( points ) > 0:
 			self.__min = points[0].copy()
 			self.__max = points[0].copy()
-		self.__inset = mathutils.Vector( ( 0.0, 0.0 ) )
-		self.__properties = {}
+		#self.__inset = mathutils.Vector( ( 0.0, 0.0 ) )
+		#self.__properties = {}
 		for p in points:
 			for i in range( 2 ):
 				self.__min[i] = min( p[i], self.__min[i] )
 				self.__max[i] = max( p[i], self.__max[i] )
 
+		'''
 		for key, value in kwargs.items():
 			if key == 'inset':
 				self.__inset = value
 			elif key == 'properties':
 				self.__properties = value
+		'''
 
 	def __repr__( self ):
-		return 'min:{}  max:{}'.format( self.__min, self.__max )
+		return 'min:Vec2( {}, {} )  max:Vec2( {}, {} )'.format( self.__min[0], self.__min[1], self.__max[0], self.max[1] )
 
 	def __eq__( self, __o ):
-		return rmlib.util.AlmostEqual_v2( self.__min, __o.__min ) and rmlib.util.AlmostEqual_v2( self.__ax, __o.__min )
+		return rmlib.util.AlmostEqual_v2( self.__min, __o.__min ) and rmlib.util.AlmostEqual_v2( self.__max, __o.__max )
 
 	def __bytes__( self ):
-		fcomp = rmlib.util.Float16Compressor()
-		return struct.pack( '>HHHH', fcomp.compress( self.__min[0] ),
-									fcomp.compress( self.__min[1] ),
-									fcomp.compress( self.__max[0] ),
-									fcomp.compress( self.__max[1] ) )
+		return struct.pack( '>HHHH', ctypes.c_ushort( int( self.__min[0] * MAX_SHORT ) ).value,
+									ctypes.c_ushort( int( self.__min[1] * MAX_SHORT ) ).value,
+									ctypes.c_ushort( int( self.__max[0] * MAX_SHORT ) ).value,
+									ctypes.c_ushort( int( self.__max[1] * MAX_SHORT ) ).value )
 
 	@classmethod
 	def from_verts( cls, verts ):
@@ -286,23 +288,26 @@ class Hotspot():
 				self.__properties = None
 
 	def __repr__( self ):
-		s = 'HOTSPOT {}\n'.format( self.__name )
-		s += 'properties :: {}\n'.format( self.__properties )
+		s = 'HOTSPOT :: \"{}\" \n'.format( self.__name )
+		#s += '\tproperties :: {}\n'.format( self.__properties )
 		for i, r in enumerate( self.__data ):
 			s += '\t{} :: {}\n'.format( i, r )
 		return s
 
 	def __eq__( self, __o ):
+		if len( self.__data ) != len( __o.__data ):
+			return False
+		
 		for b in self.__data:
 			if b not in __o.__data:
 				return False
+			
 		return True
 
 	def __bytes__( self ):
 		bounds_data = struct.pack( '>I', len( self.__data ) )
 		for b in self.__data:
-			bounds_data += bytes( b )
-		
+			bounds_data += bytes( b )		
 		return bounds_data
 
 	@staticmethod
@@ -310,15 +315,10 @@ class Hotspot():
 		bounds_count = struct.unpack_from( '>I', bytearray, offset )[0]
 		offset += 4
 		data = []
-		fcomp = rmlib.util.Float16Compressor()
 		for i in range( bounds_count ):
 			bmin_x, bmin_y, bmax_x, bmax_y = struct.unpack_from( '>HHHH', bytearray, offset )
-			imin_x = struct.pack( '>I',fcomp.decompress( bmin_x ) )
-			imin_y = struct.pack( '>I',fcomp.decompress( bmin_y ) )
-			imax_x = struct.pack( '>I',fcomp.decompress( bmax_x ) )
-			imax_y = struct.pack( '>I',fcomp.decompress( bmax_y ) )			
-			min_pos = mathutils.Vector( ( struct.unpack( '>f', imin_x )[0], struct.unpack( '>f', imin_y )[0] ) )
-			max_pos = mathutils.Vector( ( struct.unpack( '>f', imax_x )[0], struct.unpack( '>f', imax_y )[0] ) )
+			min_pos = mathutils.Vector( ( bmin_x / MAX_SHORT, bmin_y / MAX_SHORT ) )
+			max_pos = mathutils.Vector( ( bmax_x / MAX_SHORT, bmax_y / MAX_SHORT ) )
 			data.append( Bounds2d( [ min_pos, max_pos ] ) )
 			offset += 8
 		return Hotspot( data ), offset
@@ -577,6 +577,12 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 	bl_label = 'Create Hotspot'
 	bl_options = { 'UNDO' }
 
+	@classmethod
+	def poll( cls, context ):
+		return ( context.area.type == 'IMAGE_EDITOR' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' )
+
 	def execute( self, context ):
 		#generate new horspot obj from face selection
 		hotspot = None
@@ -603,27 +609,82 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 						pmax[i] = max( pmax[i], p[i] )
 				bounds.append( Bounds2d( [ pmin, pmax ] ) )
 
-			hotspot = Hotspot( bounds, name=rmmesh.mesh.materials[ polys[0].material_index ].name )
+			try:
+				mat_name = rmmesh.mesh.materials[ polys[0].material_index ].name
+			except IndexError:
+				self.report( { 'WARNING' }, 'Material lookup failed!!!' )
+				return { 'CANCELLED' }
+			hotspot = Hotspot( bounds, name=mat_name )
 
 		#load hotspot repo file
 		hotfile = get_hotfile_path()
 		existing_materials, existing_hotspots = read_hot_file( hotfile )
 
+		#remove matname from matgroup if it exists. it'll be added in later
+		for i, matgrp in enumerate( existing_materials ):
+			if mat_name in matgrp:
+				existing_materials[i].remove( mat_name )
+				if len( existing_materials[i] ) == 0:
+					existing_materials.pop( i )
+					existing_hotspots.pop( i )
+				break
+
 		#update hotspot database
 		hotspot_already_exists = False
 		for i, exhot in enumerate( existing_hotspots ):
 			if exhot == hotspot:
-				existing_materials[i].append( hotspot.name )
+				existing_materials[i].append( mat_name )
 				hotspot_already_exists = True
 				break
 		if not hotspot_already_exists:
-			existing_materials.append( [ hotspot.name ] )
+			existing_materials.append( [ mat_name ] )
 			existing_hotspots.append( hotspot )
 
 		#write updated database
 		write_hot_file( hotfile, existing_materials, existing_hotspots )
 
 		return  {'FINISHED' }
+
+
+class OBJECT_OT_repotoascii( bpy.types.Operator ):
+	bl_idname = 'mesh.repotoascii'
+	bl_label = 'Hotspot Repo to Ascii'
+	
+	filter_glob: bpy.props.StringProperty( default='*.txt', options={ 'HIDDEN' } )
+	filepath: bpy.props.StringProperty( name="File Path", description="", maxlen= 1024, default= "" )
+	files: bpy.props.CollectionProperty( name = 'File Path', type = bpy.types.OperatorFileListElement )
+
+	@classmethod
+	def poll( cls, context ):
+		return True
+
+	def execute( self, context ):
+		#load hotspot repo file
+		hotfile = get_hotfile_path()
+		existing_materials, existing_hotspots = read_hot_file( hotfile )
+
+		if not self.filepath.endswith( '.txt' ):
+			self.filepath += '.txt'
+
+		#write ascii file
+		with open( self.filepath, 'w' ) as f:
+			f.write( MAT_CHUNK + '\n' )
+			for i, matgroup in enumerate( existing_materials ):
+				f.write( '\t{}\n'.format( i ) )
+				for mat in matgroup:
+					f.write( '\t\t{}\n'.format( mat ) )
+
+			f.write( '\n' + HOT_CHUNK + '\n' )
+			for hotspot in existing_hotspots:
+				f.write( str( hotspot ) )
+				f.write( '\n\n' )
+
+		return  {'FINISHED' }
+
+	def invoke( self, context, event ):
+		wm = context.window_manager
+		wm.fileselect_add( self )
+		return { 'RUNNING_MODAL' }
 
 
 class MESH_OT_grabapplyuvbounds( bpy.types.Operator ):
@@ -955,6 +1016,7 @@ def register():
 	bpy.types.Scene.use_trim = bpy.props.BoolProperty( name='Use Trims' )
 	bpy.types.Scene.subrect_atlas = bpy.props.PointerProperty( name='Atlas', type=bpy.types.Object, description='atlas object' )
 	bpy.utils.register_class( UV_PT_UVHotspotTools )
+	bpy.utils.register_class( OBJECT_OT_repotoascii )
 
 def unregister():
 	bpy.utils.unregister_class( OBJECT_OT_savehotspot )
@@ -966,3 +1028,4 @@ def unregister():
 	del bpy.types.Scene.subrect_atlas
 	del bpy.types.Scene.use_trim
 	bpy.utils.unregister_class( UV_PT_UVHotspotTools )
+	bpy.utils.unregister_class( OBJECT_OT_repotoascii )
