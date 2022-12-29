@@ -189,19 +189,22 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 					rings.append( ring )
 				rings[-1] = rings[-1][::-1]
 										
-				#compute aspect ratio of grid
-				avg_ring_len = 0.0
-				avg_loop_len = 0.0
+				#build list of avg ring and loop lists
+				loop_steps = [ 0.0 ] * len( rings[0] )
 				for r in rings:
 					for i in range( 1, len( r ) ):
-						avg_ring_len += ( r[i].co - r[i-1].co ).length
+						d = ( r[i].co - r[i-1].co ).length
+						loop_steps[i] += d
+				for i in range( len( loop_steps ) ):
+					loop_steps[i] /= len( rings )
+				ring_steps = [ 0.0 ] * len( rings )
 				for i in range( len( rings[0] ) ):
 					for j in range( 1, len( rings ) ):
-						avg_loop_len += ( rings[j][i].co - rings[j-1][i].co ).length
-				avg_ring_len /= len( rings )
-				avg_loop_len /= len( rings[0] )
-				aspect_ratio = avg_ring_len / avg_loop_len
-				
+						d = ( rings[j][i].co - rings[j-1][i].co ).length
+						ring_steps[j] += d
+				for i in range( len( ring_steps ) ):
+					ring_steps[i] /= len( rings[0] )
+
 				#build lists of faces
 				last_ring_faces = set( [ l.face for l in loop_rings[-1] ] )
 				last_loop_faces = set()
@@ -209,12 +212,15 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 					if i % 2 == 0:
 						last_loop_faces.add( r[-1].face )
 					else:
-						last_loop_faces.add( r[0].face )						
+						last_loop_faces.add( r[0].face )
+
+				#compute scalar that will inscribe the resulting uv island to the unit square 
+				global_scalar = 1.0 / max( sum( ring_steps ), sum( loop_steps ) )				
 					
 				#set uv values
-				u_step = 1.0 / ( len( rings ) - 1 )
-				v_step = 1.0 / ( len( rings[0] ) - 1 )
+				ring_offset = 0.0
 				for i, r in enumerate( rings ):
+					loop_offset = 0.0
 					for j, vert in enumerate( r ):
 						for l in vert.link_loops:
 							if i == len( rings ) - 1 and l.face not in last_ring_faces:
@@ -222,10 +228,11 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 							if j == len( r ) - 1 and l.face not in last_loop_faces:
 								continue
 							if l.face in group:
-								if aspect_ratio < 1.0:
-									l[uvlayer].uv = ( u_step * i , v_step * j * aspect_ratio )
-								else:
-									l[uvlayer].uv = ( u_step * i / aspect_ratio , v_step * j )
+								u = ( ring_steps[i] + ring_offset ) * global_scalar
+								v = ( loop_steps[j] + loop_offset ) * global_scalar
+								l[uvlayer].uv = ( u, v )
+						loop_offset += loop_steps[j]
+					ring_offset += ring_steps[i]
 								
 				clear_tags( rmmesh )
 
