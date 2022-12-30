@@ -236,6 +236,8 @@ class CEPoly( object ):
 		between the endpoints of the edge on which the subvert resides.
 		"""
 		for i, vert in enumerate( verts ):
+			start_vert, end_vert = vert.GetEndVerts( self.polygon )
+
 			if vert.index != -1:
 				#if vert is not subvert, then just copy existing loop uv coord
 				for loop in self.loops:
@@ -251,8 +253,7 @@ class CEPoly( object ):
 						subvert_loop[uvlayer].uv = loop[uvlayer].uv.copy()
 						
 			else:
-				#if vert is a subvert, then coompute interpolated uvcoord
-				start_vert, end_vert = vert.GetEndVerts( self.polygon )
+				#if vert is a subvert, then coompute interpolated uvcoord				
 				start_3d = start_vert.co
 				end_3d = end_vert.co
 				length_3d = ( end_3d - start_3d ).length

@@ -652,7 +652,6 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 
 @persistent
 def uv_startup_handler( dummy ):
-	print( 'poop' )
 	bpy.ops.view3d.rm_modkey_uvtools( 'INVOKE_DEFAULT' )
 
 
