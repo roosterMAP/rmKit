@@ -471,19 +471,15 @@ class MESH_OT_uvmodkey( bpy.types.Operator ):
 	bl_label = 'View3d Modkey Tracker'
 	bl_options = { 'INTERNAL' }
 	mod_state = [ False, False, False ]
-
-	running = False
 	
 	@classmethod
 	def poll( cls, context ):
 		return True
 	
 	def invoke( self, context, event ):
-		if not MESH_OT_uvmodkey.running:
-			MESH_OT_uvmodkey.running = True
-			wm = context.window_manager
-			self._timer = wm.event_timer_add( 0.0625, window=context.window )
-			wm.modal_handler_add( self )
+		wm = context.window_manager
+		self._timer = wm.event_timer_add( 0.0625, window=context.window )
+		wm.modal_handler_add( self )
 
 		return {'RUNNING_MODAL'}
 
@@ -656,6 +652,7 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 
 @persistent
 def uv_startup_handler( dummy ):
+	print( 'poop' )
 	bpy.ops.view3d.rm_modkey_uvtools( 'INVOKE_DEFAULT' )
 
 

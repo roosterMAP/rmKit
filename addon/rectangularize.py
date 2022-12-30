@@ -278,8 +278,6 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 					if len( bounary_loops ) < 4:
 							continue
 
-				print( 'boundary_edge_groups :: {}'.format( len( boundary_edge_groups ) ) )
-
 				#identify the four corners
 				sorted_boundary_loops = sort_loop_chain( rmlib.rmUVLoopSet( bounary_loops, uvlayer=uvlayer ) )
 				sorted_tuples = []

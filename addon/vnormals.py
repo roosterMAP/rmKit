@@ -395,19 +395,15 @@ class MESH_OT_view3modkey( bpy.types.Operator ):
 	bl_label = 'View3d Modkey Tracker'
 	bl_options = { 'INTERNAL' }
 	mod_state = 'unqualified'
-
-	running = False
 	
 	@classmethod
 	def poll( cls, context ):
 		return True
 	
 	def invoke( self, context, event ):
-		if not MESH_OT_view3modkey.running:
-			MESH_OT_view3modkey.running = True
-			wm = context.window_manager
-			self._timer = wm.event_timer_add( 0.0625, window=context.window )
-			wm.modal_handler_add( self )
+		wm = context.window_manager
+		self._timer = wm.event_timer_add( 0.0625, window=context.window )
+		wm.modal_handler_add( self )
 
 		return {'RUNNING_MODAL'}
 

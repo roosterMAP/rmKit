@@ -568,7 +568,10 @@ def get_hotspot( context ):
 		faces = rmlib.rmPolygonSet.from_selection( rmmesh )
 		if len( faces ) <= 0:
 			return None
-		material_name = rmmesh.mesh.materials[ faces[0].material_index ].name
+		try:
+			material_name = rmmesh.mesh.materials[ faces[0].material_index ].name
+		except IndexError:
+			return None
 		return load_hotspot_from_repo( material_name )
 
 
@@ -912,6 +915,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 					island.select( replace=True )
 					result = bpy.ops.mesh.rm_uvgridify() #gridify
 					if result == { 'CANCELLED' }:
+						bpy.ops.uv.unwrap( 'INVOKE_DEFAULT', method='CONFORMAL' )
 						bpy.ops.mesh.rm_uvunrotate() #unrotate uv by longest edge in island
 						#bpy.ops.mesh.rm_uvrectangularize() #rectangularize
 					bpy.ops.mesh.rm_scaletomaterialsize() #scale to mat size
