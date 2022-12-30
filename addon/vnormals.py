@@ -275,7 +275,6 @@ class MESH_OT_applyvnorms( bpy.types.Operator ):
 				return { 'CANCELLED' }
 			
 			#set smoothing on mesh object to make custom vnorms visible
-			rmmesh.mesh.polygons.foreach_set( 'use_smooth', [False] * len( rmmesh.mesh.polygons ) )
 			rmmesh.mesh.use_auto_smooth = True
 			
 			#load all existing vnorms
@@ -290,7 +289,6 @@ class MESH_OT_applyvnorms( bpy.types.Operator ):
 				if self.selset in val:
 					vertices |= set( p.verts )
 					selset_pidxs.add( p.index )
-			
 			
 			for v in vertices:
 				#sort loops such that they wind around v in a clockwise order
