@@ -318,6 +318,7 @@ class MESH_OT_applyvnorms( bpy.types.Operator ):
 										break
 								current_face = f
 								break
+				loops.reverse()
 				
 				#get the index of the first loop with a sharp edge
 				startIdx = 0
@@ -330,31 +331,24 @@ class MESH_OT_applyvnorms( bpy.types.Operator ):
 				#compute the vnorm for this poly group.
 				#a group is all polys that link a vert broken up by sharp edges
 				loop_group = []
-				last_loop_group = []
 				for i in range( lcount ):
 					idx = ( startIdx + i ) % lcount
-					l = loops[idx]
-
-					loop_group.append( l )
-
-					if not l.edge.smooth:
-						if i == 0:
-							last_loop_group = [ l for l in loop_group ]
-							loop_group.clear()
-							continue
-
+					
+					loop = loops[idx]
+					if not loop.edge.smooth and i != 0:
 						nml = loopgroupnormal( loop_group, self.weighted, selset_pidxs )
-						for l in loop_group:
-							vnorms[l.index] = nml
-
+						if nml.length > 0.0:
+							for l in loop_group:
+								vnorms[l.index] = nml							
 						loop_group.clear()
 
-				#store the computed normal into vnorms list
-				last_loop_group += loop_group
-				if len( last_loop_group ) > 0:
-					nml = loopgroupnormal( last_loop_group, self.weighted, selset_pidxs )
-					for l in last_loop_group:
-						vnorms[l.index] = nml
+					loop_group.append( loop )
+					
+				if len( loop_group ) > 0:
+					nml = loopgroupnormal( loop_group, self.weighted, selset_pidxs )
+					if nml.length > 0.0:
+						for l in loop_group:
+							vnorms[l.index] = nml
 					
 		#since split normals can only be set through the old mesh interface which is pretty lame
 		mesh = context.active_object.data
