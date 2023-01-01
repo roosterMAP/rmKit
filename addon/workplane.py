@@ -198,7 +198,7 @@ class MESH_OT_workplane( bpy.types.Operator ):
 							v_t = v2.co - v1.co
 							v_t = v_n.cross( v_t.normalized() )
 						
-						GridRenderManager.matrix = rmlib.util.LookAt( v_n, v_t, v.co )
+						GridRenderManager.matrix = rmmesh.world_transform @ rmlib.util.LookAt( v_n, v_t, v.co )
 
 				elif sel_mode[1]:
 					sel_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
@@ -218,16 +218,16 @@ class MESH_OT_workplane( bpy.types.Operator ):
 
 						e_p = ( v1.co + v2.co ) * 0.5
 						
-						GridRenderManager.matrix = rmlib.util.LookAt( e_n, e_t, e_p )
+						GridRenderManager.matrix = rmmesh.world_transform @ rmlib.util.LookAt( e_n, e_t, e_p )
 
 				elif sel_mode[2]:
 					sel_polys = rmlib.rmPolygonSet.from_selection( rmmesh )
 					if len( sel_polys ) > 0:
 						p = sel_polys[0]
 						
-						GridRenderManager.matrix = rmlib.util.LookAt( p.normal, p.calc_tangent_edge_pair(), p.calc_center_median() )
+						GridRenderManager.matrix = rmmesh.world_transform @ rmlib.util.LookAt( p.normal, p.calc_tangent_edge_pair(), p.calc_center_median() )
 
-		elif not GridRenderManager.active and context.mode != 'OBJECT' and context.object is not None:
+		elif not GridRenderManager.active and context.mode == 'OBJECT' and context.object is not None:
 			GridRenderManager.matrix = mathutils.Matrix( context.object.matrix_world )
 
 		#toggle the render state of the GRID_RENDER global
