@@ -1,26 +1,45 @@
 import bpy, bmesh, mathutils
 import rmKit.rmlib as rmlib
-import bgl
 import gpu
 from gpu_extras.batch import batch_for_shader
 from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
 
-BOUNDS_RENDER = None
-
 class Bounds2D():
+	size = 6.0
+
 	def __init__( self, context ):
 		self.context = context
 		self._min = mathutils.Vector( ( 0.0, 0.0 ) )
 		self._max = mathutils.Vector( ( 1.0, 1.0 ) )
 		self.regions = []
 		
-	def GenerateRegions( self, a ):
+	def GenerateRegions( self ):
+		a = mathutils.Vector( ( self._max.x - Bounds2D.size, self._min.y + Bounds2D.size ) )
+		b = mathutils.Vector( ( self._max.x + Bounds2D.size, self._max.y - Bounds2D.size ) )
+		c = mathutils.Vector( ( self._max.x - Bounds2D.size, self._min.y - Bounds2D.size ) )
+		d = mathutils.Vector( ( self._max.x + Bounds2D.size, self._min.y + Bounds2D.size ) )
+		e = mathutils.Vector( ( self._max.x - Bounds2D.size, self._max.y - Bounds2D.size ) )
+		f = mathutils.Vector( ( self._max.x + Bounds2D.size, self._max.y + Bounds2D.size ) )
+		g = mathutils.Vector( ( self._min.x + Bounds2D.size, self._max.y - Bounds2D.size ) )
+		h = mathutils.Vector( ( self._max.x - Bounds2D.size, self._max.y + Bounds2D.size ) )
+		i = mathutils.Vector( ( self._min.x - Bounds2D.size, self._max.y - Bounds2D.size ) )
+		j = mathutils.Vector( ( self._min.x + Bounds2D.size, self._max.y + Bounds2D.size ) )
+		k = mathutils.Vector( ( self._min.x - Bounds2D.size, self._min.y + Bounds2D.size ) )
+		l = mathutils.Vector( ( self._min.x - Bounds2D.size, self._min.y - Bounds2D.size ) )
+		m = mathutils.Vector( ( self._min.x + Bounds2D.size, self._min.y + Bounds2D.size ) )
+		n = mathutils.Vector( ( self._min.x + Bounds2D.size, self._min.y - Bounds2D.size ) )
+
 		self.regions.clear()
-		self.regions.append( ( mathutils.Vector( ( self._min[0] + a, self._min[1] - a ) ), mathutils.Vector( ( self._max[0] - a, self._min[1] + a ) ) ) )
-		self.regions.append( ( mathutils.Vector( ( self._max[0] - a, self._min[1] + a ) ), mathutils.Vector( ( self._max[0] + a, self._max[1] - a ) ) ) )
-		self.regions.append( ( mathutils.Vector( ( self._min[0] + a, self._max[1] - a ) ), mathutils.Vector( ( self._max[0] - a, self._max[1] + a ) ) ) )
-		self.regions.append( ( mathutils.Vector( ( self._min[0] - a, self._min[1] + a ) ), mathutils.Vector( ( self._min[0] + a, self._max[1] - a ) ) ) )
-	
+		self.regions.append( ( a, b ) )
+		self.regions.append( ( c, d ) )
+		self.regions.append( ( e, f ) )
+		self.regions.append( ( g, h ) )
+		self.regions.append( ( i, j ) )
+		self.regions.append( ( k, g ) )
+		self.regions.append( ( l, m ) )
+		self.regions.append( ( n, a ) )
+		self.regions.append( ( m, e ) )
+
 	def TestRegion( self, i, mx, my ):
 		r = self.regions[i]
 		if mx > r[0][0] and my > r[0][1] and mx < r[1][0] and my < r[1][1]:
@@ -46,10 +65,9 @@ class Bounds2D():
 				bounds._max[0] = p[0]
 			if p[1] > bounds._max[1]:
 				bounds._max[1] = p[1]
-		bounds.GenerateRegions( 6 )
+		bounds.GenerateRegions()
 		return bounds
 		
-
 	@classmethod
 	def from_points( cls, context, points ):
 		bounds = cls( context )
@@ -64,12 +82,15 @@ class Bounds2D():
 				bounds._max[0] = p[0]
 			if p[1] > bounds._max[1]:
 				bounds._max[1] = p[1]
-		bounds.GenerateRegions( 6 )
+		bounds.GenerateRegions()
 		return bounds
 
 	@property
 	def center( self ):
 		return ( self._min + self._max ) * 0.5
+
+	def IsInside( self, u, v ):
+		return u >= self._min[0] and u <= self._max[0] and v >= self._min[1] and v <= self._max[1]
 
 	@property
 	def corners( self ):
@@ -91,58 +112,44 @@ class BoundsHandle():
 		self.shader_batch()
 		self.mouse = ( 0.0, 0.0 )
 
-	def update( self, m_x, m_y ):
+	def update( self, context, m_x, m_y ):
 		self.mouse = ( float( m_x ), float( m_y ) )
 		self.shader_batch()
-		self.draw()
+		
+		for window in context.window_manager.windows:
+			for area in window.screen.areas:
+				if area.type == 'IMAGE_EDITOR':
+					for region in area.regions:
+						if region.type == 'WINDOW':
+							region.tag_redraw()
+									
 
 	def shader_batch( self ):
 		BoundsHandle.batches.clear()
-		corners = BoundsHandle.bounds.corners
-		coords = []
-		for i in range( 4 ):
-			coords.append( corners[i-1] )
-			coords.append( corners[i] )
-
-		region_coords = []
 		for r in BoundsHandle.bounds.regions:
-			region_coords.append( ( r[0] ) )
-			region_coords.append( ( r[1] ) )
-		
-		BoundsHandle.batches.append( batch_for_shader( BoundsHandle.shader, 'LINES', { 'pos': coords[0:2] } ) )
-		BoundsHandle.batches.append( batch_for_shader( BoundsHandle.shader, 'LINES', { 'pos': coords[2:4] } ) )
-		BoundsHandle.batches.append( batch_for_shader( BoundsHandle.shader, 'LINES', { 'pos': coords[4:6] } ) )
-		BoundsHandle.batches.append( batch_for_shader( BoundsHandle.shader, 'LINES', { 'pos': coords[6:8] } ) )
+			coords = [ r[0], mathutils.Vector( ( r[0][0], r[1][1] ) ), r[1], mathutils.Vector( ( r[1][0], r[0][1] ) ) ]
+			BoundsHandle.batches.append( batch_for_shader( BoundsHandle.shader, 'LINES', { 'pos': ( coords[0], coords[1], coords[1], coords[2], coords[2], coords[3], coords[3], coords[0] ) } ) )
 
-		BoundsHandle.batches.append( batch_for_shader( BoundsHandle.shader, 'LINES', { 'pos': region_coords } ) )
-
-	def draw( self ):
-		if len( BoundsHandle.batches ) >= 4:	
-			bgl.glEnable( bgl.GL_BLEND )
-			bgl.glEnable( bgl.GL_DEPTH_TEST )
-			bgl.glEnable( bgl.GL_LINE_SMOOTH )
-			bgl.glLineWidth( 2 )
+	def draw( self, context ):
+		if len( BoundsHandle.batches ) >= 4:
+			gpu.state.line_width_set( 2.0 )
 			
 			BoundsHandle.shader.bind()
 			
-			for i in range( 4 ):
+			highlight_idx = -1
+			BoundsHandle.shader.uniform_float( 'color', ( 0.4, 0.4, 0.4, 1.0 ) )
+			for i in range( len( BoundsHandle.batches ) ):
 				if BoundsHandle.bounds.TestRegion( i, self.mouse[0], self.mouse[1] ):
-					BoundsHandle.shader.uniform_float( 'color', ( 1.0, 0.0, 0.0, 1.0 ) )					
-				else:
-					BoundsHandle.shader.uniform_float( 'color', ( 0.0, 0.5, 0.5, 1.0 ) )
-				BoundsHandle.batches[i].draw( BoundsHandle.shader )				
+					highlight_idx = i					
+				BoundsHandle.batches[i].draw( BoundsHandle.shader )
+			if highlight_idx > -1:
+				BoundsHandle.shader.uniform_float( 'color', ( 0.8, 0.75, 0.4, 1.0 ) )
+				BoundsHandle.batches[highlight_idx].draw( BoundsHandle.shader )
 
-			#BoundsHandle.shader.uniform_float( 'color', ( 1.0, 0.0, 0.0, 1.0 ) )
-			#for i in range( 4, len( BoundsHandle.batches ) ):
-			#	BoundsHandle.batches[i].draw( BoundsHandle.shader )
+			gpu.state.line_width_set( 1.0 )
 
-			bgl.glDisable( bgl.GL_BLEND )
-			bgl.glDisable( bgl.GL_DEPTH_TEST )
-			bgl.glDisable( bgl.GL_LINE_SMOOTH )
-			bgl.glLineWidth( 1 )
-
-	def doDraw( self ):
-		BoundsHandle.handle = bpy.types.SpaceImageEditor.draw_handler_add( self.draw, (), 'WINDOW', 'POST_PIXEL' )
+	def doDraw( self, context ):
+		BoundsHandle.handle = bpy.types.SpaceImageEditor.draw_handler_add( self.draw, (context, ), 'WINDOW', 'POST_PIXEL' )
 		BoundsHandle.active = True
 		
 	def stopDraw( self, context ):
@@ -157,95 +164,260 @@ class BoundsHandle():
 							region.tag_redraw()
 
 
+def GetLoopSelection( context, rmmesh, uvlayer ):
+	sel_sync = context.tool_settings.use_uv_select_sync
+	if sel_sync:
+		sel_mode = context.tool_settings.mesh_select_mode[:]
+		if sel_mode[0]:
+			vert_selection = rmlib.rmVertexSet.from_selection( rmmesh )
+			return rmlib.rmUVLoopSet( vert_selection.loops, uvlayer=uvlayer )
+
+		elif sel_mode[1]:
+			edge_selection = rmlib.rmEdgeSet.from_selection( rmmesh )
+			return rmlib.rmUVLoopSet( edge_selection.vertices.loops, uvlayer=uvlayer )
+
+		elif sel_mode[2]:
+			face_selection = rmlib.rmPolygonSet.from_selection( rmmesh )
+			loopset = set()
+			for f in face_selection:
+				loopset |= set( f.loops )
+			return rmlib.rmUVLoopSet( loopset, uvlayer=uvlayer )
+
+	else:
+		sel_mode = context.tool_settings.uv_select_mode
+		if sel_mode == 'VERTEX':
+			return rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+
+		elif sel_mode == 'EDGE':
+			loop_selection = rmlib.rmUVLoopSet.from_edge_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+			loop_selection.add_overlapping_loops( True )
+			return loop_selection
+
+		elif sel_mode == 'FACE':
+			return rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+
+	return rmlib.rmUVLoopSet( [], uvlayer=uvlayer )
+
+
 class MESH_OT_uvboundstransform( bpy.types.Operator ):
 	"""Transform UV Selection with bbox tool handles."""
 	bl_idname = 'mesh.rm_uvboundstransform'
 	bl_label = 'Transform Bounds'
 	bl_options = { 'REGISTER', 'UNDO' }
+	BOUNDS_RENDER = None
 	
 	def __init__( self ):
 		self.bounds = None
 		self.hit_idx = -1
+		self.prev_press_x = 0.0
+		self.prev_press_y = 0.0
 		self.m_delta = ( 0.0, 0.0 )
+		self.bmesh = None
+
+	def __del__( self ):
+		if self.bmesh is not None:
+			self.bmesh.free()
 
 	@classmethod
 	def poll( cls, context ):
 		return ( context.area.type == 'IMAGE_EDITOR' and
 				context.active_object is not None and
 				context.active_object.type == 'MESH' and
-				context.object.data.is_editmode and
-				not context.tool_settings.use_uv_select_sync )
+				context.object.data.is_editmode )
 
 	def execute( self, context ):
-		rmmesh = rmlib.rmMesh.GetActive( context )
-		if rmmesh is None:
+		if not MESH_OT_uvboundstransform.BOUNDS_RENDER:
 			return { 'CANCELLED' }
-			
-		#with rmmesh as rmmesh:
-		#	uvlayer = rmmesh.active_uv
-	
+
+		bpy.ops.object.mode_set( mode='OBJECT', toggle=False )
+		
+		#fetch bmesh member and wrap in rmMesh to get loop selection
+		bm = self.bmesh.copy()
+		rmmesh = rmlib.rmMesh.from_bmesh( context.active_object, bm )
+		if rmmesh is None:
+			bpy.ops.object.mode_set( mode='EDIT', toggle=False )
+			return { 'CANCELLED' }
+		uvlayer = rmmesh.active_uv
+		loop_selection = GetLoopSelection( context, rmmesh, uvlayer )
+		if len( loop_selection ) < 2:
+			bpy.ops.object.mode_set( mode='EDIT', toggle=False )
+			return { 'CANCELLED' }
+
+		#fetch tool bounding box from BOUNDS_RENDER
+		tool_bounds = MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds
+		uvmin = mathutils.Vector( context.region.view2d.region_to_view( tool_bounds._min[0], tool_bounds._min[1] ) )
+		uvmax = mathutils.Vector( context.region.view2d.region_to_view( tool_bounds._max[0], tool_bounds._max[1] ) )
+		tool_width = uvmax[0] - uvmin[0]
+		tool_height = uvmax[1] - uvmin[1]
+		tool_center = ( uvmin + uvmax ) * 0.5
+
+		#compute loop_selection bounding box
+		loop_sel_min = loop_selection[0][uvlayer].uv.copy()
+		loop_sel_max = loop_selection[0][uvlayer].uv.copy()
+		for l in loop_selection:
+			uvcoord = l[uvlayer].uv.copy()
+			for i in range( 2 ):
+				if uvcoord[i] < loop_sel_min[i]:
+					loop_sel_min[i] = uvcoord[i]
+				if uvcoord[i] > loop_sel_max[i]:
+					loop_sel_max[i] = uvcoord[i]
+		loop_sel_width = loop_sel_max[0] - loop_sel_min[0]
+		loop_sel_height = loop_sel_max[1] - loop_sel_min[1]
+		loop_sel_center = ( loop_sel_max + loop_sel_min ) * 0.5
+
+		#compute transformation matrix
+		trans_mat = mathutils.Matrix.Identity( 3 )
+		trans_mat[0][2] = loop_sel_center[0] * -1.0
+		trans_mat[1][2] = loop_sel_center[1] * -1.0
+		
+		trans_mat_inverse = mathutils.Matrix.Identity( 3 )
+		trans_mat_inverse[0][2] = tool_center[0]
+		trans_mat_inverse[1][2] = tool_center[1]
+		
+		scl_mat = mathutils.Matrix.Identity( 3 )
+		scl_mat[0][0] = tool_width / loop_sel_width
+		scl_mat[1][1] = tool_height / loop_sel_height
+
+		mat = trans_mat_inverse @ scl_mat @ trans_mat
+
+		#transform uv coords
+		for l in loop_selection:
+			uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
+			uv[2] = 1.0
+			uv = mat @ uv
+			l[uvlayer].uv = uv.to_2d()
+
+		#commit bmesh to mesh obj
+		targetMesh = context.active_object.data
+		bm.to_mesh( targetMesh )
+		targetMesh.update()
+		bm.free()
+		
+		bpy.ops.object.mode_set( mode='EDIT', toggle=False )
+		
 		return { 'FINISHED' }
 
-
 	def modal( self, context, event ):
-		global BOUNDS_RENDER
+		if not MESH_OT_uvboundstransform.BOUNDS_RENDER:
+			rmmesh = rmlib.rmMesh.from_bmesh( context.active_object, self.bmesh )
+			rmmesh.readonly = True
+			if len( self.bmesh.loops.layers.uv.values() ) < 1:
+				return { 'CANCELLED' }
+			uvlayer = rmmesh.active_uv
+			loops = GetLoopSelection( context, rmmesh, uvlayer )
+			if len( loops ) < 2:
+				bpy.ops.object.mode_set( mode='EDIT', toggle=False )
+				return { 'CANCELLED' }
+			uvs = [ mathutils.Vector( l[uvlayer].uv ) for l in loops ]
+			self.bounds = Bounds2D.from_uvs( context, uvs )
 
-		if event.type == 'LEFTMOUSE':
+			MESH_OT_uvboundstransform.BOUNDS_RENDER = BoundsHandle( context, self.bounds )
+			MESH_OT_uvboundstransform.BOUNDS_RENDER.doDraw( context )
+
+		if event.type == 'LEFTMOUSE' and MESH_OT_uvboundstransform.BOUNDS_RENDER:
 			self.hit_idx = -1
-			for i in range( 4 ):
-				if BoundsHandle.bounds.TestRegion( i, event.mouse_region_x, event.mouse_region_y ):
-					self.hit_idx = i
-					break
-			if self.hit_idx < 0:
-				BOUNDS_RENDER.stopDraw( context )
-				return { 'FINISHED' }
 
-		elif event.type == 'MOUSEMOVE':
-			BOUNDS_RENDER.update( event.mouse_region_x, event.mouse_region_y )
-			print( self.hit_idx )
+			if event.value == 'PRESS':
+				for i in range( len( BoundsHandle.bounds.regions ) ):
+					if BoundsHandle.bounds.TestRegion( i, event.mouse_region_x, event.mouse_region_y ):
+						self.hit_idx = i
+						self.prev_press_x = event.mouse_region_x
+						self.prev_press_y = event.mouse_region_y
+						break
 
-			delta_x = float( event.mouse_region_x - event.mouse_prev_press_x ) / context.region.width
-			delta_y = float( event.mouse_region_y - event.mouse_prev_press_y ) / context.region.height
-			self.m_delta = ( delta_x, delta_y )
+				if self.hit_idx < 0 and not MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds.IsInside( event.mouse_region_x, event.mouse_region_y ):
+					MESH_OT_uvboundstransform.BOUNDS_RENDER.stopDraw( context )
+					MESH_OT_uvboundstransform.BOUNDS_RENDER = None
+					return { 'FINISHED' }
+
+			if event.value == 'RELEASE':
+				self.hit_idx = -1
+				self.lmb_down = False
+
+
+		elif event.type == 'MOUSEMOVE' and MESH_OT_uvboundstransform.BOUNDS_RENDER:			
+			MESH_OT_uvboundstransform.BOUNDS_RENDER.update( context, event.mouse_region_x, event.mouse_region_y )
+			bounds = MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds
+			if self.hit_idx == 0:
+				bounds._max[0] = event.mouse_region_x
+			elif self.hit_idx == 1:
+				bounds._max[0] = event.mouse_region_x
+				bounds._min[1] = event.mouse_region_y
+			elif self.hit_idx == 2:
+				bounds._max[0] = event.mouse_region_x
+				bounds._max[1] = event.mouse_region_y
+			elif self.hit_idx == 3:
+				bounds._max[1] = event.mouse_region_y
+			elif self.hit_idx == 4:
+				bounds._min[0] = event.mouse_region_x
+				bounds._max[1] = event.mouse_region_y
+			elif self.hit_idx == 5:
+				bounds._min[0] = event.mouse_region_x
+			elif self.hit_idx == 6:
+				bounds._min[0] = event.mouse_region_x
+				bounds._min[1] = event.mouse_region_y
+			elif self.hit_idx == 7:
+				bounds._min[1] = event.mouse_region_y
+			elif self.hit_idx == 8:
+				delta_x = float( event.mouse_region_x - self.prev_press_x )
+				delta_y = float( event.mouse_region_y - self.prev_press_y )
+				bounds._min[0] += delta_x
+				bounds._min[1] += delta_y
+				bounds._max[0] += delta_x
+				bounds._max[1] += delta_y
+				self.prev_press_x = event.mouse_region_x
+				self.prev_press_y = event.mouse_region_y
+
+			if bounds._min[0] > bounds._max[0]:
+				temp = MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._min[0]
+				MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._min[0] = MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._max[0]
+				MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._max[0] = temp
+			if bounds._min[1] > bounds._max[1]:
+				temp = MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._min[1]
+				MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._min[1] = MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._max[1]
+				MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._max[1] = temp
+
+			if self.hit_idx > -1:
+				bounds.GenerateRegions()
+
 			self.execute( context )
-
-			return { 'RUNNING_MODAL' }
 		
 		elif event.type == 'ESC':
-			BOUNDS_RENDER.stopDraw( context )
+			if MESH_OT_uvboundstransform.BOUNDS_RENDER:
+				MESH_OT_uvboundstransform.BOUNDS_RENDER.stopDraw( context )
+				MESH_OT_uvboundstransform.BOUNDS_RENDER = None
 			return { 'CANCELLED' }
 		
-		return { 'PASS_THROUGH' }
+		return { 'RUNNING_MODAL' }
+		#return { 'PASS_THROUGH' }
 
 
 	def invoke( self, context, event ):
 		rmmesh = rmlib.rmMesh.GetActive( context )
-		if rmmesh is None:
-			return { 'CANCELLED' }
-		
-		with rmmesh as rmmesh:
-			rmmesh.readonly = True
+		if rmmesh is not None:
+			with rmmesh as rmmesh:
+				rmmesh.readme = True
+				self.bmesh = rmmesh.bmesh.copy()
 
-			uvlayer = rmmesh.active_uv
-			loops = rmlib.rmUVLoopSet.from_selection( rmmesh, uvlayer=uvlayer )
-			uvs = [ mathutils.Vector( l[uvlayer].uv ) for l in loops ]
-			self.bounds = Bounds2D.from_uvs( context, uvs )
+		rmmesh = rmlib.rmMesh.from_bmesh( context.active_object, self.bmesh )
+		if len( self.bmesh.loops.layers.uv.values() ) < 1:
+			return { 'CANCELLED' }
+		uvlayer = rmmesh.active_uv
+		loops = GetLoopSelection( context, rmmesh, uvlayer )
+		if len( loops ) < 2:
+			bpy.ops.object.mode_set( mode='EDIT', toggle=False )
+			return { 'CANCELLED' }
 
 		wm = context.window_manager
 		wm.modal_handler_add( self )
-
-		global BOUNDS_RENDER
-		BOUNDS_RENDER = BoundsHandle( context, self.bounds )
-		BOUNDS_RENDER.doDraw()
-
 		return { 'RUNNING_MODAL' }
 
 
 def register():
+	print( 'register :: {}'.format( MESH_OT_uvboundstransform.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_uvboundstransform )
 	
 
 def unregister():
+	print( 'unregister :: {}'.format( MESH_OT_uvboundstransform.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_uvboundstransform )
-
-register()

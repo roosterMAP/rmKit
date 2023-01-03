@@ -45,6 +45,7 @@ class UV_PT_UVTOOLS( bpy.types.Panel ):
 		r1.operator( 'mesh.rm_uvring', text='UV Ring' )
 		
 		layout.operator( 'wm.call_menu_pie', text='UV Move To Furthest' ).name = 'IMAGE_EDITOR_MT_PIE_uvmovetofurthest'
+		layout.operator( 'mesh.rm_uvboundstransform', text='Bounds Transform' )
 		layout.operator( 'mesh.rm_uvgridify', text='Gridify' )
 		layout.operator( 'mesh.rm_uvrectangularize', text='Rectangularize' )
 		layout.operator( 'mesh.rm_stitch', text='Stitch' )

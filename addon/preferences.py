@@ -142,6 +142,7 @@ def register_keyboard_keymap():
 		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvunrotate', 'NONE', 'PRESS' ) ) )
 		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_scaletomaterialsize', 'NONE', 'PRESS' ) ) )
 		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_normalizetexels', 'NONE', 'PRESS' ) ) )
+		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvboundstransform', 'NONE', 'PRESS' ) ) )
 
 		kmi = km_uv.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
 		kmi.properties.name = 'IMAGE_EDITOR_MT_PIE_uvmovetofurthest'

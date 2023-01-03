@@ -45,11 +45,17 @@ def GetLoopGroups( context, rmmesh, uvlayer, local ):
 			loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
 			loop_groups += loop_selection.group_vertices()
 			
-		elif sel_mode == 'EDGE' and local:
-			loop_selection = rmlib.rmUVLoopSet.from_edge_selection( rmmesh=rmmesh, uvlayer=uvlayer )
-			loop_groups = loop_selection.group_edges()
-			for i in range( len( loop_groups ) ):
-				loop_groups[i].add_overlapping_loops( True )
+		elif sel_mode == 'EDGE':
+			if local:
+				loop_selection = rmlib.rmUVLoopSet.from_edge_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+				loop_groups = loop_selection.group_edges()
+				for i in range( len( loop_groups ) ):
+					loop_groups[i].add_overlapping_loops( True )
+			else:
+				loop_selection = rmlib.rmUVLoopSet.from_edge_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+				loop_selection.add_overlapping_loops( True )
+				loop_groups.append( loop_selection )
+
 
 		elif sel_mode == 'FACE' and local:
 			loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )

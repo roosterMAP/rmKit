@@ -13,7 +13,7 @@ class rmMesh():
 		if object.type != 'MESH':
 			raise TypeError( 'object arg must be of type MESH!!!' )
 		self.__object = object
-		self.__mesh = object.data 
+		self.__mesh = object.data
 	
 	@classmethod
 	def GetActive( cls, context ):
@@ -21,6 +21,12 @@ class rmMesh():
 		if ao is None:
 			return None
 		return( cls( ao ) )
+
+	@classmethod
+	def from_bmesh( cls, obj, bmesh ):
+		rmmesh = cls( obj )
+		rmmesh.__bmesh = bmesh
+		return rmmesh
 
 	@classmethod
 	def from_mos( cls, context, mouse_pos ):
@@ -36,6 +42,8 @@ class rmMesh():
 		return cls( obj )
 	
 	def __enter__( self ):
+		if self.__bmesh is not None:
+			raise RuntimeError( 'bmesh already accessable!!!' )
 		if self.__mesh.is_editmode:
 			self.__bmesh = bmesh.from_edit_mesh( self.__mesh )
 		else:
