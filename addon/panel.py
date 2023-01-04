@@ -21,12 +21,10 @@ class VIEW3D_PT_UTILS( bpy.types.Panel ):
 		r2 = layout.row()
 		r2.alignment = 'EXPAND'
 		r2.operator( 'view3d.rm_togglegrid', text='Grid Toggle' )
-		r2.operator( 'view3d.rm_workplane', text='Toggle Workplane' )
-		r2.operator( 'view3d.rm_dimensions', text='Toggle Workplane' )
+		r2.operator( 'view3d.rm_workplane', text='Toggle Workplane' )		
 
-		r3 = layout.row()
-		r3.alignment = 'EXPAND'
-		r3.operator( 'wm.call_menu_pie', text='3D Cursor Pie' ).name = 'VIEW3D_MT_PIE_cursor'
+		layout.operator( 'wm.call_menu_pie', text='3D Cursor Pie' ).name = 'VIEW3D_MT_PIE_cursor'
+		layout.operator( 'view3d.rm_dimensions', text='Toggle Dimensions' )
 
 
 class UV_PT_UVTOOLS( bpy.types.Panel ):
@@ -123,11 +121,9 @@ class VIEW3D_PT_MESHEDIT( bpy.types.Panel ):
 		r2 = layout.row()
 		r2.operator( 'mesh.rm_contextbevel', text='Bevel' )
 		r2.operator( 'mesh.rm_extend', text='Extend' )
-		r2.operator( 'mesh.rm_slide', text='Slide' )
 
 		c2 = layout.column()
 		c2.operator( 'mesh.rm_connectedge', text='Connect Edges' )
-		c2.operator( 'mesh.rm_push', text='Push' )
 		c2.operator( 'mesh.rm_thicken', text='Thicken' )
 		c2.operator( 'mesh.rm_createtube', text='Create Tube' )
 		c2.operator( 'mesh.rm_arcadjust', text='Arc Adjust' )
@@ -168,6 +164,8 @@ class VIEW3D_PT_LAYERS( bpy.types.Panel ):
 		layout.operator( 'wm.call_menu_pie', text='Edge Weight Pie' ).name = 'VIEW3D_MT_PIE_setedgeweight_crease'
 		layout.operator( 'mesh.rm_uvgridify', text='UV Gridify' )
 		layout.operator( 'mesh.rm_uvrectangularize', text='UV Rectangularize' )
+		layout.operator( 'mesh.grabapplyuvbounds' )
+		layout.operator( 'mesh.matchhotspot' )
 	
 	
 def register():

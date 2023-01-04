@@ -1,7 +1,6 @@
 import bpy, gpu, mathutils, blf
 from gpu_extras.batch import batch_for_shader
 from bpy_extras.view3d_utils import location_3d_to_region_2d
-import math, time
 import rmKit.rmlib as rmlib
 
 class DimensionsManager:
@@ -19,10 +18,35 @@ class DimensionsManager:
 	_z_handle = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
 
 	def __init__( self, context ):
+		self.factor = 1.0
 		DimensionsManager.shader = gpu.shader.from_builtin( '3D_SMOOTH_COLOR' )
 		self.shader_batch()
 
 	def update( self, context ):
+		imperial = context.scene.unit_settings.system == 'IMPERIAL'
+		length_unit = context.scene.unit_settings.length_unit
+		self.factor = 1.0
+		if imperial:
+			if length_unit == 'INCHES':
+				self.factor = 39.3701
+			elif length_unit == 'FEET':
+				self.factor = 3.28084
+			elif length_unit == 'THOU':
+				self.factor = 39370.1
+			elif length_unit == 'MILES':
+				self.factor = 0.000621371
+			else:
+				self.factor = 39.3701
+		else:
+			if length_unit == 'CENTIMETERS':
+				self.factor = 100.0
+			elif length_unit == 'KILOMETERS':
+				self.factor = 1000.0
+			elif length_unit == 'MILLIMETERS':
+				self.factor = 0.01
+			else:
+				self.factor = 1.0
+
 		self.shader_batch()
 
 		DimensionsManager._x_handle = location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=DimensionsManager._x_max )
@@ -46,12 +70,12 @@ class DimensionsManager:
 		coords.append( DimensionsManager._z_max )
 
 		colors = []
-		colors.append( ( 1.0, 0.0, 0.0, 1.0 ) )
-		colors.append( ( 1.0, 0.0, 0.0, 1.0 ) )
-		colors.append( ( 0.0, 1.0, 0.0, 1.0 ) )
-		colors.append( ( 0.0, 1.0, 0.0, 1.0 ) )
-		colors.append( ( 0.0, 0.0, 1.0, 1.0 ) )
-		colors.append( ( 0.0, 0.0, 1.0, 1.0 ) )
+		colors.append( ( 1.0, 0.0, 0.0, 0.5 ) )
+		colors.append( ( 1.0, 0.0, 0.0, 0.5 ) )
+		colors.append( ( 0.0, 1.0, 0.0, 0.5 ) )
+		colors.append( ( 0.0, 1.0, 0.0, 0.5 ) )
+		colors.append( ( 0.0, 0.0, 1.0, 0.5 ) )
+		colors.append( ( 0.0, 0.0, 1.0, 0.5 ) )
 				
 		content = { 'pos':coords, 'color':colors }
 		DimensionsManager.batch = batch_for_shader( DimensionsManager.shader, 'LINES', content )
@@ -66,20 +90,26 @@ class DimensionsManager:
 			gpu.state.line_width_set( 1.0 )
 
 	def draw_text( self ):
-			blf.color( 0, 1.0, 0.0, 0.0, 1.0 )
-			blf.position( 0, DimensionsManager._x_handle[0], DimensionsManager._x_handle[1], 0 )
-			blf.size( 0, 16, 72 )
-			blf.draw( 0, str( ( DimensionsManager._x_max - DimensionsManager._joint ).length ) )
+		blf.color( 0, 1.0, 0.0, 0.0, 1.0 )
+		blf.position( 0, DimensionsManager._x_handle[0], DimensionsManager._x_handle[1], 0 )
+		blf.size( 0, 16, 72 )
+		d = ( DimensionsManager._x_max - DimensionsManager._joint ).length
+		d *= self.factor
+		blf.draw( 0, '{}'.format( d ) )
 
-			blf.color( 0, 0.0, 1.0, 0.0, 1.0 )
-			blf.position( 0, DimensionsManager._y_handle[0], DimensionsManager._y_handle[1], 0 )
-			blf.size( 0, 16, 72 )
-			blf.draw( 0, str( ( DimensionsManager._y_max - DimensionsManager._joint ).length ) )
+		blf.color( 0, 0.0, 1.0, 0.0, 1.0 )
+		blf.position( 0, DimensionsManager._y_handle[0], DimensionsManager._y_handle[1], 0 )
+		blf.size( 0, 16, 72 )
+		d = ( DimensionsManager._y_max - DimensionsManager._joint ).length
+		d *= self.factor
+		blf.draw( 0, '{}'.format( d ) )
 
-			blf.color( 0, 0.0, 0.0, 1.0, 1.0 )
-			blf.position( 0, DimensionsManager._z_handle[0], DimensionsManager._z_handle[1], 0 )
-			blf.size( 0, 16, 72 )
-			blf.draw( 0, str( ( DimensionsManager._z_max - DimensionsManager._joint ).length ) )
+		blf.color( 0, 0.0, 0.0, 1.0, 1.0 )
+		blf.position( 0, DimensionsManager._z_handle[0], DimensionsManager._z_handle[1], 0 )
+		blf.size( 0, 16, 72 )
+		d = ( DimensionsManager._z_max - DimensionsManager._joint ).length
+		d *= self.factor
+		blf.draw( 0, '{}'.format( d ) )
 
 	def doDraw( self ):
 		DimensionsManager.handle = bpy.types.SpaceView3D.draw_handler_add( self.draw, (), 'WINDOW', 'POST_VIEW' )
@@ -99,10 +129,40 @@ class DimensionsManager:
 							region.tag_redraw()
 
 
+def GetWorldSpaceBounds( rmmesh, bounds ):
+	mat = rmmesh.world_transform
+	min_p = bounds[0]
+	max_p = bounds[1]
+
+	corners = []
+	corners.append( min_p )
+	corners.append( mathutils.Vector( ( max_p[0], min_p[1], min_p[2] ) ) )
+	corners.append( mathutils.Vector( ( min_p[0], max_p[1], min_p[2] ) ) )
+	corners.append( mathutils.Vector( ( min_p[0], min_p[1], max_p[2] ) ) )
+	corners.append( mathutils.Vector( ( max_p[0], max_p[1], min_p[2] ) ) )
+	corners.append( mathutils.Vector( ( min_p[0], max_p[1], max_p[2] ) ) )
+	corners.append( mathutils.Vector( ( max_p[0], min_p[1], max_p[2] ) ) )
+	corners.append( max_p )
+
+	for i in range( 8 ):
+		corners[i] = mat @ corners[i]
+
+	min_p = mathutils.Vector( corners[0].copy() )
+	max_p = mathutils.Vector( corners[0].copy() )
+	for c in corners:
+		for i in range( 3 ):
+			if c[i] < min_p[i]:
+				min_p[i] = c[i]
+			if c[i] > max_p[i]:
+				max_p[i] = c[i]
+	
+	return ( min_p, max_p )
+
+
 def GetBoundingBox( context ):		
 		bounding_box = None
 		
-		if context.object.data.is_editmode:
+		if context.mode == 'EDIT_MESH':
 			sel_mode = context.tool_settings.mesh_select_mode[:]
 			rmmesh = rmlib.rmMesh.GetActive( context )
 			if rmmesh is None:
@@ -140,16 +200,16 @@ def GetBoundingBox( context ):
 							min_p[i] = v.co[i]
 						if v.co[i] > max_p[i]:
 							max_p[i] = v.co[i]
-							
-				mat = rmmesh.world_transform
-				bounding_box = ( mat @ min_p, mat @ max_p )
+
+				bounding_box = GetWorldSpaceBounds( rmmesh, ( min_p, max_p ) )
+
 				
 		elif context.mode == 'OBJECT':
 			bbox_corners = []
 			for obj in context.selected_objects:
 				if obj.type != 'MESH':
-					continue
-				bbox_corners += [ mathutils.Vector( t ) + mathutils.Vector( obj.location ) for t in obj.bound_box ]
+					continue				
+				bbox_corners += [ mathutils.Matrix( obj.matrix_world ) @ mathutils.Vector( t ) for t in obj.bound_box ]
 			if len( bbox_corners ) == 0:
 				bbox_corners = [ ( 0.0, 0.0, 0.0 ) ]
 			
@@ -161,7 +221,7 @@ def GetBoundingBox( context ):
 						min_p[i] = p[i]
 					if p[i] > max_p[i]:
 						max_p[i] = p[i]
-						
+												
 			bounding_box = ( min_p, max_p )
 			
 		return bounding_box
@@ -180,7 +240,7 @@ class MESH_OT_dimensions( bpy.types.Operator ):
 	def invoke(self, context, event):
 		#add a timer to modal
 		wm = context.window_manager
-		self._timer = wm.event_timer_add( 1.0 / 8.0, window=context.window )
+		self._timer = wm.event_timer_add( 1.0 / 16.0, window=context.window )
 		wm.modal_handler_add( self )
 
 		self.execute( context )
