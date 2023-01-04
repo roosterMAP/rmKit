@@ -181,7 +181,7 @@ def GetBoundingBox( context ):
 						edges = rmlib.rmEdgeSet.from_mesh( rmmesh )
 					if len( edges ) == 0:
 						return bounding_box
-					verts = edges.verties
+					verts = edges.vertices
 				elif sel_mode[2]:
 					faces = rmlib.rmPolygonSet.from_selection( rmmesh )
 					if len( faces ) == 0:

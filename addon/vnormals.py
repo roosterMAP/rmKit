@@ -221,12 +221,50 @@ class MESH_OT_applyall( bpy.types.Operator ):
 		bpy.ops.mesh.rm_applyvnorms( selset='SELSET3' )
 		return { 'FINISHED' }
 
+def GetSortedLoops( vert ):
+	vert_loops = list( vert.link_loops )
+	for l in vert_loops:
+		l.tag = False
 
-def GetLoops( vert, face ):
-	vlist = list( face.verts )
-	idx = vlist.index( vert )
+	sorted_loops = []
+	while len( vert_loops ) > 0:
+		start_idx = 0
+		for i, l in enumerate( vert_loops ):
+			if l.edge.is_boundary or not l.edge.smooth:
+				start_idx = i
+				break
 
-	
+		start_loop = vert_loops[start_idx]
+		sorted_group = [ start_loop ]
+		start_loop.tag = True
+
+		next_loop = start_loop
+		while( next_loop is not None ):
+			l = sorted_group[-1]
+			n_l = l.link_loop_prev
+			if n_l.edge.is_boundary or not n_l.edge.smooth:
+				break
+			next_loop = None
+			for f in n_l.edge.link_faces:
+				if f == l.face:
+					continue
+				for face_loop in f.loops:
+					if face_loop.edge == n_l.edge and not face_loop.tag:
+						next_loop = face_loop
+						next_loop.tag = True
+						sorted_group.append( next_loop )
+						break
+
+		sorted_loops += sorted_group
+
+		for l in sorted_group:
+			vert_loops.remove( l )
+
+	for l in vert.link_loops:
+		l.tag = False
+
+	return sorted_loops
+
 	
 class MESH_OT_applyvnorms( bpy.types.Operator ):
 	bl_idname = 'mesh.rm_applyvnorms'
@@ -290,51 +328,10 @@ class MESH_OT_applyvnorms( bpy.types.Operator ):
 					vertices |= set( p.verts )
 					selset_pidxs.add( p.index )
 			
-			for v in vertices:
-				#sort loops such that they wind around v in a clockwise order
-				loops = []
-				unsorted_loops = list( v.link_loops )
-				unsorted_faces = list( v.link_faces )
-				while len( unsorted_faces ) > 0:
-					current_face = unsorted_faces.pop( 0 )
-
-					while( current_face is not None ):
-						for i in range( len( unsorted_loops ) ):
-							if unsorted_loops[i].face == current_face:
-								current_loop = unsorted_loops.pop( i )
-								loops.append( current_loop )
-								break
-						
-						prev_face = current_face
-						current_face = None
-						for f in current_loop.edge.link_faces:
-							if f != prev_face:
-								try:
-									unsorted_faces.remove( f )
-								except ValueError:
-									try:
-										loops.append( unsorted_loops[0] )
-									except IndexError:
-										break
-								current_face = f
-								break
-				loops.reverse()
-				
-				#get the index of the first loop with a sharp edge
-				startIdx = 0
-				lcount = len( loops )
-				for i in range( lcount ):
-					if not loops[i].edge.smooth:
-						break
-					startIdx += 1
-					
-				#compute the vnorm for this poly group.
-				#a group is all polys that link a vert broken up by sharp edges
+			for v in vertices:					
+				#compute the vnorm for this poly group. a group is all polys that link a vert broken up by sharp edges
 				loop_group = []
-				for i in range( lcount ):
-					idx = ( startIdx + i ) % lcount
-					
-					loop = loops[idx]
+				for loop in GetSortedLoops( v ):
 					if not loop.edge.smooth and i != 0:
 						nml = loopgroupnormal( loop_group, self.weighted, selset_pidxs )
 						if nml.length > 0.0:
