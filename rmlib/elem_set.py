@@ -38,7 +38,7 @@ class rmPolygonSet( list ):
 		return cls( p for p in rmmesh.bmesh.faces if p.select )
 
 	@classmethod
-	def from_mesh( cls, rmmesh, filter_hidden=False ):
+	def from_mesh( cls, rmmesh, filter_hidden=True ):
 		"""
 		Returns a list of 3d continuous PolygonSets.
 
@@ -51,9 +51,9 @@ class rmPolygonSet( list ):
 		"""
 		
 		if filter_hidden:
-			return cls( p for p in rmmesh.bmesh.faces )
-		else:
 			return cls( p for p in rmmesh.bmesh.faces if not p.hide )
+		else:
+			return cls( p for p in rmmesh.bmesh.faces )			
 
 	@classmethod
 	def from_mos( cls, rmmesh, context, mouse_pos, ignore_backfacing=True ):
@@ -301,11 +301,11 @@ class rmEdgeSet( list ):
 		return cls( e for e in rmmesh.bmesh.edges if e.select )
 
 	@classmethod
-	def from_mesh( cls, rmmesh, filter_hidden=False ):
+	def from_mesh( cls, rmmesh, filter_hidden=True ):
 		if filter_hidden:
-			return cls( e for e in rmmesh.bmesh.edges )
-		else:
 			return cls( e for e in rmmesh.bmesh.edges if not e.hide )
+		else:
+			return cls( e for e in rmmesh.bmesh.edges )			
 
 	@classmethod
 	def from_mos( cls, rmmesh, context, mouse_pos, pixel_radius=8, ignore_backfacing=True ):
@@ -506,11 +506,11 @@ class rmVertexSet( list ):
 		return cls( v for v in rmmesh.bmesh.verts if v.select )
 
 	@classmethod
-	def from_mesh( cls, rmmesh, filter_hidden=False ):
+	def from_mesh( cls, rmmesh, filter_hidden=True ):
 		if filter_hidden:
-			return cls( v for v in rmmesh.bmesh.verts )
-		else:
 			return cls( v for v in rmmesh.bmesh.verts if not v.hide )
+		else:
+			return cls( v for v in rmmesh.bmesh.verts )
 
 	@classmethod
 	def from_mos( cls, rmmesh, context, mouse_pos, pixel_radius=8, ignore_backfacing=True ):

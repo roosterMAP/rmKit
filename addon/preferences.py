@@ -15,6 +15,7 @@ def register_keyboard_keymap():
 		km_uv = kc.keymaps.new( name='UV Editor', space_type='EMPTY' )
 
 		#3D VIEW KEYMAPS
+		RM_3DVIEW_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_dimensions', 'NONE', 'PRESS' ) ) )
 		RM_3DVIEW_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_togglegrid', 'NONE', 'PRESS' ) ) )
 		RM_3DVIEW_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_workplane', 'NONE', 'PRESS' ) ) )
 		RM_3DVIEW_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_cursor_to_selection', 'NONE', 'PRESS' ) ) )

@@ -51,6 +51,7 @@ from . import unrotate
 from . import rectangularize
 from . import hotspot
 from . import uvboundstransform
+from . import dimensions
 from . import preferences
 
 def register():
@@ -87,6 +88,7 @@ def register():
 	rectangularize.register()
 	hotspot.register()
 	uvboundstransform.register()
+	dimensions.register()
 	preferences.register()
 
 def unregister():
@@ -123,4 +125,5 @@ def unregister():
 	rectangularize.unregister()
 	hotspot.unregister()
 	uvboundstransform.unregister()
+	dimensions.unregister()
 	preferences.unregister()

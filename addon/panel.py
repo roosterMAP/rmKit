@@ -22,6 +22,7 @@ class VIEW3D_PT_UTILS( bpy.types.Panel ):
 		r2.alignment = 'EXPAND'
 		r2.operator( 'view3d.rm_togglegrid', text='Grid Toggle' )
 		r2.operator( 'view3d.rm_workplane', text='Toggle Workplane' )
+		r2.operator( 'view3d.rm_dimensions', text='Toggle Workplane' )
 
 		r3 = layout.row()
 		r3.alignment = 'EXPAND'
