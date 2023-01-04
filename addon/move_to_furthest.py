@@ -137,7 +137,8 @@ class MESH_OT_movetofurthest( bpy.types.Operator ):
 				return { 'CANCELLED' }
 			
 			center = self.str_dir == 'horizontal' or self.str_dir == 'vertical'
-			move_to_furthest( vert_groups, grid_dir_vec, self.constrain, center )
+			inv_rot_mat = rmmesh.world_transform.to_3x3().inverted()
+			move_to_furthest( vert_groups, inv_rot_mat @ grid_dir_vec, self.constrain, center )
 			
 		return { 'FINISHED' }
 

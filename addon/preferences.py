@@ -42,7 +42,8 @@ def register_keyboard_keymap():
 
 
 
-		#MESH KEYMAPS
+		#MESH KEYMAPS		
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_unbevel', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_arcadjust', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_connectedge', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_contextbevel', 'NONE', 'PRESS' ) ) )

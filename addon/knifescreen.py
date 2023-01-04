@@ -70,6 +70,8 @@ class MESH_OT_knifescreen( bpy.types.Operator ):
 			geom = []
 			geom.extend( active_polys.edges )
 			geom.extend( active_polys )
+
+			inv_rot_mat = rmmesh.world_transform.to_3x3().inverted()
 			
 			#in vert mode, slice active polys horizontally or vertically
 			if sel_mode[0]:
@@ -81,17 +83,21 @@ class MESH_OT_knifescreen( bpy.types.Operator ):
 					plane_pos = v.co
 					if self.alignment == 'topology':
 						dir_idx, cam_dir_vec, grid_dir_vec = rm_vp.get_nearest_direction_vector( self.str_dir, rm_wp.matrix )
-						plane_nml = grid_dir_vec.cross( v.normal )
+						vnorm = mathutils.Vector( v.normal )
+						grid_dir_vec = inv_rot_mat @ grid_dir_vec
+						plane_nml = grid_dir_vec.cross( vnorm )
 					elif self.alignment == 'grid':
 						strdir = 'horizontal'
 						if self.str_dir == 'horizontal':
 							strdir = 'vertical'
 						dir_idx, cam_dir_vec, plane_nml = rm_vp.get_nearest_direction_vector( strdir, rm_wp.matrix )
+						plane_nml = inv_rot_mat @ plane_nml
 					else:
 						strdir = 'horizontal'
 						if self.str_dir == 'horizontal':
 							strdir = 'vertical'
 						dir_idx, plane_nml, grid_dir_vec = rm_vp.get_nearest_direction_vector( self.str_dir, rm_wp.matrix )
+						plane_nml = inv_rot_mat @ plane_nml
 						
 					#slice op
 					d = bmesh.ops.bisect_plane( rmmesh.bmesh, geom=geom, dist=0.00001, plane_co=plane_pos, plane_no=plane_nml, use_snap_center=False, clear_outer=False, clear_inner=False )
@@ -115,9 +121,11 @@ class MESH_OT_knifescreen( bpy.types.Operator ):
 						plane_nml = edge_vec.cross( edge_nml )
 					elif self.alignment == 'grid':
 						dir_idx, cam_dir_vec, plane_nml = rm_vp.get_nearest_direction_vector( 'front', rm_wp.matrix )
+						plane_nml = inv_rot_mat @ plane_nml
 						plane_nml = plane_nml.cross( edge_vec )
 					else:
 						dir_idx, plane_nml, grid_dir_vec = rm_vp.get_nearest_direction_vector( 'front', rm_wp.matrix )
+						plane_nml = inv_rot_mat @ plane_nml
 						plane_nml = plane_nml.cross( edge_vec )
 						
 					#slice op

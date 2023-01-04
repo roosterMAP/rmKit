@@ -54,9 +54,12 @@ class MESH_OT_screenreflect( bpy.types.Operator ):
 			geom = []
 			geom.extend( active_polys.vertices )
 			geom.extend( active_polys.edges )
-			geom.extend( active_polys )
+			geom.extend( active_polys )			
 			
 			dir_idx, cam_dir_vec, grid_dir_vec = rm_vp.get_nearest_direction_vector( self.str_dir, rm_wp.matrix )
+
+			inv_rot_mat = rmmesh.world_transform.to_3x3().inverted()
+			grid_dir_vec = inv_rot_mat @ grid_dir_vec
 			
 			if self.mode == 0:
 				#find the farthest point in the direction of the desired axis aligned direction
@@ -72,13 +75,13 @@ class MESH_OT_screenreflect( bpy.types.Operator ):
 			elif self.mode == 1:
 				#slice geo and delete everythin on outer side of slice plane
 				cursor_pos = mathutils.Vector( bpy.context.scene.cursor.location )
-				reflection_center = rmmesh.world_transform.inverted() @ cursor_pos @ rmmesh.world_transform
+				reflection_center = rmmesh.world_transform.inverted() @ cursor_pos# @ rmmesh.world_transform
 				d = bmesh.ops.bisect_plane( rmmesh.bmesh, geom=geom, dist=0.00001, plane_co=reflection_center, plane_no=grid_dir_vec, use_snap_center=False, clear_outer=True, clear_inner=False )
 				geom = d[ 'geom' ]
 
 			elif self.mode == 2:
 				cursor_pos = mathutils.Vector( bpy.context.scene.cursor.location )
-				reflection_center = rmmesh.world_transform.inverted() @ cursor_pos @ rmmesh.world_transform
+				reflection_center = rmmesh.world_transform.inverted() @ cursor_pos# @ rmmesh.world_transform
 				
 			#mirror selection across reflection/slice plane
 			reflection = rmlib.util.ReflectionMatrix( reflection_center, grid_dir_vec )
