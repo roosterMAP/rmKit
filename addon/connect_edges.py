@@ -36,7 +36,7 @@ class CEVert( object ):
 class CEEdge( object ):
 	BMesh = None
 
-	def __init__( self, e, ept1, ept2, active ):
+	def __init__( self, e, ept1, ept2, active, source_poly ):
 		self.edge = e
 		self.index = e.index
 		self.active = active
@@ -44,6 +44,7 @@ class CEEdge( object ):
 		self.ept1 = ept1
 		self.ept2 = ept2
 		self.__subverts = []
+		self.source_poly = source_poly
 
 	def __getattr__( self, name ):
 		try:
@@ -111,7 +112,6 @@ class CEPoly( object ):
 	ALLCEVerts = set()
 	AllCEEdges = set()
 	AllCEPolygons = set()
-	JointCEPolygonIndexes = set()
 
 	def __init__( self, p ):
 		"""
@@ -124,17 +124,23 @@ class CEPoly( object ):
 		self.seed_polygons = []
 		self.index = p.index
 
+		#add to static list
 		CEPoly.AllCEPolygons.add( self )
 
+		#create first ConnectEdgeVert and add to static list
 		prev_vert = CEVert( self.verts[-1] )
 		prev_vert.AddRootVert( prev_vert )
 		CEPoly.ALLCEVerts.add( prev_vert )
 
+		#iterate through all verts of polygon and create ConnectEdge elems
 		vcount = len( self.verts )
 		for i in range( vcount ):
+			#the nth edge of poly has the same starting vert as the nth vert in said poly
 			v1 = self.verts[i]
 			v2 = self.verts[(i+1)%vcount]
+			e = rmlib.rmEdgeSet.from_endpoints( v1, v2 )
 
+			#create new ConnectEdgeVerts if they dont already exist in static list.
 			cev1 = None
 			cev2 = None
 			for cev in CEPoly.ALLCEVerts:
@@ -154,13 +160,13 @@ class CEPoly( object ):
 				CEPoly.ALLCEVerts.add( cev2 )
 			self.ceVerts.append( cev1 )
 			prev_vert.AddRootVert( cev1 )
-			prev_vert = cev1
+			prev_vert = cev1			
 
-			e = rmlib.rmEdgeSet.from_endpoints( v1, v2 )
-
+			#add idx of edge if selected to keep track of active edges on this poly
 			if e.select:
 				self.eidx_list.append( i )
 				
+			#create new ConnectEdgeEdges if they dont already exist in static list.
 			ceeAlreadyExists = False
 			for cee in CEPoly.AllCEEdges:
 				if cee.index == e.index:
@@ -168,7 +174,7 @@ class CEPoly( object ):
 					ceeAlreadyExists = True
 					break
 			if not ceeAlreadyExists:
-				cee = CEEdge( e, cev1, cev2, e.select )
+				cee = CEEdge( e, cev1, cev2, e.select, self )
 				self.ceEdges.append( cee )
 				CEPoly.AllCEEdges.add( cee )
 
@@ -178,42 +184,64 @@ class CEPoly( object ):
 		Recursive function that builds CE data structure.
 		"""
 
+		#ensure we only visit seed_poly once
 		if seed_poly.tag:
 			return
 		seed_poly.tag = True
+
+		#create ConnectEdgePolygon
 		cep = cls( seed_poly )
 
+		#build list of ceEdges where the first edge is the see_edge.
+		#If seed_edge arg is None, then settle for first active edge encountered.
+		ceEdges = cep.ceEdges
 		if seed_edge is None:
-			for i, cee in enumerate( cep.ceEdges ):
+			#if seed_edge is None, it means that this is that start of a AccumulateCEElem recusion.
+			for i, cee in enumerate( ceEdges ):
 				if cee.select:
 					break
 			if len( cep.eidx_list ) == 1:
+				#if there's only one active edge on this poly, just kickoff a recursive call and return early.
+				#there's nothing we more need from this poly.
 				cee.edge.tag = True
 				for p in cee.edge.link_faces:
-					if p.tag or p.index in CEPoly.JointCEPolygonIndexes:
+					if p.tag:
 						continue
 					cls.AccumulateCEElem( p, cee )
 					return
-			ceEdges = cep.ceEdges[i:] + cep.ceEdges[:i]
+			ceEdges = ceEdges[i:] + ceEdges[:i]
 		else:
-			seed_edge.slide_switch = not seed_edge.slide_switch
-			for i, cee in enumerate( cep.ceEdges ):
+			for i, cee in enumerate( ceEdges ):
 				if cee.index == seed_edge.index:
 					break
-			ceEdges = cep.ceEdges[i:] + cep.ceEdges[:i]
+			ceEdges = ceEdges[i:] + ceEdges[:i]
+
+		#init prev_active_edge
+		prev_active_edge = ceEdges[0]
+		for e in ceEdges:
+			if e.select:
+				prev_active_edge = e
 		
-		for i in range( 1, len( ceEdges ) ):
+		#iterate through active edges in poly and dispatch recursive calls
+		for i in range( len( ceEdges ) ):
 			cee = ceEdges[i]
-			if cee.edge.tag and cee.edge.select:
+
+			if cee.edge.tag:
+				if cee.edge.select:
+					prev_active_edge = cee
 				continue
 			cee.edge.tag = True
+
 			if cee.edge.select:
-				link_faces = cee.edge.link_faces
-				if len( link_faces ) == 1:
-					cee.slide_switch = not cee.slide_switch
-					continue
-				for p in link_faces:
-					if p.tag or p.index in CEPoly.JointCEPolygonIndexes:
+				#manage slice_switch
+				if cee.source_poly == prev_active_edge.source_poly:
+					cee.slide_switch = not prev_active_edge.slide_switch
+				else:
+					cee.slide_switch = prev_active_edge.slide_switch
+				prev_active_edge = cee
+				
+				for p in cee.edge.link_faces:
+					if p.tag:
 						continue
 					cls.AccumulateCEElem( p, cee )
 
@@ -416,7 +444,6 @@ class CEPoly( object ):
 		CEPoly.AllCEPolygons.clear()
 		CEPoly.AllCEEdges.clear()
 		CEPoly.ALLCEVerts.clear()
-		CEPoly.JointCEPolygonIndexes.clear()
 
 
 class MESH_OT_connect_edge( bpy.types.Operator ):
@@ -610,7 +637,7 @@ class MESH_OT_connect_edge( bpy.types.Operator ):
 
 				#build list of active polygons. These are polys that neighbor selected edges. A poly with more than
 				#two selected edges is considered a joint polygons. These need to be operated on first to allow for
-				#slide feature. 
+				#slide feature.
 				active_polygons = rmlib.rmPolygonSet()
 				for p in selected_edges.polygons:
 					count = 0
@@ -622,7 +649,6 @@ class MESH_OT_connect_edge( bpy.types.Operator ):
 							count += 1
 					if count > 2:
 						active_polygons.insert( 0, p )
-						CEPoly.JointCEPolygonIndexes.add( p.index )
 					else:
 						active_polygons.append( p )
 					
