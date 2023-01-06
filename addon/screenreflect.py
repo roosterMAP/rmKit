@@ -99,7 +99,7 @@ class MESH_OT_screenreflect( bpy.types.Operator ):
 				epsilon = 0.0001
 				merge_verts = rmlib.rmVertexSet()
 				for v in rmmesh.bmesh.verts:
-					if rmlib.util.PlaneDistance( v.co, reflection_center, grid_dir_vec ) < epsilon:
+					if abs( rmlib.util.PlaneDistance( v.co, reflection_center, grid_dir_vec ) ) < epsilon:
 						merge_verts.append( v )
 				bmesh.ops.remove_doubles( rmmesh.bmesh, verts=merge_verts, dist=epsilon )
 			

@@ -14,9 +14,7 @@ def ScaleLine( p0, p1, scale ):
 
 def arc_adjust( bm, scale ):
 	edges = rmlib.rmEdgeSet( [ e for e in bm.edges if e.select ] )
-	print( len( edges ) )
 	chains = edges.chain()
-	print( len( chains ) )
 	for chain in chains:
 		if len( chain ) < 3:
 			continue
@@ -42,6 +40,119 @@ def arc_adjust( bm, scale ):
 		if abs( scale ) <= 0.0000001:
 			bmesh.ops.remove_doubles( bm, verts=verts, dist=0.00001 )
 
+def ComputePlane( chain ):
+	a, b = ScaleLine( chain[0].co.copy(), chain[1].co.copy(), 10000.0 )
+	c, d = ScaleLine( chain[-1].co.copy(), chain[-2].co.copy() , 10000.0 )
+	p0, p1 = mathutils.geometry.intersect_line_line( a, b, c, d )
+	plane_pos = ( p0 + p1 ) * 0.5
+	
+	start_vec = chain[1].co - plane_pos
+	start_vec.normalize()
+	
+	end_vec = chain[-2].co - plane_pos
+	end_vec.normalize()
+
+	plane_normal = start_vec.cross( end_vec )
+	plane_normal.normalize()
+	
+	return plane_pos, plane_normal
+
+
+def ComputeCircleCenter( chain ):
+	plane_pos, plane_normal = ComputePlane( chain )
+	
+	start_vec = plane_pos - chain[1].co
+	start_vec.normalize()
+	
+	end_vec = plane_pos - chain[-2].co
+	end_vec.normalize()
+	
+	start_vec = start_vec.cross( plane_normal )
+	start_vec.normalize()
+	
+	end_vec = plane_normal.cross( end_vec )
+	end_vec.normalize()
+	
+	a, b = ScaleLine( chain[1].co.copy(), chain[1].co.copy() + start_vec, 10000.0 )
+	c, d = ScaleLine( chain[-2].co.copy(), chain[-2].co.copy() + end_vec , 10000.0 )
+	p0, p1 = mathutils.geometry.intersect_line_line( a, b, c, d )
+	circle_center = ( p0 + p1 ) * 0.5
+	
+	diagonal_vector = ( circle_center - plane_pos ).normalized()
+	
+	return circle_center, diagonal_vector
+		
+
+def GetFirstChainIdx( bm, chains ):
+	active_edge = bm.select_history.active
+	for i in range( len( chains ) ):
+		for v in chains[i]:
+			for e in v.link_edges:
+				if e == active_edge:
+					return i
+	return 0
+
+
+def RemapChain( chain, nearest_center ):
+	plane_pos, plane_normal = ComputePlane( chain )
+	d = rmlib.util.PlaneDistance( nearest_center, chain[1].co.copy(), plane_normal )
+	center = nearest_center - ( plane_normal * d )
+	
+	vec = ( chain[0].co.copy() - chain[1].co.copy() ).normalized()
+	in_vec = vec.cross( plane_normal )
+	a, b = ScaleLine( center.copy(), center.copy() + in_vec, 10000.0 )
+	c, d = ScaleLine( chain[1].co.copy(), chain[0].co.copy(), 10000.0 )
+	foo, start_p = mathutils.geometry.intersect_line_line( a, b, c, d )
+	
+	vec = ( chain[-1].co.copy() - chain[-2].co.copy() ).normalized()
+	in_vec = vec.cross( plane_normal )
+	a, b = ScaleLine( center.copy(), center.copy() + in_vec, 10000.0 )
+	c, d = ScaleLine( chain[-2].co.copy(), chain[-1].co.copy(), 10000.0 )
+	foo, end_p = mathutils.geometry.intersect_line_line( a, b, c, d )
+		
+	start_vec = ( start_p - center ).normalized()
+	end_vec = ( end_p - center ).normalized()
+	
+	cross_vec = start_vec.cross( end_vec )
+	cross_vec.normalize()
+	if plane_normal.dot( cross_vec ) < 0:
+		plane_normal *= -1.0
+		
+	radian_step = start_vec.angle( end_vec ) / ( len( chain ) - 3 )
+	rot_quat = mathutils.Quaternion( plane_normal, radian_step )
+	
+	vec = ( start_p - center )
+	radius = vec.length
+	vec.normalize()
+	chain[1].co = start_p
+	for i in range( 2, len( chain ) - 1 ):
+		vec.rotate( rot_quat )
+		chain[i].co = vec * radius + center	
+
+
+def radial_arc_adjust( bm, scale ):
+	edges = rmlib.rmEdgeSet( [ e for e in bm.edges if e.select ] )
+	if len( edges ) < 3:
+		return False
+	
+	chains = edges.vert_chain()
+	for i in range( 1, len( chains ) ):
+		a = ( chains[i][-2].co - chains[0][1].co ).length
+		b = ( chains[i][1].co - chains[0][1].co ).length
+		if a < b:
+			chains[i].reverse()
+						
+	chain_idx = GetFirstChainIdx( bm, chains )
+	circle_center, diagonal_vector = ComputeCircleCenter( chains[chain_idx] )
+	circle_center += diagonal_vector * scale
+	
+	for chain in chains:
+		if len( chain ) < 4:
+			continue
+		RemapChain( chain, circle_center )
+
+	return True
+
 class MESH_OT_arcadjust( bpy.types.Operator ):
 	
 	bl_idname = 'mesh.rm_arcadjust'
@@ -52,6 +163,11 @@ class MESH_OT_arcadjust( bpy.types.Operator ):
 		name='Scale',
 		description='Scale applied to selected arc',
 		default=1.0
+	)
+
+	radial: bpy.props.BoolProperty(
+		name='Radial',
+		default=False
 	)
 
 	def __init__( self ):
@@ -73,7 +189,12 @@ class MESH_OT_arcadjust( bpy.types.Operator ):
 		
 		bm = self.bmesh.copy()
 		
-		arc_adjust( bm, self.scale )
+		if self.radial:
+			success = radial_arc_adjust( bm, self.scale - 1.0 )
+			if not success:
+				return { 'CANCELLED' }
+		else:
+			arc_adjust( bm, self.scale )
 
 		targetMesh = context.active_object.data
 		bm.to_mesh( targetMesh )
@@ -88,6 +209,9 @@ class MESH_OT_arcadjust( bpy.types.Operator ):
 	def modal( self, context, event ):
 		if event.type == 'LEFTMOUSE':
 			return { 'FINISHED' }
+		elif event.type == 'RIGHTMOUSE':
+			if event.value == 'RELEASE':
+				self.radial = not self.radial
 		elif event.type == 'MOUSEMOVE':
 			delta_x = float( event.mouse_x - event.mouse_prev_press_x ) / context.region.width
 			#delta_y = float( event.mouse_prev_press_y - event.mouse_y ) / context.region.height

@@ -122,7 +122,7 @@ def line2_dist( a, b, x ):
 def PlaneDistance( p, pP, pN ):
 	pN.normalize()
 	d = pN.dot( pP ) * -1.0
-	a = abs( pN.dot( p ) + d )
+	a = pN.dot( p ) + d
 	b = math.sqrt( pN.dot( pN ) )
 	return a / b
 
