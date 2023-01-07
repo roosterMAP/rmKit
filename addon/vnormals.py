@@ -332,7 +332,7 @@ class MESH_OT_applyvnorms( bpy.types.Operator ):
 				#compute the vnorm for this poly group. a group is all polys that link a vert broken up by sharp edges
 				loop_group = []
 				for loop in GetSortedLoops( v ):
-					if not loop.edge.smooth and i != 0:
+					if not loop.edge.smooth:
 						nml = loopgroupnormal( loop_group, self.weighted, selset_pidxs )
 						if nml.length > 0.0:
 							for l in loop_group:

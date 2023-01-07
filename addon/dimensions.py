@@ -17,6 +17,16 @@ class DimensionsManager:
 	_y_handle = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
 	_z_handle = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
 
+	@staticmethod
+	def Zero():
+		DimensionsManager._joint = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
+		DimensionsManager._x_max = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
+		DimensionsManager._y_max = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
+		DimensionsManager._z_max = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
+		DimensionsManager._x_handle = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
+		DimensionsManager._y_handle = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
+		DimensionsManager._z_handle = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
+
 	def __init__( self, context ):
 		self.factor = 1.0
 		DimensionsManager.shader = gpu.shader.from_builtin( '3D_SMOOTH_COLOR' )
@@ -48,10 +58,12 @@ class DimensionsManager:
 				self.factor = 1.0
 
 		self.shader_batch()
-
-		DimensionsManager._x_handle = location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=DimensionsManager._x_max )
-		DimensionsManager._y_handle = location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=DimensionsManager._y_max )
-		DimensionsManager._z_handle = location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=DimensionsManager._z_max )
+		try:
+			DimensionsManager._x_handle = location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=DimensionsManager._x_max )
+			DimensionsManager._y_handle = location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=DimensionsManager._y_max )
+			DimensionsManager._z_handle = location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=DimensionsManager._z_max )
+		except AttributeError:
+			return
 
 		for window in context.window_manager.windows:
 			for area in window.screen.areas:
@@ -95,6 +107,7 @@ class DimensionsManager:
 		blf.size( 0, 16, 72 )
 		d = ( DimensionsManager._x_max - DimensionsManager._joint ).length
 		d *= self.factor
+		d = round( d, 4 )
 		blf.draw( 0, '{}'.format( d ) )
 
 		blf.color( 0, 0.0, 1.0, 0.0, 1.0 )
@@ -102,6 +115,7 @@ class DimensionsManager:
 		blf.size( 0, 16, 72 )
 		d = ( DimensionsManager._y_max - DimensionsManager._joint ).length
 		d *= self.factor
+		d = round( d, 4 )
 		blf.draw( 0, '{}'.format( d ) )
 
 		blf.color( 0, 0.0, 0.0, 1.0, 1.0 )
@@ -109,6 +123,7 @@ class DimensionsManager:
 		blf.size( 0, 16, 72 )
 		d = ( DimensionsManager._z_max - DimensionsManager._joint ).length
 		d *= self.factor
+		d = round( d, 4 )
 		blf.draw( 0, '{}'.format( d ) )
 
 	def doDraw( self ):
@@ -253,14 +268,17 @@ class MESH_OT_dimensions( bpy.types.Operator ):
 			
 		if event.type == 'TIMER':
 			bounding_box = GetBoundingBox( context )
-			DimensionsManager._joint = bounding_box[0]
-			DimensionsManager._x_max = mathutils.Vector( ( bounding_box[1][0], bounding_box[0][1], bounding_box[0][2] ) )
-			DimensionsManager._y_max = mathutils.Vector( ( bounding_box[0][0], bounding_box[1][1], bounding_box[0][2] ) )
-			DimensionsManager._z_max = mathutils.Vector( ( bounding_box[0][0], bounding_box[0][1], bounding_box[1][2] ) )
+			if bounding_box is None:
+				DimensionsManager.Zero()
+			else:
+				DimensionsManager._joint = bounding_box[0]
+				DimensionsManager._x_max = mathutils.Vector( ( bounding_box[1][0], bounding_box[0][1], bounding_box[0][2] ) )
+				DimensionsManager._y_max = mathutils.Vector( ( bounding_box[0][0], bounding_box[1][1], bounding_box[0][2] ) )
+				DimensionsManager._z_max = mathutils.Vector( ( bounding_box[0][0], bounding_box[0][1], bounding_box[1][2] ) )
 
 			MESH_OT_dimensions.DIMENSIONS_RENDER.update( context )
 
-		return {"PASS_THROUGH"}
+		return { 'PASS_THROUGH' }
 
 	def execute( self, context ):
 		if MESH_OT_dimensions.DIMENSIONS_RENDER is None:
