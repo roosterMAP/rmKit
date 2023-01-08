@@ -4,7 +4,7 @@ import rmKit.rmlib as rmlib
 MAT_PROP_UPDATED = False
 
 class MESH_OT_quickmaterial( bpy.types.Operator ):
-	"""Utility for quickly sampling, modifying, and creating materials for 3d viewport."""
+	'''Utility for quickly sampling, modifying, and creating materials for 3d viewport.'''
 	bl_idname = 'mesh.rm_quickmaterial'
 	bl_label = 'Quick Material'
 	bl_options = { 'UNDO' }
@@ -16,20 +16,29 @@ class MESH_OT_quickmaterial( bpy.types.Operator ):
 		return context.area.type == 'VIEW_3D'
 		
 	def execute( self, context ):		
-		material = bpy.context.scene.quickmatprops["prop_mat"]
+		material = bpy.context.scene.quickmatprops['prop_mat']
 		
 		if material is None:
 			if self.new_name.strip() == '':
 				return { 'CANCELLED' }
 			material = bpy.data.materials.new( name=self.new_name.strip() )
+			material.use_nodes = True
 		
 		global MAT_PROP_UPDATED
 		if MAT_PROP_UPDATED:
-			material.diffuse_color = bpy.context.scene.quickmatprops["prop_col"]
-			material.metallic = bpy.context.scene.quickmatprops["prop_met"]
-			material.roughness = bpy.context.scene.quickmatprops["prop_rog"]
-			material["WorldMappingWidth"] = bpy.context.scene.quickmatprops["prop_width"]
-			material["WorldMappingHeight"] = bpy.context.scene.quickmatprops["prop_height"]
+			material.diffuse_color = bpy.context.scene.quickmatprops['prop_col']
+			material.metallic = bpy.context.scene.quickmatprops['prop_met']
+			material.roughness = bpy.context.scene.quickmatprops['prop_rog']
+			material['WorldMappingWidth'] = bpy.context.scene.quickmatprops['prop_width']
+			material['WorldMappingHeight'] = bpy.context.scene.quickmatprops['prop_height']
+
+			node_tree = material.node_tree
+			nodes = node_tree.nodes
+			bsdf = nodes.get('Principled BSDF') 
+			if bsdf:
+				bsdf.inputs[0].default_value = bpy.context.scene.quickmatprops['prop_col']
+				bsdf.inputs[6].default_value = bpy.context.scene.quickmatprops['prop_met']
+				bsdf.inputs[9].default_value = bpy.context.scene.quickmatprops['prop_rog']
 			
 		if not context.object.data.is_editmode:
 			return { 'FINISHED' }
@@ -62,17 +71,17 @@ class MESH_OT_quickmaterial( bpy.types.Operator ):
 
 	def draw( self, context ):
 		layout= self.layout
-		layout.prop( context.scene.quickmatprops, "prop_mat" )
+		layout.prop( context.scene.quickmatprops, 'prop_mat' )
 		layout.separator( factor=0.1 )
 		box = layout.box()
-		material = bpy.context.scene.quickmatprops["prop_mat"]
+		material = bpy.context.scene.quickmatprops['prop_mat']
 		if material is None:
-			box.prop( self, "new_name" )
-		box.prop( context.scene.quickmatprops, "prop_col" )
-		box.prop( context.scene.quickmatprops, "prop_met" )
-		box.prop( context.scene.quickmatprops, "prop_rog" )
-		box.prop( context.scene.quickmatprops, "prop_width" )
-		box.prop( context.scene.quickmatprops, "prop_height" )
+			box.prop( self, 'new_name' )
+		box.prop( context.scene.quickmatprops, 'prop_col' )
+		box.prop( context.scene.quickmatprops, 'prop_met' )
+		box.prop( context.scene.quickmatprops, 'prop_rog' )
+		box.prop( context.scene.quickmatprops, 'prop_width' )
+		box.prop( context.scene.quickmatprops, 'prop_height' )
 		layout.separator( factor=1 )
 
 	def invoke( self, context, event ):
@@ -101,46 +110,46 @@ class MESH_OT_quickmaterial( bpy.types.Operator ):
 				material = obj.data.materials[mat_idx]
 			except IndexError:
 				material = obj.data.materials[0]
-			bpy.context.scene.quickmatprops["prop_mat"] = material
-			bpy.context.scene.quickmatprops["prop_col"] = material.diffuse_color
-			bpy.context.scene.quickmatprops["prop_met"] = material.metallic
-			bpy.context.scene.quickmatprops["prop_rog"] = material.roughness
+			bpy.context.scene.quickmatprops['prop_mat'] = material
+			bpy.context.scene.quickmatprops['prop_col'] = material.diffuse_color
+			bpy.context.scene.quickmatprops['prop_met'] = material.metallic
+			bpy.context.scene.quickmatprops['prop_rog'] = material.roughness
 			try:
-				bpy.context.scene.quickmatprops["prop_width"] = material["WorldMappingWidth"]
-				bpy.context.scene.quickmatprops["prop_height"] = material["WorldMappingHeight"]
+				bpy.context.scene.quickmatprops['prop_width'] = material['WorldMappingWidth']
+				bpy.context.scene.quickmatprops['prop_height'] = material['WorldMappingHeight']
 			except KeyError:
-				bpy.context.scene.quickmatprops["prop_width"] = 2.0
-				bpy.context.scene.quickmatprops["prop_height"] = 2.0
+				bpy.context.scene.quickmatprops['prop_width'] = 2.0
+				bpy.context.scene.quickmatprops['prop_height'] = 2.0
 		else:			
-			bpy.context.scene.quickmatprops["prop_mat"] = None
-			bpy.context.scene.quickmatprops["prop_col"] = ( 0.5, 0.5, 0.5, 1.0 )
-			bpy.context.scene.quickmatprops["prop_met"] = 0.0
-			bpy.context.scene.quickmatprops["prop_rog"] = 0.4
-			bpy.context.scene.quickmatprops["prop_width"] = 2.0
-			bpy.context.scene.quickmatprops["prop_height"] = 2.0
+			bpy.context.scene.quickmatprops['prop_mat'] = None
+			bpy.context.scene.quickmatprops['prop_col'] = ( 0.5, 0.5, 0.5, 1.0 )
+			bpy.context.scene.quickmatprops['prop_met'] = 0.0
+			bpy.context.scene.quickmatprops['prop_rog'] = 0.4
+			bpy.context.scene.quickmatprops['prop_width'] = 2.0
+			bpy.context.scene.quickmatprops['prop_height'] = 2.0
 		return context.window_manager.invoke_props_dialog( self, width=230 )
 	
 	
 def mat_search_changed( self, context ):
 	global MAT_PROP_UPDATED
 	MAT_PROP_UPDATED = False
-	material = self["prop_mat"]
+	material = self['prop_mat']
 	if material is not None:
-		self["prop_col"] = material.diffuse_color
-		self["prop_met"] = material.metallic
-		self["prop_rog"] = material.roughness
+		self['prop_col'] = material.diffuse_color
+		self['prop_met'] = material.metallic
+		self['prop_rog'] = material.roughness
 		try:
-			self["prop_width"] = material["WorldMappingWidth"]
-			self["prop_height"] = material["WorldMappingHeight"]
+			self['prop_width'] = material['WorldMappingWidth']
+			self['prop_height'] = material['WorldMappingHeight']
 		except KeyError:
-			self["prop_width"] = 2.0
-			self["prop_height"] = 2.0
+			self['prop_width'] = 2.0
+			self['prop_height'] = 2.0
 	else:
-		self["prop_col"] = ( 0.5, 0.5, 0.5, 1.0 )
-		self["prop_met"] = 0.0
-		self["prop_rog"] = 0.4
-		self["prop_width"] = 2.0
-		self["prop_height"] = 2.0
+		self['prop_col'] = ( 0.5, 0.5, 0.5, 1.0 )
+		self['prop_met'] = 0.0
+		self['prop_rog'] = 0.4
+		self['prop_width'] = 2.0
+		self['prop_height'] = 2.0
 		
 		
 def mat_prop_changed( self, context ):
@@ -149,8 +158,8 @@ def mat_prop_changed( self, context ):
 	
 	
 class QuickMatProps( bpy.types.PropertyGroup ):
-	prop_mat: bpy.props.PointerProperty( name="Material", type=bpy.types.Material, update=lambda self, context : mat_search_changed( self, context ) )
-	prop_col: bpy.props.FloatVectorProperty( name="Color", subtype= 'COLOR_GAMMA', size=4, default=( 0.5, 0.5, 0.5, 1.0 ), update=lambda self, context : mat_prop_changed( self, context ) )
+	prop_mat: bpy.props.PointerProperty( name='Material', type=bpy.types.Material, update=lambda self, context : mat_search_changed( self, context ) )
+	prop_col: bpy.props.FloatVectorProperty( name='Color', subtype= 'COLOR_GAMMA', size=4, default=( 0.5, 0.5, 0.5, 1.0 ), update=lambda self, context : mat_prop_changed( self, context ) )
 	prop_met: bpy.props.FloatProperty( name='Metallic', default=0.0, min=0.0, max=1.0, update=lambda self, context : mat_prop_changed( self, context ) )
 	prop_rog: bpy.props.FloatProperty( name='Roughness', default=0.4, min=0.0, max=1.0, update=lambda self, context : mat_prop_changed( self, context ) )
 	prop_width: bpy.props.FloatProperty( name='World Width', default=2.0, min=0.0, subtype='DISTANCE', unit='LENGTH', update=lambda self, context : mat_prop_changed( self, context ) )

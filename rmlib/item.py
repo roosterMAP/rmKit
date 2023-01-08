@@ -40,6 +40,16 @@ class rmMesh():
 			return None
 
 		return cls( obj )
+
+	def GetEvaluated( self, context ):
+		#returns read only instance of rmmesh  post modifier and animation and such.
+		#returned data is temp and use causes crashes. so be carfull!!!
+		depsgraph = context.evaluated_depsgraph_get()
+		depsgraph.update()
+		eval_obj = self.__object.evaluated_get( depsgraph )
+		eval_rmmesh = rmMesh( eval_obj )
+		eval_rmmesh.readonly = True
+		return eval_rmmesh
 	
 	def __enter__( self ):
 		if self.__bmesh is not None:
@@ -53,8 +63,9 @@ class rmMesh():
 			
 	def __exit__( self ,type, value, traceback ):
 		if self.__bmesh.is_wrapped:
-			bmesh.update_edit_mesh( self.__mesh, loop_triangles=( not self.__readonly ), destructive=( not self.__readonly ) )
-			self.__bmesh.select_flush_mode()
+			if not self.__readonly:
+				bmesh.update_edit_mesh( self.__mesh, loop_triangles=( not self.__readonly ), destructive=( not self.__readonly ) )
+				self.__bmesh.select_flush_mode()
 		else:
 			self.__bmesh.to_mesh( self.__mesh )
 			if not self.__readonly:
@@ -62,6 +73,7 @@ class rmMesh():
 				self.__mesh.update()
 			self.__bmesh.free()		
 		self.__bmesh = None
+		self.__mesh = self.__object.data
 
 	def iter_uvs( self ):
 		if self.__bmesh is None:
@@ -82,7 +94,7 @@ class rmMesh():
 	@property
 	def mesh( self ):
 		if self.__mesh is None:
-			raise RuntimeError( 'mesh cannot be accessed outside of a "with" context!!!' )
+			return self.__object.data
 		return self.__mesh
 
 	@property
