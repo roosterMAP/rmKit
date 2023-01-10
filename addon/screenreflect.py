@@ -24,13 +24,10 @@ class MESH_OT_screenreflect( bpy.types.Operator ):
 	
 	@classmethod
 	def poll( cls, context ):
-		return ( context.area.type == 'VIEW_3D' and
-				context.active_object is not None and
-				context.active_object.type == 'MESH' and
-				context.object.data.is_editmode )
+		return ( context.area.type == 'VIEW_3D' )
 		
 	def execute( self, context ):
-		if context.object is None or context.mode == 'OBJECT':
+		if context.object is None:
 			return { 'CANCELLED' }
 		
 		if context.object.type != 'MESH':
@@ -39,70 +36,110 @@ class MESH_OT_screenreflect( bpy.types.Operator ):
 		rm_vp = rmlib.rmViewport( context )
 		rm_wp = rmlib.rmCustomOrientation.from_selection( context )
 
-		sel_mode = context.tool_settings.mesh_select_mode[:]
-		if not sel_mode[2]:
-			return { 'CANCELLED' }
-		
-		#retrieve active mesh
-		rmmesh = rmlib.rmMesh.GetActive( context )
-		with rmmesh as rmmesh:
-			#get selected polyons and init geom list for slicing
-			active_polys = rmlib.rmPolygonSet.from_selection( rmmesh )
-			if len( active_polys ) < 1:
+		if context.mode == 'EDIT_MESH':
+			sel_mode = context.tool_settings.mesh_select_mode[:]
+			if not sel_mode[2]:
 				return { 'CANCELLED' }
-			active_verts = active_polys.vertices
-			geom = []
-			geom.extend( active_polys.vertices )
-			geom.extend( active_polys.edges )
-			geom.extend( active_polys )			
 			
-			dir_idx, cam_dir_vec, grid_dir_vec = rm_vp.get_nearest_direction_vector( self.str_dir, rm_wp.matrix )
-
-			inv_rot_mat = rmmesh.world_transform.to_3x3().inverted()
-			grid_dir_vec = inv_rot_mat @ grid_dir_vec
-			
-			if self.mode == 0:
-				#find the farthest point in the direction of the desired axis aligned direction
-				reflection_center = active_verts[0].co.copy()
-				max_dot = grid_dir_vec.dot( active_verts[0].co )
-				for i in range( 1, len( active_verts ) ):
-					v = active_verts[i]
-					dot = grid_dir_vec.dot( v.co )
-					if dot > max_dot:
-						max_dot = dot
-						reflection_center = v.co.copy()
-
-			elif self.mode == 1:
-				#slice geo and delete everythin on outer side of slice plane
-				cursor_pos = mathutils.Vector( bpy.context.scene.cursor.location )
-				reflection_center = rmmesh.world_transform.inverted() @ cursor_pos# @ rmmesh.world_transform
-				d = bmesh.ops.bisect_plane( rmmesh.bmesh, geom=geom, dist=0.00001, plane_co=reflection_center, plane_no=grid_dir_vec, use_snap_center=False, clear_outer=True, clear_inner=False )
-				geom = d[ 'geom' ]
-
-			elif self.mode == 2:
-				cursor_pos = mathutils.Vector( bpy.context.scene.cursor.location )
-				reflection_center = rmmesh.world_transform.inverted() @ cursor_pos# @ rmmesh.world_transform
+			#retrieve active mesh
+			rmmesh = rmlib.rmMesh.GetActive( context )
+			with rmmesh as rmmesh:
+				#get selected polyons and init geom list for slicing
+				active_polys = rmlib.rmPolygonSet.from_selection( rmmesh )
+				if len( active_polys ) < 1:
+					return { 'CANCELLED' }
+				active_verts = active_polys.vertices
+				geom = []
+				geom.extend( active_polys.vertices )
+				geom.extend( active_polys.edges )
+				geom.extend( active_polys )			
 				
-			#mirror selection across reflection/slice plane
-			reflection = rmlib.util.ReflectionMatrix( reflection_center, grid_dir_vec )
-			d = bmesh.ops.duplicate( rmmesh.bmesh, geom=geom )
-			rev_faces = []
-			for elem in d['geom']:
-				if isinstance( elem, bmesh.types.BMVert ):
-					elem.co = reflection @ elem.co
-				elif isinstance( elem, bmesh.types.BMFace ):
-					rev_faces.append( elem )
-			bmesh.ops.reverse_faces( rmmesh.bmesh, faces=rev_faces )
+				dir_idx, cam_dir_vec, grid_dir_vec = rm_vp.get_nearest_direction_vector( self.str_dir, rm_wp.matrix )
 
-			if self.mode == 1:
-				#merge vertices that are on the slice plane
-				epsilon = 0.0001
-				merge_verts = rmlib.rmVertexSet()
-				for v in rmmesh.bmesh.verts:
-					if abs( rmlib.util.PlaneDistance( v.co, reflection_center, grid_dir_vec ) ) < epsilon:
-						merge_verts.append( v )
-				bmesh.ops.remove_doubles( rmmesh.bmesh, verts=merge_verts, dist=epsilon )
+				inv_rot_mat = rmmesh.world_transform.to_3x3().inverted()
+				grid_dir_vec = inv_rot_mat @ grid_dir_vec
+				
+				if self.mode == 0:
+					#find the farthest point in the direction of the desired axis aligned direction
+					reflection_center = active_verts[0].co.copy()
+					max_dot = grid_dir_vec.dot( active_verts[0].co )
+					for i in range( 1, len( active_verts ) ):
+						v = active_verts[i]
+						dot = grid_dir_vec.dot( v.co )
+						if dot > max_dot:
+							max_dot = dot
+							reflection_center = v.co.copy()
+
+				elif self.mode == 1:
+					#slice geo and delete everything on outer side of slice plane
+					cursor_pos = mathutils.Vector( bpy.context.scene.cursor.location )
+					reflection_center = rmmesh.world_transform.inverted() @ cursor_pos# @ rmmesh.world_transform
+					d = bmesh.ops.bisect_plane( rmmesh.bmesh, geom=geom, dist=0.00001, plane_co=reflection_center, plane_no=grid_dir_vec, use_snap_center=False, clear_outer=True, clear_inner=False )
+					geom = d[ 'geom' ]
+
+				elif self.mode == 2:
+					cursor_pos = mathutils.Vector( bpy.context.scene.cursor.location )
+					reflection_center = rmmesh.world_transform.inverted() @ cursor_pos# @ rmmesh.world_transform
+					
+				#mirror selection across reflection/slice plane
+				reflection = rmlib.util.ReflectionMatrix( reflection_center, grid_dir_vec )
+				d = bmesh.ops.duplicate( rmmesh.bmesh, geom=geom )
+				rev_faces = []
+				for elem in d['geom']:
+					if isinstance( elem, bmesh.types.BMVert ):
+						elem.co = reflection @ elem.co
+					elif isinstance( elem, bmesh.types.BMFace ):
+						rev_faces.append( elem )
+				bmesh.ops.reverse_faces( rmmesh.bmesh, faces=rev_faces )
+
+				if self.mode == 1:
+					#merge vertices that are on the slice plane
+					epsilon = 0.0001
+					merge_verts = rmlib.rmVertexSet()
+					for v in rmmesh.bmesh.verts:
+						if abs( rmlib.util.PlaneDistance( v.co, reflection_center, grid_dir_vec ) ) < epsilon:
+							merge_verts.append( v )
+					bmesh.ops.remove_doubles( rmmesh.bmesh, verts=merge_verts, dist=epsilon )
 			
+		elif context.mode == 'OBJECT':
+			dir_idx, cam_dir_vec, grid_dir_vec = rm_vp.get_nearest_direction_vector( self.str_dir, rm_wp.matrix )
+			
+			for obj in list( bpy.context.selected_objects ):
+				if obj.type != 'MESH':
+					continue
+				
+				rmmesh = rmlib.rmMesh( obj )
+				inv_rot_mat = rmmesh.world_transform.to_3x3().inverted()
+				with rmmesh as rmmesh:
+					rmmesh.readonly = True
+
+					if self.mode == 0:
+						grid_dir_vec_objspc = inv_rot_mat @ grid_dir_vec
+
+						#find the farthest point in the direction of the desired axis aligned direction
+						active_verts = rmlib.rmVertexSet.from_mesh( rmmesh=rmmesh, filter_hidden=True )
+						reflection_center = active_verts[0].co.copy()
+						max_dot = grid_dir_vec_objspc.dot( active_verts[0].co )
+						for i in range( 1, len( active_verts ) ):
+							v = active_verts[i]
+							dot = grid_dir_vec_objspc.dot( v.co )
+							if dot > max_dot:
+								max_dot = dot
+								reflection_center = v.co.copy()
+
+						reflection_center = rmmesh.world_transform @ reflection_center
+
+					else:
+						reflection_center = mathutils.Vector( bpy.context.scene.cursor.location )
+
+				reflection = rmlib.util.ReflectionMatrix( reflection_center, grid_dir_vec )
+				mat = mathutils.Matrix( obj.matrix_world )
+				new_mat = reflection @ mat
+
+				bpy.ops.object.duplicate( { 'object':obj, 'selected_objects':[obj] }, linked=True )
+				new_obj = context.object
+				new_obj.matrix_world = new_mat
+
 		return { 'FINISHED' }
 
 

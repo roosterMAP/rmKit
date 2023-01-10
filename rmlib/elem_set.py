@@ -4,6 +4,16 @@ from rmKit.rmlib import util
 import mathutils
 import math
 
+def clear_tags( bm ):
+	for v in bm.verts:
+		v.tag = False
+	for e in bm.edges:
+		e.tag = False
+	for f in bm.faces:
+		f.tag = False
+		for l in f.loops:
+			l.tag = False
+
 def shared_edge( p1, p2 ):
 	for e in p1.edges:
 		for np in e.link_faces:

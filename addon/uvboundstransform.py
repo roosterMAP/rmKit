@@ -314,6 +314,17 @@ class MESH_OT_uvboundstransform( bpy.types.Operator ):
 			MESH_OT_uvboundstransform.BOUNDS_RENDER = BoundsHandle( context, self.bounds )
 			MESH_OT_uvboundstransform.BOUNDS_RENDER.doDraw( context )
 
+		'''
+		#allow view2d events (like panning and zooming) to pass through modal
+		if MESH_OT_uvboundstransform.BOUNDS_RENDER:
+			for kc in context.window_manager.keyconfigs:
+				for km in kc.keymaps:
+					found_keymap = km.keymap_items.match_event( event )
+					if found_keymap is not None and found_keymap.idname.startswith('view2d'):
+						#make MESH_OT_uvboundstransform.BOUNDS_RENDER keep up with pan without modifying it.
+						pass
+		'''
+
 		if event.type == 'LEFTMOUSE' and MESH_OT_uvboundstransform.BOUNDS_RENDER:
 			self.hit_idx = -1
 
@@ -333,7 +344,6 @@ class MESH_OT_uvboundstransform( bpy.types.Operator ):
 			if event.value == 'RELEASE':
 				self.hit_idx = -1
 				self.lmb_down = False
-
 
 		elif event.type == 'MOUSEMOVE' and MESH_OT_uvboundstransform.BOUNDS_RENDER:			
 			MESH_OT_uvboundstransform.BOUNDS_RENDER.update( context, event.mouse_region_x, event.mouse_region_y )

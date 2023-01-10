@@ -276,7 +276,7 @@ class MESH_OT_togglegrid( bpy.types.Operator ):
 		b3 = bpy.context.space_data.overlay.show_axis_y
 		b4 = bpy.context.space_data.overlay.show_axis_z
 
-		if b1 or b2 or b3 or b4:
+		if b1 or b2 or b3:
 			bpy.context.scene.workplaneprops['prop_show_floor'] = b1
 			bpy.context.scene.workplaneprops['prop_show_x'] = b2
 			bpy.context.scene.workplaneprops['prop_show_y'] = b3
@@ -290,6 +290,10 @@ class MESH_OT_togglegrid( bpy.types.Operator ):
 			bpy.context.space_data.overlay.show_axis_x = bpy.context.scene.workplaneprops['prop_show_x']
 			bpy.context.space_data.overlay.show_axis_y = bpy.context.scene.workplaneprops['prop_show_y']
 			bpy.context.space_data.overlay.show_axis_z = bpy.context.scene.workplaneprops['prop_show_z']
+			bpy.context.space_data.overlay.show_floor = True
+			bpy.context.space_data.overlay.show_axis_x = True
+			bpy.context.space_data.overlay.show_axis_y = True
+			bpy.context.space_data.overlay.show_axis_z = False
 				
 		return { 'FINISHED' }
 

@@ -192,6 +192,7 @@ class MESH_OT_arcadjust( bpy.types.Operator ):
 		if self.radial:
 			success = radial_arc_adjust( bm, self.scale - 1.0 )
 			if not success:
+				self.report( { 'WARNING' }, 'Invalid edge selection!!!' )
 				return { 'CANCELLED' }
 		else:
 			arc_adjust( bm, self.scale )

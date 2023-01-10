@@ -63,9 +63,8 @@ class rmMesh():
 			
 	def __exit__( self ,type, value, traceback ):
 		if self.__bmesh.is_wrapped:
-			if not self.__readonly:
-				bmesh.update_edit_mesh( self.__mesh, loop_triangles=( not self.__readonly ), destructive=( not self.__readonly ) )
-				self.__bmesh.select_flush_mode()
+			bmesh.update_edit_mesh( self.__mesh, loop_triangles=( not self.__readonly ), destructive=( not self.__readonly ) )
+			self.__bmesh.select_flush_mode()
 		else:
 			self.__bmesh.to_mesh( self.__mesh )
 			if not self.__readonly:
