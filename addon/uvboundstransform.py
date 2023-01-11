@@ -207,7 +207,6 @@ class MESH_OT_uvboundstransform( bpy.types.Operator ):
 	BOUNDS_RENDER = None
 	
 	def __init__( self ):
-		self.bounds = None
 		self.hit_idx = -1
 		self.prev_press_x = 0.0
 		self.prev_press_y = 0.0
@@ -309,9 +308,9 @@ class MESH_OT_uvboundstransform( bpy.types.Operator ):
 				bpy.ops.object.mode_set( mode='EDIT', toggle=False )
 				return { 'CANCELLED' }
 			uvs = [ mathutils.Vector( l[uvlayer].uv ) for l in loops ]
-			self.bounds = Bounds2D.from_uvs( context, uvs )
+			bounds = Bounds2D.from_uvs( context, uvs )
 
-			MESH_OT_uvboundstransform.BOUNDS_RENDER = BoundsHandle( context, self.bounds )
+			MESH_OT_uvboundstransform.BOUNDS_RENDER = BoundsHandle( context, bounds )
 			MESH_OT_uvboundstransform.BOUNDS_RENDER.doDraw( context )
 
 		'''
@@ -322,7 +321,14 @@ class MESH_OT_uvboundstransform( bpy.types.Operator ):
 					found_keymap = km.keymap_items.match_event( event )
 					if found_keymap is not None and found_keymap.idname.startswith('view2d'):
 						#make MESH_OT_uvboundstransform.BOUNDS_RENDER keep up with pan without modifying it.
-						pass
+						delta_x = float( event.mouse_x - event.mouse_prev_press_x )
+						delta_y = float( event.mouse_y - event.mouse_prev_press_y )
+						BoundsHandle.bounds._min[0] += delta_x
+						BoundsHandle.bounds._min[1] += delta_y
+						BoundsHandle.bounds._max[0] += delta_x
+						BoundsHandle.bounds._max[1] += delta_y
+						BoundsHandle.bounds.GenerateRegions()
+						MESH_OT_uvboundstransform.BOUNDS_RENDER.update( context, event.mouse_region_x, event.mouse_region_y )
 		'''
 
 		if event.type == 'LEFTMOUSE' and MESH_OT_uvboundstransform.BOUNDS_RENDER:
