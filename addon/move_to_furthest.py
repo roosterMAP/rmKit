@@ -48,10 +48,12 @@ def move_to_furthest( groups, dir_vec, constrain, center ):
 			for i, v in enumerate( g ):
 				v.co = new_pos[i]
 				
-		else:
+		else:		
 			for v in g:
-				dist = mathutils.geometry.distance_point_to_plane( v.co, plane_pos, plane_nml )
-				v.co = v.co + ( -plane_nml * dist )
+				dist = mathutils.geometry.distance_point_to_plane( v.co.copy(), plane_pos, plane_nml )
+				print( 'dist :: {}'.format( dist ) )
+				v.co = v.co.copy() + ( -plane_nml * dist )
+				print( v.co )
 				
 				
 class MESH_OT_movetofurthest( bpy.types.Operator ):
@@ -138,7 +140,8 @@ class MESH_OT_movetofurthest( bpy.types.Operator ):
 			
 			center = self.str_dir == 'horizontal' or self.str_dir == 'vertical'
 			inv_rot_mat = rmmesh.world_transform.to_3x3().inverted()
-			move_to_furthest( vert_groups, inv_rot_mat @ grid_dir_vec, self.constrain, center )
+			grid_dir_vec = ( inv_rot_mat @ grid_dir_vec ).normalized()
+			move_to_furthest( vert_groups, grid_dir_vec, self.constrain, center )
 			
 		return { 'FINISHED' }
 

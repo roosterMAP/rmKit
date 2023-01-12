@@ -11,7 +11,10 @@ class Bounds2D():
 		self.context = context
 		self._min = mathutils.Vector( ( 0.0, 0.0 ) )
 		self._max = mathutils.Vector( ( 1.0, 1.0 ) )
+		self._uvmin = mathutils.Vector( ( 0.0, 0.0 ) )
+		self._uvmax = mathutils.Vector( ( 1.0, 1.0 ) )
 		self.regions = []
+		self.gl_points = []
 		
 	def GenerateRegions( self ):
 		a = mathutils.Vector( ( self._max.x - Bounds2D.size, self._min.y + Bounds2D.size ) )
@@ -30,32 +33,50 @@ class Bounds2D():
 		n = mathutils.Vector( ( self._min.x + Bounds2D.size, self._min.y - Bounds2D.size ) )
 
 		self.regions.clear()
-		self.regions.append( ( a, b ) )
+		self.regions.append( ( a, b ) )		
+		self.regions.append( ( g, h ) )
+		self.regions.append( ( k, g ) )
+		self.regions.append( ( n, a ) )
 		self.regions.append( ( c, d ) )
 		self.regions.append( ( e, f ) )
-		self.regions.append( ( g, h ) )
 		self.regions.append( ( i, j ) )
-		self.regions.append( ( k, g ) )
 		self.regions.append( ( l, m ) )
-		self.regions.append( ( n, a ) )
 		self.regions.append( ( m, e ) )
+
+		self.gl_points.clear()
+		self.gl_points.append( [ mathutils.Vector( ( self._max.x, self._min.y ) ), mathutils.Vector( ( self._max.x, self._max.y ) ) ] )
+		self.gl_points.append( [ mathutils.Vector( ( self._min.x, self._max.y ) ), mathutils.Vector( ( self._max.x, self._max.y ) ) ] )		
+		self.gl_points.append( [ mathutils.Vector( ( self._min.x, self._min.y ) ), mathutils.Vector( ( self._min.x, self._max.y ) ) ] )		
+		self.gl_points.append( [ mathutils.Vector( ( self._min.x, self._min.y ) ), mathutils.Vector( ( self._max.x, self._min.y ) ) ] )
+		self.gl_points.append( [ mathutils.Vector( ( self._max.x, self._min.y ) ) ] )
+		self.gl_points.append( [ mathutils.Vector( ( self._max.x, self._max.y ) ) ] )
+		self.gl_points.append( [ mathutils.Vector( ( self._min.x, self._max.y ) ) ] )
+		self.gl_points.append( [ mathutils.Vector( ( self._min.x, self._min.y ) ) ] )
+		self.gl_points.append( [ ( self._min + self._max ) * 0.5 ] )
 
 	def TestRegion( self, i, mx, my ):
 		r = self.regions[i]
 		if mx > r[0][0] and my > r[0][1] and mx < r[1][0] and my < r[1][1]:
 			return True
 		return False
+
+	def UpdateFromUVBounds( self, context ):
+		self._min  = mathutils.Vector( context.region.view2d.view_to_region( self._uvmin[0], self._uvmin[1], clip=False ) )
+		self._max  = mathutils.Vector( context.region.view2d.view_to_region( self._uvmax[0], self._uvmax[1], clip=False ) )
+		self.GenerateRegions()
 	
 	@classmethod
 	def from_uvs( cls, context, uvcoords ):
 		points = []
 		for uv in uvcoords:
-			p  = context.region.view2d.view_to_region( uv[0], uv[1] )
+			p  = context.region.view2d.view_to_region( uv[0], uv[1], clip=False )
 			points.append( p )
 		
 		bounds = cls( context )
 		bounds._min = mathutils.Vector( ( points[0][0], points[0][1] ) )
 		bounds._max = mathutils.Vector( ( points[0][0], points[0][1] ) )
+		bounds._uvmin = mathutils.Vector( ( uvcoords[0][0], uvcoords[0][1] ) )
+		bounds._uvmax = mathutils.Vector( ( uvcoords[0][0], uvcoords[0][1] ) )
 		for p in points:
 			if p[0] < bounds._min[0]:
 				bounds._min[0] = p[0]
@@ -65,23 +86,15 @@ class Bounds2D():
 				bounds._max[0] = p[0]
 			if p[1] > bounds._max[1]:
 				bounds._max[1] = p[1]
-		bounds.GenerateRegions()
-		return bounds
-		
-	@classmethod
-	def from_points( cls, context, points ):
-		bounds = cls( context )
-		bounds._min = mathutils.Vector( ( points[0][0], points[0][1] ) )
-		bounds._max = mathutils.Vector( ( points[0][0], points[0][1] ) )
-		for p in points:
-			if p[0] < bounds._min[0]:
-				bounds._min[0] = p[0]
-			if p[1] < bounds._min[1]:
-				bounds._min[1] = p[1]
-			if p[0] > bounds._max[0]:
-				bounds._max[0] = p[0]
-			if p[1] > bounds._max[1]:
-				bounds._max[1] = p[1]
+		for p in uvcoords:
+			if p[0] < bounds._uvmin[0]:
+				bounds._uvmin[0] = p[0]
+			if p[1] < bounds._uvmin[1]:
+				bounds._uvmin[1] = p[1]
+			if p[0] > bounds._uvmax[0]:
+				bounds._uvmax[0] = p[0]
+			if p[1] > bounds._uvmax[1]:
+				bounds._uvmax[1] = p[1]
 		bounds.GenerateRegions()
 		return bounds
 
@@ -126,19 +139,51 @@ class BoundsHandle():
 
 	def shader_batch( self ):
 		BoundsHandle.batches.clear()
-		for r in BoundsHandle.bounds.regions:
-			coords = [ r[0], mathutils.Vector( ( r[0][0], r[1][1] ) ), r[1], mathutils.Vector( ( r[1][0], r[0][1] ) ) ]
-			BoundsHandle.batches.append( batch_for_shader( BoundsHandle.shader, 'LINES', { 'pos': ( coords[0], coords[1], coords[1], coords[2], coords[2], coords[3], coords[3], coords[0] ) } ) )
+		for i, r in enumerate( BoundsHandle.bounds.regions ):
+			if len( BoundsHandle.bounds.gl_points[i] ) == 1:
+				BoundsHandle.batches.append( batch_for_shader( BoundsHandle.shader, 'POINTS', { 'pos': ( BoundsHandle.bounds.gl_points[i][0], ) } ) )
+			else:
+				BoundsHandle.batches.append( batch_for_shader( BoundsHandle.shader, 'LINES', { 'pos': ( BoundsHandle.bounds.gl_points[i][0], BoundsHandle.bounds.gl_points[i][1] ) } ) )
 
 	def draw( self, context ):
 		if len( BoundsHandle.batches ) >= 4:
-			gpu.state.line_width_set( 2.0 )
-			
+			highlight_idx = -1
+
 			BoundsHandle.shader.bind()
 			
-			highlight_idx = -1
+			#draw lines
+			gpu.state.point_size_set( 7.0 )
+			gpu.state.line_width_set( 5.0 )
+
+			BoundsHandle.shader.uniform_float( 'color', ( 0.0, 0.0, 0.0, 1.0 ) )
+			for i in range( 0, 4 ):
+				BoundsHandle.batches[i].draw( BoundsHandle.shader )
+
+			gpu.state.point_size_set( 5.0 )
+			gpu.state.line_width_set( 3.0 )
+
 			BoundsHandle.shader.uniform_float( 'color', ( 0.4, 0.4, 0.4, 1.0 ) )
-			for i in range( len( BoundsHandle.batches ) ):
+			for i in range( 0, 4 ):
+				if BoundsHandle.bounds.TestRegion( i, self.mouse[0], self.mouse[1] ):
+					highlight_idx = i					
+				BoundsHandle.batches[i].draw( BoundsHandle.shader )
+			if highlight_idx > -1:
+				BoundsHandle.shader.uniform_float( 'color', ( 0.8, 0.75, 0.4, 1.0 ) )
+				BoundsHandle.batches[highlight_idx].draw( BoundsHandle.shader )
+
+			#draw points
+			gpu.state.point_size_set( 7.0 )
+			gpu.state.line_width_set( 5.0 )
+
+			BoundsHandle.shader.uniform_float( 'color', ( 0.0, 0.0, 0.0, 1.0 ) )
+			for i in range( 4, len( BoundsHandle.batches ) ):
+				BoundsHandle.batches[i].draw( BoundsHandle.shader )
+
+			gpu.state.point_size_set( 5.0 )
+			gpu.state.line_width_set( 3.0 )
+
+			BoundsHandle.shader.uniform_float( 'color', ( 0.4, 0.4, 0.4, 1.0 ) )
+			for i in range( 4, len( BoundsHandle.batches ) ):
 				if BoundsHandle.bounds.TestRegion( i, self.mouse[0], self.mouse[1] ):
 					highlight_idx = i					
 				BoundsHandle.batches[i].draw( BoundsHandle.shader )
@@ -147,6 +192,7 @@ class BoundsHandle():
 				BoundsHandle.batches[highlight_idx].draw( BoundsHandle.shader )
 
 			gpu.state.line_width_set( 1.0 )
+			gpu.state.point_size_set( 1.0 )
 
 	def doDraw( self, context ):
 		BoundsHandle.handle = bpy.types.SpaceImageEditor.draw_handler_add( self.draw, (context, ), 'WINDOW', 'POST_PIXEL' )
@@ -212,6 +258,8 @@ class MESH_OT_uvboundstransform( bpy.types.Operator ):
 		self.prev_press_y = 0.0
 		self.m_delta = ( 0.0, 0.0 )
 		self.bmesh = None
+		self.pass_through = False
+		self.nav_event = ( 'NOTHING', 'NOTHING' )
 
 	def __del__( self ):
 		if self.bmesh is not None:
@@ -244,8 +292,8 @@ class MESH_OT_uvboundstransform( bpy.types.Operator ):
 
 		#fetch tool bounding box from BOUNDS_RENDER
 		tool_bounds = MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds
-		uvmin = mathutils.Vector( context.region.view2d.region_to_view( tool_bounds._min[0], tool_bounds._min[1] ) )
-		uvmax = mathutils.Vector( context.region.view2d.region_to_view( tool_bounds._max[0], tool_bounds._max[1] ) )
+		uvmin = tool_bounds._uvmin.copy()
+		uvmax = tool_bounds._uvmax.copy()
 		tool_width = uvmax[0] - uvmin[0]
 		tool_height = uvmax[1] - uvmin[1]
 		tool_center = ( uvmin + uvmax ) * 0.5
@@ -296,40 +344,49 @@ class MESH_OT_uvboundstransform( bpy.types.Operator ):
 		
 		return { 'FINISHED' }
 
+	def InitBoundsRender( self, context, event ):
+		#compute a bbox from the uv selection
+		rmmesh = rmlib.rmMesh.from_bmesh( context.active_object, self.bmesh )
+		rmmesh.readonly = True
+		if len( self.bmesh.loops.layers.uv.values() ) < 1:
+			return { 'CANCELLED' }
+		uvlayer = rmmesh.active_uv
+		loops = GetLoopSelection( context, rmmesh, uvlayer )
+		if len( loops ) < 2:
+			bpy.ops.object.mode_set( mode='EDIT', toggle=False )
+			return { 'CANCELLED' }
+		uvs = [ mathutils.Vector( l[uvlayer].uv ) for l in loops ]
+		bounds = Bounds2D.from_uvs( context, uvs )
+		
+		MESH_OT_uvboundstransform.BOUNDS_RENDER = BoundsHandle( context, bounds )
+		MESH_OT_uvboundstransform.BOUNDS_RENDER.doDraw( context )
+
 	def modal( self, context, event ):
+		#initialize or update static BOUNDS_RENDER member for first time
 		if not MESH_OT_uvboundstransform.BOUNDS_RENDER:
-			rmmesh = rmlib.rmMesh.from_bmesh( context.active_object, self.bmesh )
-			rmmesh.readonly = True
-			if len( self.bmesh.loops.layers.uv.values() ) < 1:
-				return { 'CANCELLED' }
-			uvlayer = rmmesh.active_uv
-			loops = GetLoopSelection( context, rmmesh, uvlayer )
-			if len( loops ) < 2:
-				bpy.ops.object.mode_set( mode='EDIT', toggle=False )
-				return { 'CANCELLED' }
-			uvs = [ mathutils.Vector( l[uvlayer].uv ) for l in loops ]
-			bounds = Bounds2D.from_uvs( context, uvs )
+			self.InitBoundsRender( context, event )
+			return { 'PASS_THROUGH' }
+		else:
+			BoundsHandle.bounds.UpdateFromUVBounds( context )
+			MESH_OT_uvboundstransform.BOUNDS_RENDER.update( context, event.mouse_region_x, event.mouse_region_y )
 
-			MESH_OT_uvboundstransform.BOUNDS_RENDER = BoundsHandle( context, bounds )
-			MESH_OT_uvboundstransform.BOUNDS_RENDER.doDraw( context )
-
-		'''
 		#allow view2d events (like panning and zooming) to pass through modal
+		#get the keymap from the event and check if its a viewport navigation command.
+		#if so, save the event and toggle pass_through member.
+		#pass_through is toggled off if a MOUSEMOVE event comes in (we ignore TIMER events)
+		if self.pass_through and self.nav_event[0] != 'TIMER' and event.type == 'MOUSEMOVE':
+			self.pass_through = False
+			self.hit_idx = -1
+		if self.pass_through:
+			return { 'PASS_THROUGH' }
 		if MESH_OT_uvboundstransform.BOUNDS_RENDER:
 			for kc in context.window_manager.keyconfigs:
 				for km in kc.keymaps:
 					found_keymap = km.keymap_items.match_event( event )
-					if found_keymap is not None and found_keymap.idname.startswith('view2d'):
-						#make MESH_OT_uvboundstransform.BOUNDS_RENDER keep up with pan without modifying it.
-						delta_x = float( event.mouse_x - event.mouse_prev_press_x )
-						delta_y = float( event.mouse_y - event.mouse_prev_press_y )
-						BoundsHandle.bounds._min[0] += delta_x
-						BoundsHandle.bounds._min[1] += delta_y
-						BoundsHandle.bounds._max[0] += delta_x
-						BoundsHandle.bounds._max[1] += delta_y
-						BoundsHandle.bounds.GenerateRegions()
-						MESH_OT_uvboundstransform.BOUNDS_RENDER.update( context, event.mouse_region_x, event.mouse_region_y )
-		'''
+					if found_keymap is not None and found_keymap.idname.startswith( 'view2d' ):
+						self.pass_through = True
+						self.nav_event = ( event.type, event.value )
+						return { 'PASS_THROUGH' }
 
 		if event.type == 'LEFTMOUSE' and MESH_OT_uvboundstransform.BOUNDS_RENDER:
 			self.hit_idx = -1
@@ -347,33 +404,40 @@ class MESH_OT_uvboundstransform( bpy.types.Operator ):
 					MESH_OT_uvboundstransform.BOUNDS_RENDER = None
 					return { 'FINISHED' }
 
-			if event.value == 'RELEASE':
-				self.hit_idx = -1
-				self.lmb_down = False
-
-		elif event.type == 'MOUSEMOVE' and MESH_OT_uvboundstransform.BOUNDS_RENDER:			
+		elif event.type == 'MOUSEMOVE' and MESH_OT_uvboundstransform.BOUNDS_RENDER:
 			MESH_OT_uvboundstransform.BOUNDS_RENDER.update( context, event.mouse_region_x, event.mouse_region_y )
 			bounds = MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds
 			if self.hit_idx == 0:
 				bounds._max[0] = event.mouse_region_x
-			elif self.hit_idx == 1:
-				bounds._max[0] = event.mouse_region_x
-				bounds._min[1] = event.mouse_region_y
-			elif self.hit_idx == 2:
-				bounds._max[0] = event.mouse_region_x
-				bounds._max[1] = event.mouse_region_y
-			elif self.hit_idx == 3:
-				bounds._max[1] = event.mouse_region_y
+				bounds._uvmax = mathutils.Vector( context.region.view2d.region_to_view( bounds._max[0], bounds._max[1] ) )
 			elif self.hit_idx == 4:
-				bounds._min[0] = event.mouse_region_x
-				bounds._max[1] = event.mouse_region_y
+				bounds._max[0] = event.mouse_region_x
+				bounds._min[1] = event.mouse_region_y
+				bounds._uvmin = mathutils.Vector( context.region.view2d.region_to_view( bounds._min[0], bounds._min[1] ) )
+				bounds._uvmax = mathutils.Vector( context.region.view2d.region_to_view( bounds._max[0], bounds._max[1] ) )
 			elif self.hit_idx == 5:
-				bounds._min[0] = event.mouse_region_x
+				bounds._max[0] = event.mouse_region_x
+				bounds._max[1] = event.mouse_region_y
+				bounds._uvmax = mathutils.Vector( context.region.view2d.region_to_view( bounds._max[0], bounds._max[1] ) )
+			elif self.hit_idx == 1:
+				bounds._max[1] = event.mouse_region_y
+				bounds._uvmax = mathutils.Vector( context.region.view2d.region_to_view( bounds._max[0], bounds._max[1] ) )
 			elif self.hit_idx == 6:
+				bounds._min[0] = event.mouse_region_x				
+				bounds._max[1] = event.mouse_region_y
+				bounds._uvmin = mathutils.Vector( context.region.view2d.region_to_view( bounds._min[0], bounds._min[1] ) )
+				bounds._uvmax = mathutils.Vector( context.region.view2d.region_to_view( bounds._max[0], bounds._max[1] ) )
+			elif self.hit_idx == 2:
+				bounds._min[0] = event.mouse_region_x
+				bounds._uvmin = mathutils.Vector( context.region.view2d.region_to_view( bounds._min[0], bounds._min[1] ) )
+			elif self.hit_idx == 7:
 				bounds._min[0] = event.mouse_region_x
 				bounds._min[1] = event.mouse_region_y
-			elif self.hit_idx == 7:
+				bounds._uvmin = mathutils.Vector( context.region.view2d.region_to_view( bounds._min[0], bounds._min[1] ) )
+				bounds._uvmax = mathutils.Vector( context.region.view2d.region_to_view( bounds._max[0], bounds._max[1] ) )
+			elif self.hit_idx == 3:
 				bounds._min[1] = event.mouse_region_y
+				bounds._uvmin = mathutils.Vector( context.region.view2d.region_to_view( bounds._min[0], bounds._min[1] ) )
 			elif self.hit_idx == 8:
 				delta_x = float( event.mouse_region_x - self.prev_press_x )
 				delta_y = float( event.mouse_region_y - self.prev_press_y )
@@ -383,15 +447,23 @@ class MESH_OT_uvboundstransform( bpy.types.Operator ):
 				bounds._max[1] += delta_y
 				self.prev_press_x = event.mouse_region_x
 				self.prev_press_y = event.mouse_region_y
+				bounds._uvmin = mathutils.Vector( context.region.view2d.region_to_view( bounds._min[0], bounds._min[1] ) )
+				bounds._uvmax = mathutils.Vector( context.region.view2d.region_to_view( bounds._max[0], bounds._max[1] ) )
 
 			if bounds._min[0] > bounds._max[0]:
 				temp = MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._min[0]
 				MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._min[0] = MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._max[0]
 				MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._max[0] = temp
+				temp = MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._uvmin[0]
+				MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._uvmin[0] = MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._uvmax[0]
+				MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._uvmax[0] = temp
 			if bounds._min[1] > bounds._max[1]:
 				temp = MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._min[1]
 				MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._min[1] = MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._max[1]
 				MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._max[1] = temp
+				temp = MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._uvmin[1]
+				MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._uvmin[1] = MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._uvmax[1]
+				MESH_OT_uvboundstransform.BOUNDS_RENDER.bounds._uvmax[1] = temp
 
 			if self.hit_idx > -1:
 				bounds.GenerateRegions()
@@ -405,7 +477,6 @@ class MESH_OT_uvboundstransform( bpy.types.Operator ):
 			return { 'CANCELLED' }
 		
 		return { 'RUNNING_MODAL' }
-		#return { 'PASS_THROUGH' }
 
 
 	def invoke( self, context, event ):
@@ -425,6 +496,7 @@ class MESH_OT_uvboundstransform( bpy.types.Operator ):
 			return { 'CANCELLED' }
 
 		wm = context.window_manager
+		self._timer = wm.event_timer_add( 1.0 / 16.0, window=context.window )
 		wm.modal_handler_add( self )
 		return { 'RUNNING_MODAL' }
 
