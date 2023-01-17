@@ -53,6 +53,7 @@ from . import hotspot
 from . import uvboundstransform
 from . import dimensions
 from . import preferences
+from . import quickboolean
 
 def register():
 	bpy.utils.register_class( rmKitPannel )
@@ -89,6 +90,7 @@ def register():
 	hotspot.register()
 	uvboundstransform.register()
 	dimensions.register()
+	quickboolean.register()
 	preferences.register()
 
 def unregister():
@@ -126,4 +128,5 @@ def unregister():
 	hotspot.unregister()
 	uvboundstransform.unregister()
 	dimensions.unregister()
+	quickboolean.unregister()
 	preferences.unregister()
