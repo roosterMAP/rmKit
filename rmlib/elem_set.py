@@ -490,6 +490,8 @@ class rmEdgeSet( list ):
 		chains = []
 		for ch in self.vert_chain():
 			chains.append( [ ( ch[i], ch[i+1] ) for i in range( len( ch ) - 1 ) ] )
+			if len( ch ) <= 2:
+				continue
 			try:
 				e = rmEdgeSet.from_endpoints( ch[0], ch[-1] )
 				if e in self:

@@ -74,7 +74,7 @@ class MESH_OT_targetweld( bpy.types.Operator ):
 				if len( chains ) < 2:
 					return { 'CANCELLED' }
 				for i, chain in enumerate( chains ):
-					if active_verts[0] in chain and active_verts[1] in chain:
+					if active_verts[0] in chain == active_verts[1] in chain:
 						break
 				target_chain = chains.pop( i )
 				for v in target_chain:
