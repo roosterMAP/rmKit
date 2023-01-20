@@ -192,13 +192,16 @@ class CEPoly( object ):
 		#create ConnectEdgePolygon
 		cep = cls( seed_poly )
 
-		#build list of ceEdges where the first edge is the see_edge.
+		#build list of ceEdges where the first edge is the seed_edge.
 		#If seed_edge arg is None, then settle for first active edge encountered.
 		ceEdges = cep.ceEdges
+		prev_active_edge_idx = 0
 		if seed_edge is None:
-			#if seed_edge is None, it means that this is that start of a AccumulateCEElem recusion.
+			#if seed_edge is None, it means that this is the start of a AccumulateCEElem recusion.
 			for i, cee in enumerate( ceEdges ):
 				if cee.select:
+					cee.edge.tag = True #avoids tricky bug where start of recursion is dependant on prev edge whose swich value is the default (and not dictated by topo).
+					prev_active_edge_idx = i
 					break
 			if len( cep.eidx_list ) == 1:
 				#if there's only one active edge on this poly, just kickoff a recursive call and return early.
@@ -209,18 +212,21 @@ class CEPoly( object ):
 						continue
 					cls.AccumulateCEElem( p, cee )
 					return
-			ceEdges = ceEdges[i:] + ceEdges[:i]
 		else:
 			for i, cee in enumerate( ceEdges ):
 				if cee.index == seed_edge.index:
-					break
-			ceEdges = ceEdges[i:] + ceEdges[:i]
+					prev_active_edge_idx = i
+					break			
+		prev_active_edge = ceEdges[prev_active_edge_idx]
 
-		#init prev_active_edge
-		prev_active_edge = ceEdges[0]
-		for e in ceEdges:
-			if e.select:
-				prev_active_edge = e
+		#get current active edge and sort ceEdges to start with that edge
+		cur_active_edge_idx = 0
+		for i in range( prev_active_edge_idx, len( ceEdges ) ):
+			idx = ( i + i ) % len( ceEdges )
+			if ceEdges[idx].select:
+				cur_active_edge_idx = idx
+				break
+		ceEdges = ceEdges[cur_active_edge_idx:] + ceEdges[:cur_active_edge_idx]
 		
 		#iterate through active edges in poly and dispatch recursive calls
 		for i in range( len( ceEdges ) ):
