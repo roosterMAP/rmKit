@@ -286,5 +286,3 @@ def register():
 
 def unregister():
 	bpy.utils.unregister_class( MESH_OT_uvstitcht )
-	
-register()
