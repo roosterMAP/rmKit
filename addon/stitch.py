@@ -117,7 +117,6 @@ def stitch( source_loops, target_loops, uvlayer ):
 		#scale offset by half if we are stitching at midpoint
 		if target_loops_selected:
 			rotation_angle *= 0.5
-			scale_factor *= 0.5
 			offset *= 0.5	
 		
 		#build orientation matrix
@@ -138,7 +137,10 @@ def stitch( source_loops, target_loops, uvlayer ):
 		#transform source island by inverse of target island transform if we are stitching at midpoint
 		if target_loops_selected:
 			source_island = source_loops.group_vertices( element=True )[0]
-			src_mat = targ_mat.inverted()			
+			r1 = [ math.cos( rotation_angle ), -math.sin( rotation_angle ) ]
+			r2 = [ math.sin( rotation_angle ), math.cos( rotation_angle ) ]
+			rot = mathutils.Matrix( [ r1, r2 ] )
+			src_mat = rot.inverted()			
 			for l in source_island:
 				new_uv = mathutils.Vector( l[uvlayer].uv )
 				new_uv -= source_pos
@@ -207,9 +209,22 @@ class MESH_OT_uvstitcht( bpy.types.Operator ):
 			
 			clear_all_tags( rmmesh.bmesh ) #shouldnt be needed
 
-			#get all selected uv edges that have corresponding disontinuous uv edge to stitch to
-			edgeloop_selection = rmlib.rmUVLoopSet.from_edge_selection( rmmesh, uvlayer=uvlayer )
-			border_edgeloop_selection = rmlib.rmUVLoopSet( [ l for l in edgeloop_selection if len( l.edge.link_faces ) > 1 ], uvlayer=uvlayer ).border_loops()
+			sel_sync = context.tool_settings.use_uv_select_sync
+			if sel_sync:
+				edge_selection = rmlib.rmEdgeSet.from_selection( rmmesh )
+				edgeloop_selection = rmlib.rmUVLoopSet( [], uvlayer=uvlayer )
+				for p in edge_selection.polygons:
+					for l in p.loops:
+						l[uvlayer].select_edge = False
+						if l.edge.select and len( l.edge.link_faces ) > 1:
+							edgeloop_selection.append( l )
+				border_edgeloop_selection = edgeloop_selection.border_loops()
+				for l in border_edgeloop_selection:
+					l[uvlayer].select_edge = True
+			else:
+				#get all selected uv edges that have corresponding disontinuous uv edge to stitch to
+				edgeloop_selection = rmlib.rmUVLoopSet.from_edge_selection( rmmesh, uvlayer=uvlayer )
+				border_edgeloop_selection = rmlib.rmUVLoopSet( [ l for l in edgeloop_selection if len( l.edge.link_faces ) > 1 ], uvlayer=uvlayer ).border_loops()
 			
 			#break up into groups
 			edgeloop_groups = border_edgeloop_selection.group_edges()
@@ -271,3 +286,5 @@ def register():
 
 def unregister():
 	bpy.utils.unregister_class( MESH_OT_uvstitcht )
+	
+register()
