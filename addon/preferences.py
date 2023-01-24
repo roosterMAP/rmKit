@@ -27,6 +27,11 @@ def register_keyboard_keymap():
 		RM_GUI_NAMES.add( 'VIEW3D_MT_PIE_cursor' )
 		RM_3DVIEW_KEYMAP.append( ( km_3dview, kmi ) )
 
+		kmi = km_3dview.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
+		kmi.properties.name = 'OBJECT_MT_rm_screenreflect'
+		RM_GUI_NAMES.add( 'OBJECT_MT_rm_screenreflect' )
+		RM_3DVIEW_KEYMAP.append( ( km_3dview, kmi ) )
+
 		kmi = km_3dview.keymap_items.new( 'mesh.rm_changemodeto', 'NONE', 'PRESS' )
 		kmi.properties.mode_to = 'FACE'
 		RM_3DVIEW_KEYMAP.append( ( km_3dview, kmi ) )
@@ -120,11 +125,6 @@ def register_keyboard_keymap():
 		kmi = km_mesh.keymap_items.new( 'wm.call_menu', 'NONE', 'PRESS' )
 		kmi.properties.name = 'OBJECT_MT_rm_knifescreen'
 		RM_GUI_NAMES.add( 'OBJECT_MT_rm_knifescreen' )
-		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
-		kmi.properties.name = 'OBJECT_MT_rm_screenreflect'
-		RM_GUI_NAMES.add( 'OBJECT_MT_rm_screenreflect' )
 		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
 
 		kmi = km_mesh.keymap_items.new( 'wm.call_menu', 'NONE', 'PRESS' )
