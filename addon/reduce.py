@@ -17,6 +17,8 @@ def collapse_verts( verts ):
 			collapse_groups.append( g )
 
 	for g in collapse_groups:
+		if len( g ) < 1:
+			continue
 		avg = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
 		for v in g:
 			avg += v.co
