@@ -1,4 +1,4 @@
-import rmKit.rmlib as rmlib
+from .. import rmlib
 import bpy, bmesh, mathutils
 import os, random, math, struct, ctypes
 

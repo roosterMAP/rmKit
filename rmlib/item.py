@@ -3,6 +3,17 @@ import bmesh
 import mathutils
 from bpy_extras import view3d_utils
 
+def iter_edit_meshes( context, mode_filter=False ):
+	#when mode_filter is True, then meshes get added to list even if they're not in editmode
+	meshes = set()
+	rmmeshlist = []
+	for meshobj in context.editable_objects:
+		if meshobj.type == 'MESH' and ( meshobj.data.is_editmode or mode_filter ) and meshobj.data not in meshes:
+			meshes.add( meshobj.data )
+			rmmeshlist.append( rmMesh( meshobj ) )
+	return rmmeshlist
+
+
 class rmMesh():
 	def __init__( self, object ):
 		self.__object = None
@@ -79,6 +90,26 @@ class rmMesh():
 			raise RuntimeError( 'bmesh cannot be accessed outside of a "with" context!!!' )
 		for uvlayer in self.bmesh.loops.layers.uv.values():
 			yield uvlayer
+
+	def clear_selection( self, mode='NONE' ):
+		if self.__bmesh is None:
+			raise RuntimeError( 'bmesh cannot be accessed outside of a "with" context!!!' )
+		if mode == 'NONE':
+			for v in self.__bmesh.verts:
+				v.select = False
+			for e in self.__bmesh.edges:
+				e.select = False
+			for f in self.__bmesh.faces:
+				f.select = False
+		elif mode == 'VERT':
+			for v in self.__bmesh.verts:
+				v.select = False
+		elif mode == 'EDGE':
+			for e in self.__bmesh.edges:
+				e.select = False
+		elif mode == 'FACE':
+			for f in self.__bmesh.faces:
+				f.select = False
 
 	@property
 	def active_uv( self ):

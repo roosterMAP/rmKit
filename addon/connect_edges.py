@@ -1,6 +1,6 @@
 import bpy, bmesh, mathutils
 import math
-import rmKit.rmlib as rmlib
+from .. import rmlib
 
 class CEVert( object ):
 	def __init__( self, vert ):
@@ -488,8 +488,11 @@ class MESH_OT_connect_edge( bpy.types.Operator ):
 		Clear static members and free memory of cached bmesh
 		"""
 		CEPoly.ClearStaticMembers()
-		if self.bmesh is not None:
-			self.bmesh.free()
+		try:
+			if self.bmesh is not None:
+				self.bmesh.free()
+		except AttributeError:
+			pass
 	
 	@classmethod
 	def poll( cls, context ):

@@ -1,5 +1,5 @@
 import bpy, mathutils
-import rmKit.rmlib as rmlib
+from .. import rmlib
 import math
 import numpy as np
 

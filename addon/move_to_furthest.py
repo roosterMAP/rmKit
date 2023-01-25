@@ -1,5 +1,5 @@
 import mathutils
-import rmKit.rmlib as rmlib
+from .. import rmlib
 import bpy
 
 def move_to_furthest( groups, dir_vec, constrain, center ):

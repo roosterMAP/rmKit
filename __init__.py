@@ -11,8 +11,6 @@ bl_info = {
 
 
 from . import addon
-from . import rmlib
-
 
 def register():
     addon.register()

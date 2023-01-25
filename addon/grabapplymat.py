@@ -1,5 +1,5 @@
 import bpy, bmesh, mathutils, bpy_extras
-import rmKit.rmlib as rmlib
+from .. import rmlib
 
 class MESH_OT_grabapplymat( bpy.types.Operator ):
 	"""Sample the material of the face under the cursor and apply it to the selected faces."""

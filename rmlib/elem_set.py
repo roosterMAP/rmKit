@@ -1,9 +1,8 @@
 import bpy
 from bpy_extras import view3d_utils
-from rmKit.rmlib import util
+from . import util
 import mathutils
 import math
-
 def clear_tags( bm ):
 	for v in bm.verts:
 		v.tag = False

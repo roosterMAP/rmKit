@@ -1,8 +1,6 @@
-import bpy
 import mathutils
 from bpy_extras import view3d_utils
-import math, struct
-from binascii import hexlify
+import math
 
 FLOAT_EPSILON = 0.000001
 

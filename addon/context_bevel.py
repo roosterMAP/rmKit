@@ -1,5 +1,5 @@
 import bpy
-import rmKit.rmlib as rmlib
+from .. import rmlib
 
 class MESH_OT_contextbevel( bpy.types.Operator ):
 	"""Activate appropriate bevel tool based on selection mode."""

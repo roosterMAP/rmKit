@@ -1,5 +1,5 @@
 import bpy, bmesh, mathutils
-import rmKit.rmlib as rmlib
+from .. import rmlib
 import gpu
 from gpu_extras.batch import batch_for_shader
 from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
@@ -262,8 +262,11 @@ class MESH_OT_uvboundstransform( bpy.types.Operator ):
 		self.nav_event = ( 'NOTHING', 'NOTHING' )
 
 	def __del__( self ):
-		if self.bmesh is not None:
-			self.bmesh.free()
+		try:
+			if self.bmesh is not None:
+				self.bmesh.free()
+		except AttributeError:
+			pass
 
 	@classmethod
 	def poll( cls, context ):

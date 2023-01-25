@@ -1,5 +1,5 @@
 import bpy, bmesh, mathutils
-import rmKit.rmlib as rmlib
+from .. import rmlib
 import sys
 
 def shortest_path( source, end_verts, verts ):

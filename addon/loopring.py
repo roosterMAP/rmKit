@@ -1,5 +1,5 @@
 import bpy
-import rmKit.rmlib as rmlib
+from .. import rmlib
 
 def edge_ring( edge, poly, ring ):
 	skip_verts = edge.verts

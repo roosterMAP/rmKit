@@ -1,5 +1,5 @@
 import bpy, bmesh
-import rmKit.rmlib as rmlib
+from .. import rmlib
 
 def chain_is_sorted( chain ):
 	e = rmlib.rmEdgeSet.from_endpoints( chain[0], chain[1] )

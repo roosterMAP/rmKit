@@ -1,6 +1,6 @@
 import bpy, mathutils
 from bpy.app.handlers import persistent
-import rmKit.rmlib as rmlib
+from .. import rmlib
 import math, os
 
 ANCHOR_PROP_LIST = ( 'uv_anchor_nw', 'uv_anchor_n', 'uv_anchor_ne',

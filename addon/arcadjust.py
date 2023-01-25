@@ -1,8 +1,7 @@
 import bpy
 import bmesh
-import rmKit.rmlib as rmlib
+from .. import rmlib
 import mathutils
-import math
 
 def ScaleLine( p0, p1, scale ):
 	v = p1 - p0
@@ -174,8 +173,11 @@ class MESH_OT_arcadjust( bpy.types.Operator ):
 		self.bmesh = None
 
 	def __del__( self ):
-		if self.bmesh is not None:
-			self.bmesh.free()
+		try:
+			if self.bmesh is not None:
+				self.bmesh.free()
+		except AttributeError:
+			pass
 	
 	@classmethod
 	def poll( cls, context ):

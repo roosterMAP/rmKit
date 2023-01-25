@@ -2,7 +2,7 @@ from operator import inv
 from re import T
 import bpy
 import bmesh
-import rmKit.rmlib as rmlib
+from .. import rmlib
 import mathutils
 import math
 
@@ -59,10 +59,17 @@ class MESH_OT_createtube( bpy.types.Operator ):
 		self.bbox_dist = 0.0
 
 	def __del__( self ):
-		if self.bmesh is not None:
-			self.bmesh.free()
-			self.bmesh = None
-		self._tubes.clear()
+		try:
+			if self.bmesh is not None:
+				self.bmesh.free()
+				self.bmesh = None
+		except AttributeError:
+			pass
+
+		try:
+			self._tubes.clear()
+		except AttributeError:
+			pass		
 	
 	@classmethod
 	def poll( cls, context ):

@@ -1,6 +1,6 @@
 import bpy, bmesh, mathutils
 from bpy.app.handlers import persistent
-import rmKit.rmlib as rmlib
+from .. import rmlib
 
 CUSTOM_VNORM_LAYERNAME = 'rm_vnorm'
 

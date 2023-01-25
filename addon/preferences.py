@@ -169,7 +169,9 @@ def unregister_keyboard_keymap():
 
 
 class RMKITPreferences( bpy.types.AddonPreferences ):
-	bl_idname = 'rmKit'
+	packagename = __name__[:__name__.index( '.' )]
+	bl_idname = packagename
+	print( packagename )
 
 	v3d_checkbox: bpy.props.BoolProperty( name="3D View", default=False )
 	mesh_checkbox: bpy.props.BoolProperty( name="Mesh", default=False )

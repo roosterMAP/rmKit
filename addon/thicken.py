@@ -1,6 +1,6 @@
 import bpy
 import bmesh
-import rmKit.rmlib as rmlib
+from .. import rmlib
 import mathutils
 
 def BridgeSurfaces( bm, faces1, faces2 ):
@@ -76,8 +76,11 @@ class MESH_OT_thicken( bpy.types.Operator ):
 		self.prev_delta = 0
 
 	def __del__( self ):
-		if self.bmesh is not None:
-			self.bmesh.free()
+		try:
+			if self.bmesh is not None:
+				self.bmesh.free()
+		except AttributeError:
+			pass
 	
 	@classmethod
 	def poll( cls, context ):

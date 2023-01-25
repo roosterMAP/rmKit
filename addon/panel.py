@@ -1,5 +1,5 @@
 import bpy
-import rmKit.rmlib as rmlib
+from .. import rmlib
 
 
 class VIEW3D_PT_UTILS( bpy.types.Panel ):

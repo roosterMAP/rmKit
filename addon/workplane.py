@@ -5,7 +5,7 @@ from gpu_extras.batch import batch_for_shader
 from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
 import math, time
 import mathutils
-import rmKit.rmlib as rmlib
+from .. import rmlib
 
 GRID_RENDER = None
 

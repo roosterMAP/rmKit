@@ -1,5 +1,5 @@
 import bpy
-import rmKit.rmlib as rmlib
+from .. import rmlib
 
 BOOL_COLLECTION_KEY = 'rcl'
 BOOL_COLLECTIONTYPE_KEY = 'rct'

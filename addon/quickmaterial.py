@@ -1,5 +1,5 @@
 import bpy, bmesh, mathutils, bpy_extras
-import rmKit.rmlib as rmlib
+from .. import rmlib
 
 MAT_PROP_UPDATED = False
 

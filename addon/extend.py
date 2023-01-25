@@ -1,5 +1,5 @@
 import bpy, bmesh, mathutils
-import rmKit.rmlib as rmlib
+from .. import rmlib
 
 
 class MESH_OT_extend( bpy.types.Operator ):
@@ -27,7 +27,24 @@ class MESH_OT_extend( bpy.types.Operator ):
 
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 		if sel_mode[0]:
-			bpy.ops.mesh.rip_edge_move( 'INVOKE_DEFAULT' )
+			use_extrude = True
+			rmmesh = rmlib.rmMesh.GetActive( context )
+			if rmmesh is None:
+				return { 'CANCELLED' }
+			with rmmesh as rmmesh:
+				rmmesh.readonly = True
+				vert_selection = rmlib.rmVertexSet.from_selection( rmmesh )
+				if len( vert_selection ) == 0:
+					return { 'CANCELLED' }				
+				for e in vert_selection.edges:
+					if len( list( e.link_faces ) ) > 0:
+						use_extrude = False
+						break
+			if use_extrude:
+				bpy.ops.mesh.extrude_vertices_move( 'INVOKE_DEFAULT' )
+			else:
+				bpy.ops.mesh.rip_edge_move( 'INVOKE_DEFAULT' )
+			
 		elif sel_mode[1]:
 			bpy.ops.mesh.extrude_edges_move( 'INVOKE_DEFAULT' )
 		elif sel_mode[2]:

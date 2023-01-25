@@ -1,5 +1,5 @@
 import bpy, mathutils
-import rmKit.rmlib as rmlib
+from .. import rmlib
 import math
 
 class MESH_OT_uvunrotate( bpy.types.Operator ):

@@ -1,6 +1,6 @@
 import bpy
 import bmesh
-import rmKit.rmlib as rmlib
+from .. import rmlib
 import mathutils
 import math
 

@@ -1,7 +1,7 @@
 import bpy, gpu, mathutils, blf
 from gpu_extras.batch import batch_for_shader
 from bpy_extras.view3d_utils import location_3d_to_region_2d
-import rmKit.rmlib as rmlib
+from .. import rmlib
 
 class DimensionsManager:
 	shader = None

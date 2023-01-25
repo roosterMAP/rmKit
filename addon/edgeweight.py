@@ -1,5 +1,5 @@
 import bpy, bmesh
-import rmKit.rmlib as rmlib
+from .. import rmlib
 
 def GetEdges( bmesh, sel_mode ):
 	if sel_mode[1]:

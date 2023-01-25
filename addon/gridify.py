@@ -1,5 +1,5 @@
 import bpy, bmesh, mathutils
-import rmKit.rmlib as rmlib
+from .. import rmlib
 
 def clear_tags( rmmesh ):
 	for v in rmmesh.bmesh.verts:

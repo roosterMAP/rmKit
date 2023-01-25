@@ -1,6 +1,6 @@
 import math
 import bpy, bmesh, mathutils
-import rmKit.rmlib as rmlib
+from .. import rmlib
 
 class MESH_OT_screenreflect( bpy.types.Operator ):
 	"""Reflect polygon selection based on relative screen direction."""

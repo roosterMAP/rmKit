@@ -1,6 +1,6 @@
 import bpy
 import bmesh
-import rmKit.rmlib as rmlib
+from .. import rmlib
 
 def select_vchain( vchain, replace=False ):
 	if replace:
