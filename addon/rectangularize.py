@@ -1,6 +1,8 @@
-import bpy, bmesh, mathutils
-from .. import rmlib
+import bpy, mathutils
+import rmKit.rmlib as rmlib
 import sys
+import math
+import numpy as np
 
 def shortest_path( source, end_verts, verts ):
 	for v in verts:
@@ -135,8 +137,6 @@ def sort_loop_chain( loops ):
 
 		if len( sorted_loops ) >= len( loops ):
 			break
-
-	print( [ l.vert.index for l in sorted_loops ] )
 		
 	return rmlib.rmUVLoopSet( sorted_loops, uvlayer=loops.uvlayer )
 
@@ -168,6 +168,201 @@ def GetBoundaryLoops( faces ):
 				bounary_loops.add( l )
 	return bounary_loops
 
+class RelaxVertex():
+	all_verts = []
+
+	def __init__( self, vertex, polygon ):
+		self._v = vertex
+		self._idx = len( RelaxVertex.all_verts )
+		self._polygons = set( [polygon] )
+		RelaxVertex.all_verts.append( self )
+
+
+def shared_edge( p1, p2 ):
+	for e in p1.edges:
+		for np in e.link_faces:
+			if np == p2:
+				return e
+	return None
+
+
+def lscm_patches( polygons, uvlayer ):	
+	for p in polygons:
+		p.tag = False
+		for e in p.edges:
+			if e.seam:
+				v1, v2 = e.verts
+				v1.tag = True
+				v2.tag = True
+			
+	for poly in polygons:
+		if poly.tag:
+			continue
+		poly.tag = True
+			
+		innerSet = []
+		outerSet = set( [ poly ] )
+		
+		while len( outerSet ) > 0:
+			p = outerSet.pop()
+
+			rp = [] #relaxpoly which is just a list of relaxverts
+			innerSet.append( rp )
+
+			for l in p.loops:
+				v = l.vert
+
+				#get or create relaxvert and add to relaxpoly
+				rv = None
+				for nrv in RelaxVertex.all_verts:
+					if nrv._v == v:
+						#iterate through all polys in nrv to ensure we are not adding a polygon thats on the other side of a seam edge
+						se = None
+						for nrp in nrv._polygons:
+							se = shared_edge( nrp, p )
+							if se is not None and se.seam:
+								break
+						if se is None or not se.seam:
+							rv = nrv
+							break						
+						rv = RelaxVertex( v, p )
+				if rv is None:
+					rv = RelaxVertex( v, p )
+				rv._polygons.add( p )
+				rp.append( rv )
+
+				for nl in v.link_loops:
+					np = nl.face						
+					if np.tag:
+						continue
+					if v.tag:
+						e = shared_edge( p, np )
+						if e is None or e.seam:
+							continue
+					if np in polygons:
+						outerSet.add( np )
+						np.tag = True
+						
+		yield innerSet
+		RelaxVertex.all_verts.clear()
+
+
+def DoubleTriangleArea( p1, p2, p3 ):
+	return ( p1[0] * p2[1] - p1[1] * p2[0] ) + ( p2[0] * p3[1] - p2[1] * p3[0] ) + ( p3[0] * p1[1] - p3[1] * p1[0] )
+
+
+def lscm( faces, uvlayer ):
+	for patch in lscm_patches( faces, uvlayer ):			
+		#gather input 3dcoords, uvcoords, tri index mappings, and loops
+		verts = [ rv._v for rv in RelaxVertex.all_verts ]			
+		unique_3d_coords = [ mathutils.Vector( v.co.copy() ) for v in verts ]
+
+		tris = []
+		for rlxPoly in patch:
+			if len( rlxPoly ) < 3:
+				continue
+			root_vert = rlxPoly[0]
+			for i in range( len( rlxPoly ) - 2 ):
+				tris += [ root_vert._idx, rlxPoly[i+1]._idx, rlxPoly[i+2]._idx ]
+
+		pinned_indexes = []
+		pinned_uv_coords = []
+		for i, rv in enumerate( RelaxVertex.all_verts ):
+			for l in rv._v.link_loops:
+				if l.face not in rv._polygons:
+					continue
+				if l[uvlayer].pin_uv and not l.vert.tag:
+					l.vert.tag = True
+					pinned_indexes.append( RelaxVertex.all_verts[i]._idx )
+					pinned_uv_coords.append( mathutils.Vector( l[uvlayer].uv.copy() ) )
+		if len( pinned_indexes ) < 2:
+			pinned_indexes.clear()
+			pinned_uv_coords.clear()
+			pinned_indexes.append( RelaxVertex.all_verts[0]._idx )
+			pinned_indexes.append( RelaxVertex.all_verts[-1]._idx )
+			pinned_uv_coords.append( mathutils.Vector( RelaxVertex.all_verts[0]._v.link_loops[0][uvlayer].uv.copy() ) )
+			pinned_uv_coords.append( mathutils.Vector( RelaxVertex.all_verts[-1]._v.link_loops[0][uvlayer].uv.copy() ) )
+			
+		#allocate memory for block matrices and pinned vert vector
+		tcount = int( len( tris ) / 3 )
+		pinned_vcount = len( pinned_indexes )
+		vcount = len( verts ) - pinned_vcount
+		Mr_f = np.zeros( ( tcount, vcount ) )
+		Mi_f = np.zeros( ( tcount, vcount ) )
+		Mr_p = np.zeros( ( tcount, pinned_vcount ) )
+		Mi_p = np.zeros( ( tcount, pinned_vcount ) )
+		b = np.zeros( ( pinned_vcount * 2 ) )
+		
+		#compute coefficients
+		for i in range( tcount ):
+			idx1 = tris[i*3]
+			idx2 = tris[i*3+1]
+			idx3 = tris[i*3+2]
+			
+			#project 3d tri to its own plane to get rid of z component
+			tri3d = [ unique_3d_coords[idx1], unique_3d_coords[idx2], unique_3d_coords[idx3] ]
+			edge_lengths = [ ( tri3d[n-1] - tri3d[n-2] ).length for n in range( 3 ) ]
+			theta = math.acos( ( edge_lengths[1] * edge_lengths[1] + edge_lengths[2] * edge_lengths[2] - edge_lengths[0] * edge_lengths[0] ) / ( 2.0 * edge_lengths[1] * edge_lengths[2] ) )                
+			proj_tri = []
+			proj_tri.append( mathutils.Vector( ( 0.0, 0.0 ) ) )
+			proj_tri.append( mathutils.Vector( ( edge_lengths[2], 0.0 ) ) )
+			proj_tri.append( mathutils.Vector( ( edge_lengths[1] * math.cos( theta ), edge_lengths[1] * math.sin( theta )  ) ) )
+			
+			#compute projected tri area
+			a = DoubleTriangleArea( proj_tri[0], proj_tri[1], proj_tri[2] )
+					
+			#compute tris as complex numbers     
+			ws = []
+			for j in range( 3 ):
+				vec = proj_tri[j-1] - proj_tri[j-2]
+				w = vec / math.sqrt( a )
+				ws.append( w )
+				
+			#build A (free) and B (pinned) block matrices as well as pinned uv vector ( b )
+			for j, vidx in enumerate( [ idx1, idx2, idx3 ] ):
+				if vidx in pinned_indexes:
+					pvidx = pinned_indexes.index( vidx )
+					Mr_p[i][pvidx] = ws[j][0]
+					Mi_p[i][pvidx] = ws[j][1]
+					
+					b[pvidx] = pinned_uv_coords[pvidx][0]
+					b[pvidx+pinned_vcount] = pinned_uv_coords[pvidx][1]
+				else:
+					#adjust for pinned vert indexes
+					pin_count = 0
+					for pidx in pinned_indexes:
+						if vidx > pidx:
+							pin_count += 1
+					Mr_f[i][vidx-pin_count] = ws[j][0]
+					Mi_f[i][vidx-pin_count] = ws[j][1]
+					
+		A = np.block( [
+			[ Mr_f, Mi_f * -1.0 ],
+			[ Mi_f, Mr_f ] ] )
+			
+		B = np.block( [
+			[ Mr_p, Mi_p * -1.0 ],
+			[ Mi_p, Mr_p ] ] )
+			
+		#compute r = -(B * b)
+		r = B @ b
+		r = r * -1.0
+		
+		#solve for x inf Ax=b
+		x = np.linalg.lstsq( A, r, rcond=None )[0]
+
+		#assign new uv values
+		for vidx, v in enumerate( verts ):
+			count = 0
+			for pidx in pinned_indexes:
+				if vidx > pidx:
+					count += 1
+			if vidx in pinned_indexes:
+				continue
+			for l in verts[vidx].link_loops:
+				if l.face in RelaxVertex.all_verts[vidx]._polygons:
+					l[uvlayer].uv = mathutils.Vector( ( x[vidx-count], x[(vidx-count+vcount)] ) )
+
 class MESH_OT_uvrectangularize( bpy.types.Operator ):
 	"""Map the selection to a box."""
 	bl_idname = 'mesh.rm_uvrectangularize'
@@ -185,46 +380,22 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		if rmmesh is None:
 			return { 'CANCELLED' }
-		
-		face_indexes = set()
+			
 		with rmmesh as rmmesh:
 			uvlayer = rmmesh.active_uv
 			clear_tags( rmmesh )
 
-			initial_selection = set()
-			initial_loop_selection = set()
-
 			#get selection of faces
 			faces = rmlib.rmPolygonSet()
-			sel_sync = context.tool_settings.use_uv_select_sync
-			sel_mode = context.tool_settings.mesh_select_mode[:]
-			uv_sel_mode = context.tool_settings.uv_select_mode
+			sel_sync = context.tool_settings.use_uv_select_sync			
 			if sel_sync or context.area.type == 'VIEW_3D':
-				
+				sel_mode = context.tool_settings.mesh_select_mode[:]
 				if sel_mode[2]:
 					faces = rmlib.rmPolygonSet.from_selection( rmmesh )
-				else:
-					return { 'CANCELLED' }
-				for f in rmmesh.bmesh.faces:
-					f.select = False
 			else:
-				sel_mode = context.tool_settings.mesh_select_mode[:]
-				if sel_mode[0]:
-					for v in rmmesh.bmesh.verts:
-						if v.select:
-							initial_selection.add( v )
-				elif sel_mode[1]:
-					for e in rmmesh.bmesh.edges:
-						if e.select:
-							initial_selection.add( e )
-				elif sel_mode[2]:
-					for f in rmmesh.bmesh.faces:
-						if f.select:
-							initial_selection.add( f )
-
+				uv_sel_mode = context.tool_settings.uv_select_mode
 				if uv_sel_mode == 'FACE':
 					loops = rmlib.rmUVLoopSet.from_selection( rmmesh, uvlayer=uvlayer )
-					initial_loop_selection = set( [ l for l in loops ] )
 					loop_faces = set()
 					for l in loops:
 						loop_faces.add( l.face )
@@ -238,14 +409,6 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 								l.tag = False
 						if all_loops_tagged:
 							faces.append( f )
-
-					context.tool_settings.use_uv_select_sync = True
-					bpy.ops.mesh.select_mode( type='FACE' )
-					bpy.ops.mesh.select_all( action = 'DESELECT' )
-
-				else:
-					return { 'CANCELLED' }
-
 			if len( faces ) < 1:
 				return { 'CANCELLED' }
 			
@@ -291,93 +454,57 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 				sorted_tuples = sorted( sorted_tuples, key=lambda x: x[0] )
 				corner_loops = [ p[1] for p in sorted_tuples ][:4]
 
-				#compute the distance between the cornders
+				#compute the distance between the corners
 				distance_between_corners = []
+				edge_distances = [ 0.0 ] * lcount
 				starting_idx = sorted_boundary_loops.index( corner_loops[0] )
 				for i in range( lcount ):
-					l = sorted_boundary_loops[ ( starting_idx + i ) % lcount ]
+					idx = ( starting_idx + i ) % lcount
+					l = sorted_boundary_loops[idx]
 					if l in corner_loops:
 						distance_between_corners.append( 0.0 )
 					next_l = sorted_boundary_loops[ ( starting_idx + i + 1 ) % lcount ]
 					d = ( mathutils.Vector( next_l.vert.co ) - mathutils.Vector( l.vert.co ) ).length
+					edge_distances[idx] = d
 					distance_between_corners[-1] += d
 
-				#normalize distances
-				max_dist = -1.0
-				for d in distance_between_corners:
-					max_dist = max( max_dist, d )
+				dir_lookup = [ mathutils.Vector( ( 1.0, 0.0 ) ), mathutils.Vector( ( 0.0, 1.0 ) ), mathutils.Vector( ( -1.0, 0.0 ) ), mathutils.Vector( ( 0.0, -1.0 ) ) ]
 				for i in range( 4 ):
-					distance_between_corners[i] /= max_dist
+					dir_lookup[i] = dir_lookup[i] * ( distance_between_corners[i] / distance_between_corners[i-2] )
 
 				#set and pin loops to said corners
-				w = ( distance_between_corners[0] + distance_between_corners[2] ) / 2.0
-				h = ( distance_between_corners[1] + distance_between_corners[3] ) / 2.0
-				corner_uvs = [ ( 0.0, 0.0 ), ( w, 0.0 ), ( w, h ), ( 0.0, h ) ]
+				only_pin_corners = False
+				origin = mathutils.Vector( ( 0.0, 0.0 ) )
 				pinned_loops = set()
 				corner_count = -1
-				for i in range( lcount ):					
-					l = sorted_boundary_loops[ ( starting_idx + i ) % lcount ]
-					if l not in corner_loops:
-						continue
-					corner_count += 1
-					uv = l[uvlayer].uv.copy()
+				current_dist = 0.0
+				for i in range( lcount ):
+					idx = ( starting_idx + i ) % lcount
+					l = sorted_boundary_loops[idx]					
+
+					if l in corner_loops:
+						corner_count += 1						
+						current_dist = 0.0
+					else:
+						if only_pin_corners:
+							current_dist += edge_distances[idx]
+							continue
+
+					origin += dir_lookup[corner_count] * current_dist
+
 					pls = prev_boundary_loop( l )
 					for nl in pls:
-						nl = nl.link_loop_next
-						nl[uvlayer].uv = corner_uvs[corner_count]
+						nl = nl.link_loop_next						
+						nl[uvlayer].uv = origin
 						nl[uvlayer].pin_uv = True
 						pinned_loops.add( nl )
+
+					current_dist += edge_distances[idx]
 					
-				#unwrap
-				for f in group:
-					f.select = True
-				bpy.ops.uv.unwrap( 'INVOKE_DEFAULT', method='CONFORMAL' )
-
-				corner_count = -1
-				for i in range( lcount ):
-					l = sorted_boundary_loops[ ( starting_idx + i ) % lcount ]
-					uv = l[uvlayer].uv.copy()
-					if l in corner_loops:
-						corner_count += 1
-					for nl in prev_boundary_loop( l ):
-						nl = nl.link_loop_next
-						if corner_count == 0:
-							nl[uvlayer].uv = ( uv[0], 0.0 )
-						elif corner_count == 1:
-							nl[uvlayer].uv = ( w, uv[1] )
-						elif corner_count == 2:
-							nl[uvlayer].uv = ( uv[0], h )
-						else:
-							nl[uvlayer].uv = ( 0.0, uv[1] )
-						nl[uvlayer].pin_uv = True
-						
-				#unwrap				
-				bpy.ops.uv.unwrap( 'INVOKE_DEFAULT', method='CONFORMAL' )
-				for f in group:
-					f.select = False
-					for l in f.loops:
-						l[uvlayer].pin_uv = False
-				
+				#lscm
 				clear_tags( rmmesh )
-			
-			#restore selection if not in sync_mode
-			if not sel_sync and uv_sel_mode == 'FACE':
-				context.tool_settings.use_uv_select_sync = False
-				if sel_mode[0]:
-					bpy.ops.mesh.select_mode( type='VERT' )
-				elif sel_mode[1]:
-					bpy.ops.mesh.select_mode( type='EDGE' )
-				elif sel_mode[2]:
-					bpy.ops.mesh.select_mode( type='FACE' )
-				bpy.ops.mesh.select_all( action = 'DESELECT' )
-				for elem in initial_selection:
-					elem.select = True
-				for l in initial_loop_selection:
-					l[uvlayer].select = True
-			else:
-				for f in faces:
-					f.select = True
-
+				lscm( faces, uvlayer )
+				clear_tags( rmmesh )
 
 		return { 'FINISHED' }
 
