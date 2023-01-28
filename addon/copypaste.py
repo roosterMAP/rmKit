@@ -58,6 +58,7 @@ def paste( context ):
 	if rmmesh is None:
 		return
 	with rmmesh as rmmesh:
+		rmmesh.bmesh.verts.ensure_lookup_table()
 		for p in rmmesh.bmesh.faces:
 			p.select = False
 		

@@ -94,22 +94,31 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 						valid_topo = False
 						break
 				if not valid_topo:
+					#unmark if topo is not valid
 					for f in group:
 						f.tag = False
 					continue
-				
+
 				#initialize start_loop
 				start_loop = None
+				potential_starts = set()
 				for f in group:
 					for l in f.loops:
-						if is_boundary( l ) and is_boundary( l.link_loop_prev ):
+						b_l = is_boundary( l )
+						b_pl = is_boundary( l.link_loop_prev )
+						if b_l and b_pl:
 							start_loop = l
 							break
+						elif b_l or b_pl:
+							potential_starts.add( l )
 					if start_loop is not None:
 						break
 				if start_loop is None:
-					start_loop = group[0].loops[0]
-									
+					if len( potential_starts ) > 0:
+						start_loop = potential_starts.pop()
+					else:
+						start_loop = group[0].loops[0]
+
 				#mark boundary edges
 				for f in group:
 					for e in f.edges:
@@ -151,13 +160,13 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 							ring.append( loop )
 
 					loop_rings.append( ring )
-					
+
 					use_next = len( loop_rings ) % 2 == 0
 					if use_next:
 						bridge_loop = final_loop.link_loop_next
 					else:
 						bridge_loop = final_loop.link_loop_prev
-						
+
 					start_loop = None
 					for f in bridge_loop.edge.link_faces:
 						if f.tag or bridge_loop.edge.tag:
@@ -188,7 +197,7 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 							ring.append( l.link_loop_next.vert )						
 					rings.append( ring )
 				rings[-1] = rings[-1][::-1]
-										
+				
 				#build list of avg ring and loop lists
 				loop_steps = [ 0.0 ] * len( rings[0] )
 				for r in rings:
