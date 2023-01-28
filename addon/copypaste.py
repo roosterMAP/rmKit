@@ -61,13 +61,12 @@ def paste( context ):
 		rmmesh.bmesh.verts.ensure_lookup_table()
 		for p in rmmesh.bmesh.faces:
 			p.select = False
-		
-		vcount = len( rmmesh.bmesh.verts )
+			
 		rmmesh.bmesh.from_mesh( clipboard_mesh )
 		rmmesh.bmesh.verts.ensure_lookup_table()
+
 		xfrm_inv = rmmesh.world_transform.inverted()
-		for i in range( vcount, len( rmmesh.bmesh.verts ) ):
-			v = rmmesh.bmesh.verts[i]
+		for v in rmlib.rmPolygonSet.from_selection( rmmesh ).vertices:
 			v.co = xfrm_inv @ mathutils.Vector( v.co )
 	
 	
