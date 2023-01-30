@@ -168,14 +168,27 @@ def GetBoundaryLoops( faces ):
 				bounary_loops.add( l )
 	return bounary_loops
 
+
 class RelaxVertex():
 	all_verts = []
 
 	def __init__( self, vertex, polygon ):
 		self._v = vertex
-		self._idx = len( RelaxVertex.all_verts )
 		self._polygons = set( [polygon] )
+		self._idx = len( RelaxVertex.all_verts )
 		RelaxVertex.all_verts.append( self )
+
+	@classmethod
+	def GetRelaxVert( cls, vertex, polygon ):
+		for nrv in RelaxVertex.all_verts:
+			if nrv._v == vertex:
+				#iterate through all polys in nrv to ensure we are not adding a polygon thats on the other side of a seam edge
+				for nrp in nrv._polygons:
+					se = shared_edge( nrp, polygon )
+					if se is not None and not se.seam:
+						nrv._polygons.add( polygon )
+						return nrv
+		return cls( vertex, polygon )
 
 
 def shared_edge( p1, p2 ):
@@ -186,7 +199,8 @@ def shared_edge( p1, p2 ):
 	return None
 
 
-def lscm_patches( polygons, uvlayer ):	
+def lscm_patches( polygons ):
+	#tag all faces
 	for p in polygons:
 		p.tag = False
 		for e in p.edges:
@@ -210,32 +224,14 @@ def lscm_patches( polygons, uvlayer ):
 			innerSet.append( rp )
 
 			for l in p.loops:
-				v = l.vert
-
-				#get or create relaxvert and add to relaxpoly
-				rv = None
-				for nrv in RelaxVertex.all_verts:
-					if nrv._v == v:
-						#iterate through all polys in nrv to ensure we are not adding a polygon thats on the other side of a seam edge
-						se = None
-						for nrp in nrv._polygons:
-							se = shared_edge( nrp, p )
-							if se is not None and se.seam:
-								break
-						if se is None or not se.seam:
-							rv = nrv
-							break						
-						rv = RelaxVertex( v, p )
-				if rv is None:
-					rv = RelaxVertex( v, p )
-				rv._polygons.add( p )
+				rv = RelaxVertex.GetRelaxVert( l.vert, p )
 				rp.append( rv )
 
-				for nl in v.link_loops:
-					np = nl.face						
+				for nl in l.vert.link_loops:
+					np = nl.face
 					if np.tag:
 						continue
-					if v.tag:
+					if l.vert.tag:
 						e = shared_edge( p, np )
 						if e is None or e.seam:
 							continue
@@ -252,9 +248,11 @@ def DoubleTriangleArea( p1, p2, p3 ):
 
 
 def lscm( faces, uvlayer ):
-	for patch in lscm_patches( faces, uvlayer ):			
+	RelaxVertex.all_verts.clear()
+	for patch in lscm_patches( faces ):
 		#gather input 3dcoords, uvcoords, tri index mappings, and loops
-		verts = [ rv._v for rv in RelaxVertex.all_verts ]			
+		verts = [ rv._v for rv in RelaxVertex.all_verts ]
+		
 		unique_3d_coords = [ mathutils.Vector( v.co.copy() ) for v in verts ]
 
 		tris = []
@@ -271,10 +269,10 @@ def lscm( faces, uvlayer ):
 			for l in rv._v.link_loops:
 				if l.face not in rv._polygons:
 					continue
-				if l[uvlayer].pin_uv and not l.vert.tag:
-					l.vert.tag = True
+				if l[uvlayer].pin_uv:
 					pinned_indexes.append( RelaxVertex.all_verts[i]._idx )
 					pinned_uv_coords.append( mathutils.Vector( l[uvlayer].uv.copy() ) )
+					break
 		if len( pinned_indexes ) < 2:
 			pinned_indexes.clear()
 			pinned_uv_coords.clear()
@@ -463,48 +461,52 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 					l = sorted_boundary_loops[idx]
 					if l in corner_loops:
 						distance_between_corners.append( 0.0 )
-					next_l = sorted_boundary_loops[ ( starting_idx + i + 1 ) % lcount ]
-					d = ( mathutils.Vector( next_l.vert.co ) - mathutils.Vector( l.vert.co ) ).length
+					v1, v2 = l.edge.verts
+					d = ( mathutils.Vector( v1.co ) - mathutils.Vector( v2.co ) ).length
 					edge_distances[idx] = d
 					distance_between_corners[-1] += d
 
 				dir_lookup = [ mathutils.Vector( ( 1.0, 0.0 ) ), mathutils.Vector( ( 0.0, 1.0 ) ), mathutils.Vector( ( -1.0, 0.0 ) ), mathutils.Vector( ( 0.0, -1.0 ) ) ]
+				max_len = -1.0
+				for i in range( 2, 4 ):
+					dir_lookup[i] = dir_lookup[i] * ( distance_between_corners[i-2] / distance_between_corners[i] )
 				for i in range( 4 ):
-					dir_lookup[i] = dir_lookup[i] * ( distance_between_corners[i] / distance_between_corners[i-2] )
+					max_len = max( max_len, distance_between_corners[i] )
+				for i in range( 4 ):
+					dir_lookup[i] *= 1.0 / max_len
 
 				#set and pin loops to said corners
 				only_pin_corners = False
 				origin = mathutils.Vector( ( 0.0, 0.0 ) )
 				pinned_loops = set()
 				corner_count = -1
-				current_dist = 0.0
 				for i in range( lcount ):
 					idx = ( starting_idx + i ) % lcount
-					l = sorted_boundary_loops[idx]					
+					l = sorted_boundary_loops[idx]
+					
+					origin += dir_lookup[corner_count] * edge_distances[idx-1]
 
 					if l in corner_loops:
-						corner_count += 1						
-						current_dist = 0.0
+						corner_count += 1
 					else:
 						if only_pin_corners:
-							current_dist += edge_distances[idx]
-							continue
-
-					origin += dir_lookup[corner_count] * current_dist
+							continue				
 
 					pls = prev_boundary_loop( l )
 					for nl in pls:
-						nl = nl.link_loop_next						
+						nl = nl.link_loop_next
 						nl[uvlayer].uv = origin
 						nl[uvlayer].pin_uv = True
 						pinned_loops.add( nl )
-
-					current_dist += edge_distances[idx]
 					
 				#lscm
 				clear_tags( rmmesh )
 				lscm( faces, uvlayer )
 				clear_tags( rmmesh )
+				
+				#clear pins
+				for l in pinned_loops:
+					l[uvlayer].pin_uv = False
 
 		return { 'FINISHED' }
 
