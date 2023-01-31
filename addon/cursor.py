@@ -136,8 +136,8 @@ class MESH_OT_unrotatefromcursor( bpy.types.Operator ):
 
 	def execute( self, context ):
 		cursor_pos = mathutils.Vector( context.scene.cursor.location )
-		cursor_rot = mathutils.Matrix( context.scene.cursor.matrix )
-		cursor_rot_inv = cursor_rot.inverted()
+		cursor_xfrm = mathutils.Matrix( context.scene.cursor.matrix )
+		cursor_xfrm_inv = cursor_xfrm.inverted()
 
 		if context.mode == 'EDIT_MESH':
 			sel_mode = context.tool_settings.mesh_select_mode[:]
@@ -145,34 +145,44 @@ class MESH_OT_unrotatefromcursor( bpy.types.Operator ):
 			if rmmesh is None:
 				return { 'CANCELLED' }
 			with rmmesh as rmmesh:
-				cursor_pos_obj = rmmesh.world_transform.inverted() @ cursor_pos
+				xfrm_inv = rmmesh.world_transform.inverted()
 
 				if sel_mode[0]:
 					sel_verts = rmlib.rmVertexSet.from_selection( rmmesh )
 					for group in sel_verts.group( True ):
 						for v in group:
-							v.co = cursor_rot_inv @ v.co
-							v.co += cursor_pos_obj
+							v_wld = rmmesh.world_transform @ v.co #bring to world space
+							v_wld = cursor_xfrm_inv @ v_wld #transform by inverse of cursor
+							v_wld += cursor_pos
+							v_obj = xfrm_inv @ v_wld #bring back into obj space
+							v.co = v_obj
 
 				elif sel_mode[1]:
 					sel_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
 					for egroup in sel_edges.group( True ):
 						group = egroup.vertices
 						for v in group:
-							v.co = cursor_rot_inv @ v.co
-							v.co += cursor_pos_obj
+							v_wld = rmmesh.world_transform @ v.co #bring to world space
+							v_wld = cursor_xfrm_inv @ v_wld #transform by inverse of cursor
+							v_wld += cursor_pos
+							v_obj = xfrm_inv @ v_wld #bring back into obj space
+							v.co = v_obj
 
 				elif sel_mode[2]:
 					sel_faces = rmlib.rmPolygonSet.from_selection( rmmesh )
 					for fgroup in sel_faces.group( True ):
 						group = fgroup.vertices
 						for v in group:
-							v.co = cursor_rot_inv @ v.co
-							v.co += cursor_pos_obj
+							v_wld = rmmesh.world_transform @ v.co #bring to world space
+							v_wld = cursor_xfrm_inv @ v_wld #transform by inverse of cursor
+							v_wld += cursor_pos
+							v_obj = xfrm_inv @ v_wld #bring back into obj space
+							v.co = v_obj
+							
 
 		elif context.object is not None and context.mode == 'OBJECT':
 			obj = context.object
-			obj.matrix_world = cursor_rot_inv @ obj.matrix_world
+			obj.matrix_world = cursor_xfrm_inv @ obj.matrix_world
 			obj.location += cursor_pos
 
 		return { 'FINISHED' }
@@ -261,6 +271,8 @@ class VIEW3D_MT_PIE_cursor( bpy.types.Menu ):
 		pie.operator( 'view3d.snap_cursor_to_center', text='Cursor to Origin' )
 
 		pie.operator( 'view3d.rm_unrotate_relative_to_cursor', text='Unrotate Relative to Cursor' )
+
+		pie.operator( 'wm.call_menu', text='Apply Transform' ).name = 'VIEW3D_MT_object_apply'
 
 	
 def register():

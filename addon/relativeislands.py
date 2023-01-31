@@ -117,7 +117,10 @@ class MESH_OT_scaleislandrelative( bpy.types.Operator ):
 
 			#set the density of all islands to the target
 			for i, island in enumerate( islands ):
-				scale_factor = math.sqrt( target_density / densities[i] )
+				try:
+					scale_factor = math.sqrt( target_density / densities[i] )
+				except ZeroDivisionError:
+					continue
 
 				island_center = mathutils.Vector( ( 0.0, 0.0 ) )
 				lcount = 0
