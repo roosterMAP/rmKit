@@ -64,8 +64,7 @@ class MESH_OT_uvunrotate( bpy.types.Operator ):
 			if len( loop_groups ) == 0:
 				return { 'CANCELLED' }
 
-			for i, g in enumerate( loop_groups ):
-				drive_loop = g[0]
+			for g in loop_groups:
 				drive_vec = mathutils.Vector( ( 0.0, 0.0 ) )
 				drive_center = mathutils.Vector( ( 0.0, 0.0 ) )
 				if not sel_sync and sel_mode_uv == 'EDGE':
@@ -78,9 +77,12 @@ class MESH_OT_uvunrotate( bpy.types.Operator ):
 							length = ( pos2 - pos1 ).length
 							if length >= max_len:
 								max_len = length
-								drive_loop = l
 								drive_vec = ( pos2 - pos1 ).normalized()
 								drive_center = ( pos2 + pos1 ) * 0.5
+					regroup = g.group_vertices( element=True )
+					g = regroup[0]
+					for i in range( 1, len( regroup ) ):
+						g += regroup[i]
 
 				elif sel_sync and sel_mode[1]:
 					#get bmedges that drive unrotate on this group
@@ -92,7 +94,6 @@ class MESH_OT_uvunrotate( bpy.types.Operator ):
 							length = ( pos2 - pos1 ).length
 							if length >= max_len:
 								max_len = length
-								drive_loop = l
 								drive_vec = ( pos2 - pos1 ).normalized()
 								drive_center = ( pos2 + pos1 ) * 0.5
 

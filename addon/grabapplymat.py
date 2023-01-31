@@ -95,7 +95,7 @@ class MESH_OT_grabapplymat( bpy.types.Operator ):
 			with eval_rmmesh as eval_rmmesh:
 				eval_rmmesh.readonly = True
 				try:
-					source_poly = rmlib.rmPolygonSet.from_mos( eval_rmmesh, context, mouse_pos )[0]
+					source_poly = rmlib.rmPolygonSet.from_mos( eval_rmmesh, context, mouse_pos, ignore_hidden=eval_rmmesh.mesh.is_editmode )[0]
 				except IndexError:
 					print( 'ERROR :: GrabApplyMat :: from_mos failed' )
 					return { 'CANCELLED' }				

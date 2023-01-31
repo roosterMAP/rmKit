@@ -65,16 +65,16 @@ class rmPolygonSet( list ):
 			return cls( p for p in rmmesh.bmesh.faces )			
 
 	@classmethod
-	def from_mos( cls, rmmesh, context, mouse_pos, ignore_backfacing=True ):
+	def from_mos( cls, rmmesh, context, mouse_pos, ignore_backfacing=True, ignore_hidden=True ):
 		rm_vp = util.rmViewport( context )
 		look_idx, look_vec, axis_vec = rm_vp.get_nearest_direction_vector( 'front' )
 
 		xfrm = rmmesh.world_transform
 		view_pos = rm_vp.cam_pos
-		
+
 		wld_spc_vpos = [None] * len( rmmesh.bmesh.verts )
 		active_faces = cls()
-		for f in cls( f for f in rmmesh.bmesh.faces if not f.hide ):
+		for f in cls( f for f in rmmesh.bmesh.faces if not ignore_hidden or not f.hide ):
 			f_normal = xfrm.to_3x3() @ f.normal.copy()
 			f_normal.normalize()
 			if ignore_backfacing and f_normal.dot( look_vec ) > 0.0:
