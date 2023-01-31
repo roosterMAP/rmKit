@@ -60,9 +60,12 @@ def shortest_path( source, end_verts, verts ):
 			neighbor = ne.other_vert( current )
 			if neighbor.tag:
 				continue
-			if dist_lookup[neighbor] < min_dist and dist_lookup[neighbor] < dist_lookup[current]:
-				min_dist = dist_lookup[neighbor]
-				prev_neighbor = neighbor
+			try:
+				if dist_lookup[neighbor] < min_dist and dist_lookup[neighbor] < dist_lookup[current]:
+					min_dist = dist_lookup[neighbor]
+					prev_neighbor = neighbor
+			except KeyError:
+				continue
 		shortest_path.append( current )	
 		if prev_neighbor is None:
 			break
@@ -180,14 +183,18 @@ class RelaxVertex():
 
 	@classmethod
 	def GetRelaxVert( cls, vertex, polygon ):
-		for nrv in RelaxVertex.all_verts:
-			if nrv._v == vertex:
-				#iterate through all polys in nrv to ensure we are not adding a polygon thats on the other side of a seam edge
-				for nrp in nrv._polygons:
-					se = shared_edge( nrp, polygon )
-					if se is not None and not se.seam:
-						nrv._polygons.add( polygon )
-						return nrv
+		for rv in RelaxVertex.all_verts:
+			if rv._v == vertex:
+				if rv._v.tag:
+					#iterate through all polys in nrv to ensure we are not adding a polygon thats on the other side of a seam edge
+					for rp in rv._polygons:
+						e = shared_edge( rp, polygon )
+						if e is None or not e.seam:
+							rv._polygons.add( polygon )
+							return rv
+				else:
+					rv._polygons.add( polygon )
+					return rv	
 		return cls( vertex, polygon )
 
 
@@ -200,9 +207,8 @@ def shared_edge( p1, p2 ):
 
 
 def lscm_patches( polygons ):
-	#tag all faces
+	#tag epts of seam edges
 	for p in polygons:
-		p.tag = False
 		for e in p.edges:
 			if e.seam:
 				v1, v2 = e.verts
@@ -221,8 +227,6 @@ def lscm_patches( polygons ):
 			p = outerSet.pop()
 
 			rp = [] #relaxpoly which is just a list of relaxverts
-			innerSet.append( rp )
-
 			for l in p.loops:
 				rv = RelaxVertex.GetRelaxVert( l.vert, p )
 				rp.append( rv )
@@ -238,6 +242,8 @@ def lscm_patches( polygons ):
 					if np in polygons:
 						outerSet.add( np )
 						np.tag = True
+
+			innerSet.append( rp )
 						
 		yield innerSet
 		RelaxVertex.all_verts.clear()
@@ -251,8 +257,7 @@ def lscm( faces, uvlayer ):
 	RelaxVertex.all_verts.clear()
 	for patch in lscm_patches( faces ):
 		#gather input 3dcoords, uvcoords, tri index mappings, and loops
-		verts = [ rv._v for rv in RelaxVertex.all_verts ]
-		
+		verts = [ rv._v for rv in RelaxVertex.all_verts ]		
 		unique_3d_coords = [ mathutils.Vector( v.co.copy() ) for v in verts ]
 
 		tris = []
@@ -490,7 +495,7 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 						corner_count += 1
 					else:
 						if only_pin_corners:
-							continue				
+							continue
 
 					pls = prev_boundary_loop( l )
 					for nl in pls:

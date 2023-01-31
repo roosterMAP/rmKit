@@ -104,41 +104,61 @@ class MESH_OT_screenreflect( bpy.types.Operator ):
 		elif context.mode == 'OBJECT':
 			dir_idx, cam_dir_vec, grid_dir_vec = rm_vp.get_nearest_direction_vector( self.str_dir, rm_wp.matrix )
 			
-			for obj in list( bpy.context.selected_objects ):
-				if obj.type != 'MESH':
-					continue
-				
-				rmmesh = rmlib.rmMesh( obj )
-				inv_rot_mat = rmmesh.world_transform.to_3x3().inverted()
-				with rmmesh as rmmesh:
-					rmmesh.readonly = True
+			obj_selection = list( bpy.context.selected_objects )
 
-					if self.mode == 0:
+			if self.mode == 0:
+				reflection_center = None
+				for obj in obj_selection:
+					if obj.type != 'MESH':
+						continue
+					
+					rmmesh = rmlib.rmMesh( obj )
+					mat = rmmesh.world_transform
+					inv_mat = mat.inverted()
+					inv_rot_mat = mat.to_3x3().inverted()
+					with rmmesh as rmmesh:
+						rmmesh.readonly = True
+						
 						grid_dir_vec_objspc = inv_rot_mat @ grid_dir_vec
 
 						#find the farthest point in the direction of the desired axis aligned direction
 						active_verts = rmlib.rmVertexSet.from_mesh( rmmesh=rmmesh, filter_hidden=True )
-						reflection_center = active_verts[0].co.copy()
+						rc = active_verts[0].co.copy()
 						max_dot = grid_dir_vec_objspc.dot( active_verts[0].co )
 						for i in range( 1, len( active_verts ) ):
 							v = active_verts[i]
 							dot = grid_dir_vec_objspc.dot( v.co )
 							if dot > max_dot:
 								max_dot = dot
-								reflection_center = v.co.copy()
+								rc = v.co.copy()
+						if reflection_center is not None:
+							cur_rc = inv_mat @ reflection_center
+							dot = grid_dir_vec_objspc.dot( cur_rc )
+							if dot > max_dot:
+								rc = cur_rc							
 
-						reflection_center = rmmesh.world_transform @ reflection_center
-
-					else:
-						reflection_center = mathutils.Vector( bpy.context.scene.cursor.location )
+						reflection_center = mat @ rc
 
 				reflection = rmlib.util.ReflectionMatrix( reflection_center, grid_dir_vec )
-				mat = mathutils.Matrix( obj.matrix_world )
-				new_mat = reflection @ mat
+				for obj in obj_selection:
+					mat = mathutils.Matrix( obj.matrix_world )
+					new_mat = reflection @ mat
 
-				bpy.ops.object.duplicate( { 'object':obj, 'selected_objects':[obj] }, linked=True )
-				new_obj = context.object
-				new_obj.matrix_world = new_mat
+					new_obj = bpy.data.objects.new( obj.name, obj.data )
+					obj.users_collection[0].objects.link( new_obj )
+					new_obj.matrix_world = new_mat
+
+			else:
+				reflection_center = mathutils.Vector( bpy.context.scene.cursor.location )
+				reflection = rmlib.util.ReflectionMatrix( reflection_center, grid_dir_vec )
+
+				for obj in obj_selection:
+					mat = mathutils.Matrix( obj.matrix_world )
+					new_mat = reflection @ mat
+
+					new_obj = bpy.data.objects.new( obj.name, obj.data )
+					obj.users_collection[0].objects.link( new_obj )
+					new_obj.matrix_world = new_mat
 
 		return { 'FINISHED' }
 
