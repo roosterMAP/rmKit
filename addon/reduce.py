@@ -83,7 +83,10 @@ class MESH_OT_reduce( bpy.types.Operator ):
 				if len( sel_edges ) > 0:
 					if self.reduce_mode == 'DEL':
 						rmmesh.readonly = False
-						bmesh.ops.delete( rmmesh.bmesh, geom=sel_edges.polygons, context='FACES' )
+						lone_edges = [ e for e in sel_edges if len( e.link_faces ) == 0 ]
+						bmesh.ops.delete( rmmesh.bmesh, geom=sel_edges.polygons , context='FACES' )
+						bmesh.ops.delete( rmmesh.bmesh, geom=lone_edges , context='EDGES' )
+
 					elif self.reduce_mode == 'COL':
 						bpy.ops.mesh.edge_collapse()
 					elif self.reduce_mode == 'DIS':
