@@ -192,8 +192,8 @@ class VIEW3D_MT_PIE_screenreflect( bpy.types.Menu ):
 		pie.operator( 'view3d.snap_cursor_to_selected', text='Set Cursor' )
 
 		pie.operator( 'wm.call_menu_pie', text='Reflect' ).name = 'VIEW3D_MT_PIE_screenreflect_noslice'
-
-		pie.operator( 'view3d.snap_cursor_to_center', text='Cursor To Origin' )
+		
+		pie.operator( 'view3d.rm_zerocursor', text='Cursor to Origin' )
 
 		pie.operator( 'wm.call_menu_pie', text='Slice' ).name = 'VIEW3D_MT_PIE_screenreflect_slice'
 		

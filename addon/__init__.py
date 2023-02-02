@@ -26,21 +26,21 @@ from . import context_bevel
 from . import loopring
 from . import move_to_furthest
 from . import knifescreen
-from . import screenreflect
 from . import connect_edges
 from . import arcadjust
 from . import targetweld
 from . import createtube
 from . import vnormals
 from . import copypaste
+from . import cursor
 from . import workplane
+from . import screenreflect
 from . import selectionmode
 from . import radial_align
 from . import edgeweight
 from . import grabapplymat
 from . import extend
 from . import quickmaterial
-from . import cursor
 from . import thicken
 from . import stitch
 from . import panel
@@ -63,21 +63,21 @@ def register():
 	context_bevel.register()
 	loopring.register()
 	move_to_furthest.register()
-	knifescreen.register()
-	screenreflect.register()
+	knifescreen.register()	
 	connect_edges.register()
 	arcadjust.register()
 	targetweld.register()
 	createtube.register()
 	copypaste.register()
+	cursor.register()
 	workplane.register()
+	screenreflect.register()
 	selectionmode.register()
 	radial_align.register()
 	edgeweight.register()
 	grabapplymat.register()
 	extend.register()
 	quickmaterial.register()
-	cursor.register()
 	thicken.register()
 	panel.register()
 	vnormals.register()
@@ -102,20 +102,20 @@ def unregister():
 	loopring.unregister()
 	move_to_furthest.unregister()
 	knifescreen.unregister()
-	screenreflect.unregister()
 	connect_edges.unregister()
 	arcadjust.unregister()
 	targetweld.unregister()
 	createtube.unregister()	
 	copypaste.unregister()
+	cursor.unregister()
 	workplane.unregister()
+	screenreflect.unregister()
 	selectionmode.unregister()
 	radial_align.unregister()
 	edgeweight.unregister()
 	grabapplymat.unregister()
 	extend.unregister()
-	quickmaterial.unregister()
-	cursor.unregister()
+	quickmaterial.unregister()	
 	thicken.unregister()
 	panel.unregister()
 	vnormals.unregister()

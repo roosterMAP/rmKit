@@ -304,12 +304,35 @@ class GridVisibility( bpy.types.PropertyGroup ):
 	prop_show_y: bpy.props.BoolProperty( name="Show Y Axis", default=True )
 	prop_show_z: bpy.props.BoolProperty( name="Show Z Axis", default=False )
 
+
+class MESH_OT_zerocursor( bpy.types.Operator ):
+	"""Move Cursor to grid origin."""
+	bl_idname = 'view3d.rm_zerocursor'
+	bl_label = 'Cursor to Origin'
+	bl_options = { 'UNDO' }
+	
+	@classmethod
+	def poll( cls, context ):
+		return ( context.area.type == 'VIEW_3D' )
+		
+	def execute( self, context ):
+		global GRID_RENDER
+		if GRID_RENDER is None:
+			context.scene.cursor.location = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
+		else:
+			context.scene.cursor.location = GRID_RENDER.matrix.to_translation()
+			context.scene.cursor.matrix = GRID_RENDER.matrix
+				
+		return { 'FINISHED' }
+
 	
 def register():
 	print( 'register :: {}'.format( MESH_OT_workplane.bl_idname ) )
 	print( 'register :: {}'.format( MESH_OT_togglegrid.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_zerocursor.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_workplane )
 	bpy.utils.register_class( MESH_OT_togglegrid )
+	bpy.utils.register_class( MESH_OT_zerocursor )
 	bpy.utils.register_class( GridVisibility )
 	bpy.types.Scene.workplaneprops = bpy.props.PointerProperty( type=GridVisibility )
 	
@@ -317,7 +340,9 @@ def register():
 def unregister():
 	print( 'unregister :: {}'.format( MESH_OT_workplane.bl_idname ) )
 	print( 'unregister :: {}'.format( MESH_OT_togglegrid.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_zerocursor.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_workplane )
 	bpy.utils.unregister_class( MESH_OT_togglegrid )
+	bpy.utils.unregister_class( MESH_OT_zerocursor )
 	bpy.utils.unregister_class( GridVisibility )
 	del bpy.types.Scene.workplaneprops

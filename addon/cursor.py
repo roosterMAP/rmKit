@@ -268,7 +268,7 @@ class VIEW3D_MT_PIE_cursor( bpy.types.Menu ):
 
 		pie.operator( 'view3d.rm_origin_to_cursor', text='Object Pivot to Cursor' )
 
-		pie.operator( 'view3d.snap_cursor_to_center', text='Cursor to Origin' )
+		pie.operator( 'view3d.rm_zerocursor', text='Cursor to Origin' )
 
 		pie.operator( 'view3d.rm_unrotate_relative_to_cursor', text='Unrotate Relative to Cursor' )
 
