@@ -60,11 +60,15 @@ class MESH_OT_scaleislandrelative( bpy.types.Operator ):
 				else:
 					return { 'CANCELLED' }
 			else:
-				sel_mode = context.tool_settings.uv_select_mode
-				if sel_mode == 'FACE':
+				uv_sel_mode = context.tool_settings.uv_select_mode
+				if uv_sel_mode == 'FACE':
 					loops = rmlib.rmUVLoopSet.from_selection( rmmesh, uvlayer=uvlayer )
 					loop_faces = set()
 					for l in loops:
+						if not l.face.select:
+							continue
+						if not l[uvlayer].select_edge:
+							continue
 						loop_faces.add( l.face )
 						l.tag = True
 					for f in loop_faces:
@@ -175,11 +179,15 @@ class MESH_OT_scaletomaterialsize( bpy.types.Operator ):
 				else:
 					return { 'CANCELLED' }
 			else:
-				sel_mode = context.tool_settings.uv_select_mode
-				if sel_mode == 'FACE':
+				uv_sel_mode = context.tool_settings.uv_select_mode
+				if uv_sel_mode == 'FACE':
 					loops = rmlib.rmUVLoopSet.from_selection( rmmesh, uvlayer=uvlayer )
 					loop_faces = set()
 					for l in loops:
+						if not l.face.select:
+							continue
+						if not l[uvlayer].select_edge:
+							continue
 						loop_faces.add( l.face )
 						l.tag = True
 					for f in loop_faces:
@@ -292,11 +300,15 @@ class MESH_OT_normalizetexels( bpy.types.Operator ):
 				else:
 					return { 'CANCELLED' }
 			else:
-				sel_mode = context.tool_settings.uv_select_mode
-				if sel_mode == 'FACE':
+				uv_sel_mode = context.tool_settings.uv_select_mode
+				if uv_sel_mode == 'FACE':
 					loops = rmlib.rmUVLoopSet.from_selection( rmmesh, uvlayer=uvlayer )
 					loop_faces = set()
 					for l in loops:
+						if not l.face.select:
+							continue
+						if not l[uvlayer].select_edge:
+							continue
 						loop_faces.add( l.face )
 						l.tag = True
 					for f in loop_faces:

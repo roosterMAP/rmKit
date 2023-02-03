@@ -219,7 +219,7 @@ class MESH_OT_convertmodeto( bpy.types.Operator ):
 
 
 class MESH_OT_continuous( bpy.types.Operator ):    
-	"""Extend current element selection by ring."""
+	"""Extend current element selection by 3d continuity."""
 	bl_idname = 'mesh.rm_continuous'
 	bl_label = 'Select Continuous'
 	bl_options = { 'UNDO' }
@@ -245,14 +245,14 @@ class MESH_OT_continuous( bpy.types.Operator ):
 			sel_mode = context.tool_settings.mesh_select_mode[:]
 			if sel_mode[0]:
 				selected_verts = rmlib.rmVertexSet.from_selection( rmmesh )				
-				bpy.ops.mesh.select_linked( delimit={ 'SEAM' } )
+				bpy.ops.mesh.select_linked( delimit=set() )
 				if self.add:
 					selected_verts.select( False )
 			elif sel_mode[1]:
 				bpy.ops.mesh.rm_loop( force_boundary=True )
 			else:
 				selected_polys = rmlib.rmPolygonSet.from_selection( rmmesh )
-				bpy.ops.mesh.select_linked( delimit={ 'SEAM' } )
+				bpy.ops.mesh.select_linked( delimit=set() )
 				if self.add:
 					selected_polys.select( False )
 		return { 'FINISHED' }

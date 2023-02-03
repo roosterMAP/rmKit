@@ -74,7 +74,11 @@ def ComputeCircleCenter( chain ):
 	
 	a, b = ScaleLine( chain[1].co.copy(), chain[1].co.copy() + start_vec, 10000.0 )
 	c, d = ScaleLine( chain[-2].co.copy(), chain[-2].co.copy() + end_vec , 10000.0 )
-	p0, p1 = mathutils.geometry.intersect_line_line( a, b, c, d )
+	try:
+		p0, p1 = mathutils.geometry.intersect_line_line( a, b, c, d )
+	except TypeError:
+		#no intersection
+		return None, None
 	circle_center = ( p0 + p1 ) * 0.5
 	
 	diagonal_vector = ( circle_center - plane_pos ).normalized()
@@ -143,6 +147,8 @@ def radial_arc_adjust( bm, scale ):
 						
 	chain_idx = GetFirstChainIdx( bm, chains )
 	circle_center, diagonal_vector = ComputeCircleCenter( chains[chain_idx] )
+	if circle_center is None:
+		return False
 	circle_center += diagonal_vector * scale
 	
 	for chain in chains:

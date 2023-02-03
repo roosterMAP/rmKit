@@ -222,18 +222,18 @@ class MESH_OT_uvmovetofurthest( bpy.types.Operator ):
 						loop_groups.append( loop_selection )
 
 			else:
-				sel_mode = context.tool_settings.uv_select_mode
-				if sel_mode == 'VERTEX' and self.local:
+				uv_sel_mode = context.tool_settings.uv_select_mode
+				if uv_sel_mode == 'VERTEX' and self.local:
 					loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
 					loop_groups += loop_selection.group_vertices()
 					
-				elif sel_mode == 'EDGE' and self.local:
+				elif uv_sel_mode == 'EDGE' and self.local:
 					loop_selection = rmlib.rmUVLoopSet.from_edge_selection( rmmesh=rmmesh, uvlayer=uvlayer )
 					loop_groups = loop_selection.group_edges()
 					for i in range( len( loop_groups ) ):
 						loop_groups[i].add_overlapping_loops( True )
 
-				elif sel_mode == 'FACE' and self.local:
+				elif uv_sel_mode == 'FACE' and self.local:
 					loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
 					loop_groups += loop_selection.group_faces()
 

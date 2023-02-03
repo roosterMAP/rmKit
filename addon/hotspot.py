@@ -36,6 +36,10 @@ def GetFaceSelection( context, rmmesh ):
 			loops = rmlib.rmUVLoopSet.from_selection( rmmesh, uvlayer=uvlayer )
 			loop_faces = set()
 			for l in loops:
+				if not l.face.select:
+					continue
+				if not l[uvlayer].select_edge:
+					continue
 				loop_faces.add( l.face )
 				l.tag = True
 			for f in loop_faces:

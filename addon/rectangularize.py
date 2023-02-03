@@ -401,6 +401,10 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 					loops = rmlib.rmUVLoopSet.from_selection( rmmesh, uvlayer=uvlayer )
 					loop_faces = set()
 					for l in loops:
+						if not l.face.select:
+							continue
+						if not l[uvlayer].select_edge:
+							continue
 						loop_faces.add( l.face )
 						l.tag = True
 					for f in loop_faces:
@@ -414,7 +418,7 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 							faces.append( f )
 			if len( faces ) < 1:
 				return { 'CANCELLED' }
-			
+
 			for group in faces.group( use_seam=True ):
 				clear_tags( rmmesh )
 
