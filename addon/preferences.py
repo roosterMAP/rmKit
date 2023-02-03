@@ -154,6 +154,14 @@ def register_keyboard_keymap():
 		RM_GUI_NAMES.add( 'IMAGE_EDITOR_MT_PIE_uvmovetofurthest' )
 		RM_UV_KEYMAP.append( ( km_uv, kmi ) )
 
+		kmi = km_uv.keymap_items.new( 'mesh.rm_uvgrowshrink', 'NONE', 'PRESS' )
+		kmi.properties.mode = 'GROW'
+		RM_UV_KEYMAP.append( ( km_uv, kmi ) )
+
+		kmi = km_uv.keymap_items.new( 'mesh.rm_uvgrowshrink', 'NONE', 'PRESS' )
+		kmi.properties.mode = 'SHRINK'
+		RM_UV_KEYMAP.append( ( km_uv, kmi ) )
+
 
 def unregister_keyboard_keymap():
 	for km, kmi in RM_3DVIEW_KEYMAP:

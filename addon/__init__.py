@@ -52,6 +52,7 @@ from . import rectangularize
 from . import hotspot
 from . import uvboundstransform
 from . import dimensions
+from . import uvgrowshrink
 from . import preferences
 from . import quickboolean
 
@@ -91,6 +92,7 @@ def register():
 	uvboundstransform.register()
 	dimensions.register()
 	quickboolean.register()
+	uvgrowshrink.register()
 	preferences.register()
 
 def unregister():
@@ -129,4 +131,5 @@ def unregister():
 	uvboundstransform.unregister()
 	dimensions.unregister()
 	quickboolean.unregister()
+	uvgrowshrink.unregister()
 	preferences.unregister()
