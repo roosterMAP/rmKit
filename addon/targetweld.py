@@ -11,7 +11,7 @@ def chain_is_sorted( chain ):
 def chain_is_boundary( chain ):
 	for i in range( 1, len( chain ) ):
 		e = rmlib.rmEdgeSet.from_endpoints( chain[i-1], chain[i] )
-		if e.is_contiguous:
+		if not e.is_boundary:
 			return False
 	return True
 
@@ -60,39 +60,38 @@ class MESH_OT_targetweld( bpy.types.Operator ):
 				edges = rmlib.rmEdgeSet.from_selection( rmmesh )
 				if len( edges ) < 2:
 					return { 'CANCELLED' }
+				for v in edges.vertices:
+					v.tag = False
 				active_edge = rmmesh.bmesh.select_history.active
 				if active_edge is None or not isinstance( active_edge, bmesh.types.BMEdge ):
 					active_edge = edges[0]
 				active_verts = list( active_edge.verts )
-				
-				#clear tags
-				for v in edges.vertices:
-					v.tag = False
 				
 				#break up edges into chains and set the one that includes the active verts to be the weld target
 				chains = edges.vert_chain()
 				if len( chains ) < 2:
 					return { 'CANCELLED' }
 				for i, chain in enumerate( chains ):
-					if active_verts[0] in chain == active_verts[1] in chain:
+					if active_verts[0] in chain and active_verts[1] in chain:
 						break
 				target_chain = chains.pop( i )
 				for v in target_chain:
 					v.tag = True
 
 				#weld open edges
-				target_chain_is_sorted = chain_is_sorted( target_chain )
 				if chain_is_boundary( target_chain ):
+					target_chain_is_sorted = chain_is_sorted( target_chain )
 					for i, chain in enumerate( chains ):
-						if chain_is_boundary( chain ):
-							if target_chain_is_sorted and chain_is_sorted( chain ):
-								chain = chain[::-1]
-							for i in range( len( target_chain ) ):
-								try:
-									chain[i].co = target_chain[i].co
-									chain[i].tag = True
-								except IndexError:
-									break
+						if not chain_is_boundary( chain ):
+							continue
+						if target_chain_is_sorted and chain_is_sorted( chain ):
+							chain.reverse()
+						for j in range( len( target_chain ) ):
+							try:
+								chain[j].co = target_chain[j].co
+								chain[j].tag = True #tag so we can target weld to these to these later
+							except IndexError:
+								break
 				
 				#weld closed edges
 				verts_welded = True
