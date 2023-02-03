@@ -19,6 +19,7 @@ def uv_border_edge( uvlayer, loop ):
 def shrink_face_loop( uvlayer, loops ):
 	included_faces = set( [ l.face for l in loops ] )
 	
+	'''
 	#shrink boundary loops first
 	excluded_loops = set()
 	for f in included_faces:
@@ -46,6 +47,7 @@ def shrink_face_loop( uvlayer, loops ):
 				if rmlib.AlmostEqual_v2( uvcoord, n_uvcoord ):
 					n_l[uvlayer].select = True
 		return
+	'''
 		
 	fully_selected_faces = set()
 	for f in included_faces:

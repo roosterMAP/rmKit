@@ -8,10 +8,36 @@ ANCHOR_PROP_LIST = ( 'uv_anchor_nw', 'uv_anchor_n', 'uv_anchor_ne',
 			'uv_anchor_sw', 'uv_anchor_s', 'uv_anchor_se' )
 
 def GetLoopGroups( context, rmmesh, uvlayer, local ):
+	sel_mode = context.tool_settings.mesh_select_mode[:]
+	visible_faces = rmlib.rmPolygonSet()
+	if sel_mode[0]:		
+		for f in rmmesh.faces:
+			if f.hide:
+				continue
+			visible = True
+			for v in f.verts:
+				if not v.select:
+					visible = False
+					break
+			if visible:
+				visible_faces.append( f )
+	elif sel_mode[1]:
+		for f in rmmesh.faces:
+			if f.hide:
+				continue
+			visible = True
+			for e in f.edges:
+				if not e.select:
+					visible = False
+					break
+			if visible:
+				visible_faces.append( f )
+	else:
+		visible_faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+
 	loop_groups = []
 	sel_sync = context.tool_settings.use_uv_select_sync
 	if sel_sync:
-		sel_mode = context.tool_settings.mesh_select_mode[:]
 		if sel_mode[0]:
 			vert_selection = rmlib.rmVertexSet.from_selection( rmmesh )
 			loop_selection = rmlib.rmUVLoopSet( vert_selection.loops, uvlayer=uvlayer )
@@ -43,26 +69,42 @@ def GetLoopGroups( context, rmmesh, uvlayer, local ):
 		sel_mode = context.tool_settings.uv_select_mode
 		if sel_mode == 'VERTEX' and local:
 			loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
-			loop_groups += loop_selection.group_vertices()
+			visible_loop_selection = rmlib.rmUVLoopSet( uvlayer=uvlayer )
+			for l in loop_selection:
+				if l.face in visible_faces:
+					visible_loop_selection.append( l )
+			loop_groups += visible_loop_selection.group_vertices()
 			
 		elif sel_mode == 'EDGE':
+			loop_selection = rmlib.rmUVLoopSet.from_edge_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+			visible_loop_selection = rmlib.rmUVLoopSet( uvlayer=uvlayer )
+			for l in loop_selection:
+				if l.face in visible_faces:
+					visible_loop_selection.append( l )
 			if local:
-				loop_selection = rmlib.rmUVLoopSet.from_edge_selection( rmmesh=rmmesh, uvlayer=uvlayer )
-				loop_groups = loop_selection.group_edges()
+				loop_groups = visible_loop_selection.group_edges()
 				for i in range( len( loop_groups ) ):
 					loop_groups[i].add_overlapping_loops( True )
 			else:
-				loop_selection = rmlib.rmUVLoopSet.from_edge_selection( rmmesh=rmmesh, uvlayer=uvlayer )
-				loop_selection.add_overlapping_loops( True )
-				loop_groups.append( loop_selection )
+				visible_loop_selection.add_overlapping_loops( True )
+				loop_groups.append( visible_loop_selection )
 
 
 		elif sel_mode == 'FACE' and local:
 			loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
-			loop_groups += loop_selection.group_faces()
+			visible_loop_selection = rmlib.rmUVLoopSet( uvlayer=uvlayer )
+			for l in loop_selection:
+				if l.face in visible_faces:
+					visible_loop_selection.append( l )
+			loop_groups += visible_loop_selection.group_faces()
 
 		else:
-			loop_groups = [ rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer ) ]
+			loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+			visible_loop_selection = rmlib.rmUVLoopSet( uvlayer=uvlayer )
+			for l in loop_selection:
+				if l.face in visible_faces:
+					visible_loop_selection.append( l )
+			loop_groups = [ visible_loop_selection ]
 
 	return loop_groups
 

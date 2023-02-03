@@ -390,7 +390,7 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 
 			#get selection of faces
 			faces = rmlib.rmPolygonSet()
-			sel_sync = context.tool_settings.use_uv_select_sync			
+			sel_sync = context.tool_settings.use_uv_select_sync
 			if sel_sync or context.area.type == 'VIEW_3D':
 				sel_mode = context.tool_settings.mesh_select_mode[:]
 				if sel_mode[2]:

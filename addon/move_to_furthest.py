@@ -51,9 +51,7 @@ def move_to_furthest( groups, dir_vec, constrain, center ):
 		else:		
 			for v in g:
 				dist = mathutils.geometry.distance_point_to_plane( v.co.copy(), plane_pos, plane_nml )
-				print( 'dist :: {}'.format( dist ) )
 				v.co = v.co.copy() + ( -plane_nml * dist )
-				print( v.co )
 				
 				
 class MESH_OT_movetofurthest( bpy.types.Operator ):
@@ -146,6 +144,36 @@ class MESH_OT_movetofurthest( bpy.types.Operator ):
 		return { 'FINISHED' }
 
 
+def GetUnsyncUVVisibleFaces( rmmesh, sel_mode ):
+	visible_faces = rmlib.rmPolygonSet()
+	if sel_mode[0]:		
+		for f in rmmesh.bmesh.faces:
+			if f.hide:
+				continue
+			visible = True
+			for v in f.verts:
+				if not v.select:
+					visible = False
+					break
+			if visible:
+				visible_faces.append( f )
+	elif sel_mode[1]:
+		for f in rmmesh.bmesh.faces:
+			if f.hide:
+				continue
+			visible = True
+			for e in f.edges:
+				if not e.select:
+					visible = False
+					break
+			if visible:
+				visible_faces.append( f )
+	else:
+		visible_faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+		
+	return visible_faces
+
+
 class MESH_OT_uvmovetofurthest( bpy.types.Operator ):
 	"""Align selection to a uv axis most aligned with a direction relative to viewport camera."""
 	bl_idname = 'mesh.rm_uvmovetofurthest'
@@ -191,9 +219,10 @@ class MESH_OT_uvmovetofurthest( bpy.types.Operator ):
 
 			loop_groups = []
 
+			sel_mode = context.tool_settings.mesh_select_mode[:]
+			
 			sel_sync = context.tool_settings.use_uv_select_sync
 			if sel_sync:
-				sel_mode = context.tool_settings.mesh_select_mode[:]
 				if sel_mode[0]:
 					vert_selection = rmlib.rmVertexSet.from_selection( rmmesh )
 					loop_selection = rmlib.rmUVLoopSet( vert_selection.loops, uvlayer=uvlayer )
@@ -222,23 +251,43 @@ class MESH_OT_uvmovetofurthest( bpy.types.Operator ):
 						loop_groups.append( loop_selection )
 
 			else:
+				visible_faces = GetUnsyncUVVisibleFaces( rmmesh, sel_mode )
 				uv_sel_mode = context.tool_settings.uv_select_mode
-				if uv_sel_mode == 'VERTEX' and self.local:
+				if uv_sel_mode == 'VERTEX':
 					loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
-					loop_groups += loop_selection.group_vertices()
+					visible_loop_selection = rmlib.rmUVLoopSet( uvlayer=uvlayer )
+					for l in loop_selection:
+						if l.face in visible_faces:
+							visible_loop_selection.append( l )
+					if self.local:
+						loop_groups += visible_loop_selection.group_vertices()
+					else:
+						loop_groups.append( visible_loop_selection )
 					
-				elif uv_sel_mode == 'EDGE' and self.local:
+				elif uv_sel_mode == 'EDGE':
 					loop_selection = rmlib.rmUVLoopSet.from_edge_selection( rmmesh=rmmesh, uvlayer=uvlayer )
-					loop_groups = loop_selection.group_edges()
-					for i in range( len( loop_groups ) ):
-						loop_groups[i].add_overlapping_loops( True )
+					visible_loop_selection = rmlib.rmUVLoopSet( uvlayer=uvlayer )
+					for l in loop_selection:
+						if l.face in visible_faces:
+							visible_loop_selection.append( l )
+					if self.local:
+						loop_groups = visible_loop_selection.group_edges()
+						for i in range( len( loop_groups ) ):
+							loop_groups[i].add_overlapping_loops( True )
+					else:
+						loop_groups.append( visible_loop_selection )
+						loop_groups[0].add_overlapping_loops( True )
 
-				elif uv_sel_mode == 'FACE' and self.local:
+				else: #FACE mode
 					loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
-					loop_groups += loop_selection.group_faces()
-
-				else:
-					loop_groups = [ rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer ) ]
+					visible_loop_selection = rmlib.rmUVLoopSet( uvlayer=uvlayer )
+					for l in loop_selection:
+						if l.face in visible_faces:
+							visible_loop_selection.append( l )
+					if self.local:
+						loop_groups += loop_selection.group_faces()
+					else:
+						loop_groups.append( visible_loop_selection )
 				
 			for g in loop_groups:
 				min_u = 99999999.9

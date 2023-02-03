@@ -5,7 +5,7 @@ import os, random, math, struct, ctypes
 MAT_CHUNK = 'MAT'
 HOT_CHUNK = 'HOT'
 
-MAX_USHORT = 1 << 16
+MAX_SHORT = 1 << 15
 
 def clear_tags( rmmesh ):
 	for v in rmmesh.bmesh.verts:
@@ -142,10 +142,10 @@ class Bounds2d():
 		return rmlib.util.AlmostEqual_v2( self.__min, __o.__min ) and rmlib.util.AlmostEqual_v2( self.__max, __o.__max )
 
 	def __bytes__( self ):
-		return struct.pack( '>HHHH', ctypes.c_ushort( int( self.__min[0] * MAX_USHORT ) ).value,
-									ctypes.c_ushort( int( self.__min[1] * MAX_USHORT ) ).value,
-									ctypes.c_ushort( int( self.__max[0] * MAX_USHORT ) ).value,
-									ctypes.c_ushort( int( self.__max[1] * MAX_USHORT ) ).value )
+		return struct.pack( '>HHHH', ctypes.c_ushort( int( self.__min[0] * MAX_SHORT ) ).value,
+									ctypes.c_ushort( int( self.__min[1] * MAX_SHORT ) ).value,
+									ctypes.c_ushort( int( self.__max[0] * MAX_SHORT ) ).value,
+									ctypes.c_ushort( int( self.__max[1] * MAX_SHORT ) ).value )
 
 	@classmethod
 	def from_verts( cls, verts ):
@@ -321,8 +321,8 @@ class Hotspot():
 		data = []
 		for i in range( bounds_count ):
 			bmin_x, bmin_y, bmax_x, bmax_y = struct.unpack_from( '>HHHH', bytearray, offset )
-			min_pos = mathutils.Vector( ( bmin_x / MAX_USHORT, bmin_y / MAX_USHORT ) )
-			max_pos = mathutils.Vector( ( bmax_x / MAX_USHORT, bmax_y / MAX_USHORT ) )
+			min_pos = mathutils.Vector( ( bmin_x / MAX_SHORT, bmin_y / MAX_SHORT ) )
+			max_pos = mathutils.Vector( ( bmax_x / MAX_SHORT, bmax_y / MAX_SHORT ) )
 			data.append( Bounds2d( [ min_pos, max_pos ] ) )
 			offset += 8
 		return Hotspot( data ), offset

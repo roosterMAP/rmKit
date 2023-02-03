@@ -2,6 +2,34 @@ import bpy, bmesh, mathutils
 from .. import rmlib
 import math
 
+def GetUnsyncUVVisibleFaces( rmmesh, sel_mode ):
+	visible_faces = rmlib.rmPolygonSet()
+	if sel_mode[0]:		
+		for f in rmmesh.bmesh.faces:
+			if f.hide:
+				continue
+			visible = True
+			for v in f.verts:
+				if not v.select:
+					visible = False
+					break
+			if visible:
+				visible_faces.append( f )
+	elif sel_mode[1]:
+		for f in rmmesh.bmesh.faces:
+			if f.hide:
+				continue
+			visible = True
+			for e in f.edges:
+				if not e.select:
+					visible = False
+					break
+			if visible:
+				visible_faces.append( f )
+	else:
+		visible_faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+		
+	return visible_faces
 
 def sort_loop_chain( loops ):
 	#sorts the loops by the "flow" of the winding of the member faces.
@@ -209,6 +237,8 @@ class MESH_OT_uvstitcht( bpy.types.Operator ):
 			
 			clear_all_tags( rmmesh.bmesh ) #shouldnt be needed
 
+			visible_faces = set()
+
 			sel_sync = context.tool_settings.use_uv_select_sync
 			if sel_sync:
 				edge_selection = rmlib.rmEdgeSet.from_selection( rmmesh )
@@ -222,6 +252,8 @@ class MESH_OT_uvstitcht( bpy.types.Operator ):
 				for l in border_edgeloop_selection:
 					l[uvlayer].select_edge = True
 			else:
+				sel_mode = context.tool_settings.mesh_select_mode[:]
+				visible_faces = GetUnsyncUVVisibleFaces( rmmesh, sel_mode )
 				#get all selected uv edges that have corresponding disontinuous uv edge to stitch to
 				edgeloop_selection = rmlib.rmUVLoopSet.from_edge_selection( rmmesh, uvlayer=uvlayer )
 				border_edgeloop_selection = rmlib.rmUVLoopSet( [ l for l in edgeloop_selection if len( l.edge.link_faces ) > 1 ], uvlayer=uvlayer ).border_loops()
@@ -275,6 +307,12 @@ class MESH_OT_uvstitcht( bpy.types.Operator ):
 
 			#stiched source loops to target loops
 			for i in range( len( source_groups ) ):
+				target_faces = set( [ l.face for l in target_groups[i] ] )
+				for f in target_faces:
+					f.hide = False
+					if f not in visible_faces:
+						f.select = True
+
 				stitch( source_groups[i], target_groups[i], uvlayer )
 
 		return { 'FINISHED' }
