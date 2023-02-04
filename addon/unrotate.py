@@ -2,6 +2,35 @@ import bpy, mathutils
 from .. import rmlib
 import math
 
+def GetUnsyncUVVisibleFaces( rmmesh, sel_mode ):
+	visible_faces = rmlib.rmPolygonSet()
+	if sel_mode[0]:		
+		for f in rmmesh.bmesh.faces:
+			if f.hide:
+				continue
+			visible = True
+			for v in f.verts:
+				if not v.select:
+					visible = False
+					break
+			if visible:
+				visible_faces.append( f )
+	elif sel_mode[1]:
+		for f in rmmesh.bmesh.faces:
+			if f.hide:
+				continue
+			visible = True
+			for e in f.edges:
+				if not e.select:
+					visible = False
+					break
+			if visible:
+				visible_faces.append( f )
+	else:
+		visible_faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+		
+	return visible_faces
+
 class MESH_OT_uvunrotate( bpy.types.Operator ):
 	"""Unrotate UV Islands based on the current selection."""
 	bl_idname = 'mesh.rm_uvunrotate'
@@ -27,7 +56,6 @@ class MESH_OT_uvunrotate( bpy.types.Operator ):
 
 			sel_sync = context.tool_settings.use_uv_select_sync
 			sel_mode = context.tool_settings.mesh_select_mode[:]
-			sel_mode_uv = context.tool_settings.uv_select_mode
 			if sel_sync:
 				if sel_mode[0]:
 					vert_selection = rmlib.rmVertexSet.from_selection( rmmesh )
@@ -49,17 +77,31 @@ class MESH_OT_uvunrotate( bpy.types.Operator ):
 					loop_groups = loop_selection.group_vertices( element=True )
 
 			else:
+				sel_mode_uv = context.tool_settings.uv_select_mode
+				visible_faces = GetUnsyncUVVisibleFaces( rmmesh, sel_mode )
 				if sel_mode_uv == 'VERTEX':
 					loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
-					loop_groups = loop_selection.group_vertices( element=True )
+					visible_loop_selection = rmlib.rmUVLoopSet( uvlayer=uvlayer )
+					for l in loop_selection:
+						if l.face in visible_faces:
+							visible_loop_selection.append( l )
+					loop_groups = visible_loop_selection.group_vertices()
 					
 				elif sel_mode_uv == 'EDGE':
 					loop_selection = rmlib.rmUVLoopSet.from_edge_selection( rmmesh=rmmesh, uvlayer=uvlayer )
-					loop_groups = loop_selection.group_vertices( element=True )
+					visible_loop_selection = rmlib.rmUVLoopSet( uvlayer=uvlayer )
+					for l in loop_selection:
+						if l.face in visible_faces:
+							visible_loop_selection.append( l )
+					loop_groups = visible_loop_selection.group_vertices( element=True )
 
-				elif sel_mode_uv == 'FACE':
+				else: #face
 					loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
-					loop_groups = loop_selection.group_vertices( element=True )
+					visible_loop_selection = rmlib.rmUVLoopSet( uvlayer=uvlayer )
+					for l in loop_selection:
+						if l.face in visible_faces:
+							visible_loop_selection.append( l )
+					loop_groups = visible_loop_selection.group_vertices( element=True )
 
 			if len( loop_groups ) == 0:
 				return { 'CANCELLED' }

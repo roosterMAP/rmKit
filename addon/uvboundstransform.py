@@ -210,10 +210,40 @@ class BoundsHandle():
 							region.tag_redraw()
 
 
+def GetUnsyncUVVisibleFaces( rmmesh, sel_mode ):
+	visible_faces = rmlib.rmPolygonSet()
+	if sel_mode[0]:		
+		for f in rmmesh.bmesh.faces:
+			if f.hide:
+				continue
+			visible = True
+			for v in f.verts:
+				if not v.select:
+					visible = False
+					break
+			if visible:
+				visible_faces.append( f )
+	elif sel_mode[1]:
+		for f in rmmesh.bmesh.faces:
+			if f.hide:
+				continue
+			visible = True
+			for e in f.edges:
+				if not e.select:
+					visible = False
+					break
+			if visible:
+				visible_faces.append( f )
+	else:
+		visible_faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+		
+	return visible_faces
+
+
 def GetLoopSelection( context, rmmesh, uvlayer ):
+	sel_mode = context.tool_settings.mesh_select_mode[:]
 	sel_sync = context.tool_settings.use_uv_select_sync
 	if sel_sync:
-		sel_mode = context.tool_settings.mesh_select_mode[:]
 		if sel_mode[0]:
 			vert_selection = rmlib.rmVertexSet.from_selection( rmmesh )
 			return rmlib.rmUVLoopSet( vert_selection.loops, uvlayer=uvlayer )
@@ -230,17 +260,32 @@ def GetLoopSelection( context, rmmesh, uvlayer ):
 			return rmlib.rmUVLoopSet( loopset, uvlayer=uvlayer )
 
 	else:
-		sel_mode = context.tool_settings.uv_select_mode
-		if sel_mode == 'VERTEX':
-			return rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+		visible_faces = GetUnsyncUVVisibleFaces( rmmesh, sel_mode )
+		uv_sel_mode = context.tool_settings.uv_select_mode
+		if uv_sel_mode == 'VERTEX':
+			loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+			visible_loop_selection = rmlib.rmUVLoopSet( uvlayer=uvlayer )
+			for l in loop_selection:
+				if l.face in visible_faces:
+					visible_loop_selection.append( l )
+			return visible_loop_selection
 
-		elif sel_mode == 'EDGE':
+		elif uv_sel_mode == 'EDGE':
 			loop_selection = rmlib.rmUVLoopSet.from_edge_selection( rmmesh=rmmesh, uvlayer=uvlayer )
-			loop_selection.add_overlapping_loops( True )
-			return loop_selection
+			visible_loop_selection = rmlib.rmUVLoopSet( uvlayer=uvlayer )
+			for l in loop_selection:
+				if l.face in visible_faces:
+					visible_loop_selection.append( l )
+					visible_loop_selection.append( l.link_loop_next )
+			return visible_loop_selection
 
-		elif sel_mode == 'FACE':
-			return rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+		elif uv_sel_mode == 'FACE':
+			loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+			visible_loop_selection = rmlib.rmUVLoopSet( uvlayer=uvlayer )
+			for l in loop_selection:
+				if l.face in visible_faces:
+					visible_loop_selection.append( l )
+			return visible_loop_selection
 
 	return rmlib.rmUVLoopSet( [], uvlayer=uvlayer )
 
