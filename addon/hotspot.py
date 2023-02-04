@@ -588,6 +588,7 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 	def poll( cls, context ):
 		return ( context.area.type == 'IMAGE_EDITOR' and
 				context.active_object is not None and
+				context.mode == 'OBJECT' and
 				context.active_object.type == 'MESH' )
 
 	def execute( self, context ):
