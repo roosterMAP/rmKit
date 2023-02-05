@@ -148,6 +148,7 @@ class VIEW3D_PT_MATERIALS( bpy.types.Panel ):
 		r1.alignment = 'EXPAND'
 		r1.operator( 'mesh.rm_grabapplymat', text='GrabApplyMat (MOS)' )
 		r1.operator( 'mesh.rm_quickmaterial', text='QuickMaterial (MOS)' )
+		r1.operator( 'mesh.rm_matclearnup', text='Material Cleanup' )
 
 
 class VIEW3D_PT_LAYERS( bpy.types.Panel ):

@@ -21,6 +21,7 @@ def copy( context, cut=False ):
 		if clipboard_mesh is None:
 			clipboard_mesh = bpy.data.meshes.new( 'clipboard_mesh' )
 		clipboard_mesh.clear_geometry()
+		clipboard_mesh.materials.clear()
 			
 		temp_bmesh = bmesh.new()
 		temp_bmesh = rmmesh.bmesh.copy()
@@ -28,9 +29,14 @@ def copy( context, cut=False ):
 		selected_polys = rmlib.rmPolygonSet.from_selection( rmmesh )
 		selected_polygon_indexes = [ p.index for p in selected_polys ]
 		
+		mat_indexes = []
 		delPolys = rmlib.rmPolygonSet()
 		for i, p in enumerate( temp_bmesh.faces ):
-			if i not in selected_polygon_indexes:
+			if i in selected_polygon_indexes:
+				if p.material_index not in mat_indexes:
+					mat_indexes.append( p.material_index )
+				p.material_index = mat_indexes.index( p.material_index )
+			else:
 				delPolys.append( p )
 		bmesh.ops.delete( temp_bmesh, geom=delPolys, context='FACES' )
 
@@ -40,10 +46,13 @@ def copy( context, cut=False ):
 			v.co = xfrm @ v.co.copy()
 		
 		temp_bmesh.to_mesh( clipboard_mesh )
+
+		for old_idx in mat_indexes:
+			clipboard_mesh.materials.append( rmmesh.mesh.materials[old_idx] )
 		
 		if cut:
 			bmesh.ops.delete( rmmesh.bmesh, geom=selected_polys, context='FACES' )
-		
+
 		
 def paste( context ):
 	clipboard_mesh = None
@@ -65,8 +74,28 @@ def paste( context ):
 		rmmesh.bmesh.from_mesh( clipboard_mesh )
 		rmmesh.bmesh.verts.ensure_lookup_table()
 
+		#map material indexes from clipboard_mesh to rmmesh and add new mats to rmmesh
+		mat_lookup = []
+		for clip_mat in clipboard_mesh.materials:
+			matFound = False
+			for i, src_mat in enumerate( rmmesh.mesh.materials ):				
+				if clip_mat == src_mat:
+					mat_lookup.append( i )
+					matFound = True
+					break
+			if not matFound:
+				mat_lookup.append( len( rmmesh.mesh.materials ) )
+				rmmesh.mesh.materials.append( clip_mat )				
+
+		paste_faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+
+		#reassign material indexes
+		for f in paste_faces:
+			f.material_index = mat_lookup[ f.material_index ]
+
+		#transform paste verts
 		xfrm_inv = rmmesh.world_transform.inverted()
-		for v in rmlib.rmPolygonSet.from_selection( rmmesh ).vertices:
+		for v in paste_faces.vertices:
 			v.co = xfrm_inv @ mathutils.Vector( v.co )
 	
 	
@@ -115,20 +144,71 @@ class MESH_OT_rm_paste( bpy.types.Operator ):
 		else:
 			bpy.ops.view3d.pastebuffer()
 		return { 'FINISHED' }
+
+
+class MESH_OT_rm_matcleanup( bpy.types.Operator ):
+	"""Cleanup materials and material_indexes on mesh"""
+	bl_idname = 'mesh.rm_matclearnup'
+	bl_label = 'Material Cleanup'
+	bl_options = { 'UNDO' }
+	
+	@classmethod
+	def poll( cls, context ):
+		return ( context.area.type == 'VIEW_3D' and
+				context.mode == 'OBJECT' and
+				context.object.type == 'MESH' and
+				context.object is not None )
+		
+	def execute( self, context ):
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		if rmmesh is None:
+			return { 'CANCELLED' }
+
+		#get mesh material list
+		old_materials = [ m for m in rmmesh.mesh.materials ]
+
+		#remap
+		new_materials = []
+		with rmmesh as rmmesh:
+			overflow_faces = set()
+			for p in rmmesh.bmesh.faces:
+				if p.material_index >= len( old_materials ):
+					overflow_faces.add( p )
+					continue
+
+				idx = p.material_index
+				try:
+					p.material_index = new_materials.index( old_materials[idx] ) #gets rid of duplicates
+				except ValueError:
+					p.material_index = len( new_materials )
+					new_materials.append( old_materials[idx] )
+
+			for f in overflow_faces:
+				f.material_index = len( new_materials ) - 1
+
+			rmmesh.mesh.materials.clear()
+			for m in new_materials:
+				rmmesh.mesh.materials.append( m )
+
+		return { 'FINISHED' }
 	
 
 def register():
 	print( 'register :: {}'.format( MESH_OT_rm_copy.bl_idname ) )
 	print( 'register :: {}'.format( MESH_OT_rm_paste.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_rm_matcleanup.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_rm_copy )
 	bpy.utils.register_class( MESH_OT_rm_paste )
+	bpy.utils.register_class( MESH_OT_rm_matcleanup )
 	
 
 def unregister():
 	print( 'unregister :: {}'.format( MESH_OT_rm_copy.bl_idname ) )
 	print( 'unregister :: {}'.format( MESH_OT_rm_paste.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_rm_matcleanup.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_rm_copy )
 	bpy.utils.unregister_class( MESH_OT_rm_paste )
+	bpy.utils.unregister_class( MESH_OT_rm_matcleanup )
 	
 
 if __name__ == '__main__':
