@@ -20,6 +20,37 @@ def is_boundary( l ):
 				return True
 	return False
 
+
+def GetUnsyncUVVisibleFaces( rmmesh, sel_mode ):
+	visible_faces = rmlib.rmPolygonSet()
+	if sel_mode[0]:		
+		for f in rmmesh.bmesh.faces:
+			if f.hide:
+				continue
+			visible = True
+			for v in f.verts:
+				if not v.select:
+					visible = False
+					break
+			if visible:
+				visible_faces.append( f )
+	elif sel_mode[1]:
+		for f in rmmesh.bmesh.faces:
+			if f.hide:
+				continue
+			visible = True
+			for e in f.edges:
+				if not e.select:
+					visible = False
+					break
+			if visible:
+				visible_faces.append( f )
+	else:
+		visible_faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+		
+	return visible_faces
+
+
 class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 	"""Map the uv verts of the selected UV Islands to a Grid"""
 	bl_idname = 'mesh.rm_uvgridify'
@@ -42,38 +73,21 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 			uvlayer = rmmesh.active_uv
 			clear_tags( rmmesh )			
 
+			#get selection of faces
 			faces = rmlib.rmPolygonSet()
 			sel_sync = context.tool_settings.use_uv_select_sync
-			if sel_sync or context.area.type == 'VIEW_3D':
-				sel_mode = context.tool_settings.mesh_select_mode[:]
+			sel_mode = context.tool_settings.mesh_select_mode[:]
+			if sel_sync or context.area.type == 'VIEW_3D':				
 				if sel_mode[2]:
 					faces = rmlib.rmPolygonSet.from_selection( rmmesh )
-				else:
-					return { 'CANCELLED' }
 			else:
 				uv_sel_mode = context.tool_settings.uv_select_mode
 				if uv_sel_mode == 'FACE':
-					loops = rmlib.rmUVLoopSet.from_selection( rmmesh, uvlayer=uvlayer )
-					loop_faces = set()
-					for l in loops:
-						if not l.face.select:
-							continue
-						if not l[uvlayer].select_edge:
-							continue
-						loop_faces.add( l.face )
-						l.tag = True
-					for f in loop_faces:
-						all_loops_tagged = True
-						for l in f.loops:
-							if not l.tag:
-								all_loops_tagged = False
-							else:
-								l.tag = False
-						if all_loops_tagged:
-							faces.append( f )
-				else:
-					return { 'CANCELLED' }
-
+					visible_faces = GetUnsyncUVVisibleFaces( rmmesh, sel_mode )
+					loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+					for l in loop_selection:
+						if l.face in visible_faces and l.face not in faces:
+							faces.append( l.face )
 			if len( faces ) < 1:
 				return { 'CANCELLED' }
 
@@ -259,8 +273,10 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 
 
 def register():
+	print( 'register :: {}'.format( MESH_OT_uvmaptogrid.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_uvmaptogrid )
 	
 
 def unregister():
+	print( 'unregister :: {}'.format( MESH_OT_uvmaptogrid.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_uvmaptogrid )

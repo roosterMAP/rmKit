@@ -366,6 +366,37 @@ def lscm( faces, uvlayer ):
 				if l.face in RelaxVertex.all_verts[vidx]._polygons:
 					l[uvlayer].uv = mathutils.Vector( ( x[vidx-count], x[(vidx-count+vcount)] ) )
 
+
+def GetUnsyncUVVisibleFaces( rmmesh, sel_mode ):
+	visible_faces = rmlib.rmPolygonSet()
+	if sel_mode[0]:		
+		for f in rmmesh.bmesh.faces:
+			if f.hide:
+				continue
+			visible = True
+			for v in f.verts:
+				if not v.select:
+					visible = False
+					break
+			if visible:
+				visible_faces.append( f )
+	elif sel_mode[1]:
+		for f in rmmesh.bmesh.faces:
+			if f.hide:
+				continue
+			visible = True
+			for e in f.edges:
+				if not e.select:
+					visible = False
+					break
+			if visible:
+				visible_faces.append( f )
+	else:
+		visible_faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+		
+	return visible_faces
+
+
 class MESH_OT_uvrectangularize( bpy.types.Operator ):
 	"""Map the selection to a box."""
 	bl_idname = 'mesh.rm_uvrectangularize'
@@ -391,31 +422,18 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 			#get selection of faces
 			faces = rmlib.rmPolygonSet()
 			sel_sync = context.tool_settings.use_uv_select_sync
-			if sel_sync or context.area.type == 'VIEW_3D':
-				sel_mode = context.tool_settings.mesh_select_mode[:]
+			sel_mode = context.tool_settings.mesh_select_mode[:]
+			if sel_sync or context.area.type == 'VIEW_3D':				
 				if sel_mode[2]:
 					faces = rmlib.rmPolygonSet.from_selection( rmmesh )
 			else:
 				uv_sel_mode = context.tool_settings.uv_select_mode
 				if uv_sel_mode == 'FACE':
-					loops = rmlib.rmUVLoopSet.from_selection( rmmesh, uvlayer=uvlayer )
-					loop_faces = set()
-					for l in loops:
-						if not l.face.select:
-							continue
-						if not l[uvlayer].select_edge:
-							continue
-						loop_faces.add( l.face )
-						l.tag = True
-					for f in loop_faces:
-						all_loops_tagged = True
-						for l in f.loops:
-							if not l.tag:
-								all_loops_tagged = False
-							else:
-								l.tag = False
-						if all_loops_tagged:
-							faces.append( f )
+					visible_faces = GetUnsyncUVVisibleFaces( rmmesh, sel_mode )
+					loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+					for l in loop_selection:
+						if l.face in visible_faces and l.face not in faces:
+							faces.append( l.face )
 			if len( faces ) < 1:
 				return { 'CANCELLED' }
 
@@ -447,16 +465,38 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 					bounary_loops = GetBoundaryLoops( group )
 					if len( bounary_loops ) < 4:
 							continue
+				sorted_boundary_loops = sort_loop_chain( rmlib.rmUVLoopSet( bounary_loops, uvlayer=uvlayer ) )
+					
+				#lscm - initial conformal map to find four corners
+				clear_tags( rmmesh )
+				pinned_loops = set()
+				for l in sorted_boundary_loops[0].vert.link_loops:
+					l[uvlayer].pin_uv = True
+					pinned_loops.add( l )
+				middle_idx = int( len( sorted_boundary_loops ) / 2.0 )
+				for l in sorted_boundary_loops[middle_idx].vert.link_loops:
+					l[uvlayer].pin_uv = True
+					pinned_loops.add( l )			
+				sorted_boundary_loops[middle_idx][uvlayer].pin_uv = True
+				lscm( faces, uvlayer )
+				clear_tags( rmmesh )
+				for l in pinned_loops:
+					l[uvlayer].pin_uv = False
+				sorted_boundary_loops[0][uvlayer].pin_uv = False
+				sorted_boundary_loops[middle_idx][uvlayer].pin_uv = False
+
+				#re-tag face tags
+				for f in group:
+					f.tag = True
 
 				#identify the four corners
-				sorted_boundary_loops = sort_loop_chain( rmlib.rmUVLoopSet( bounary_loops, uvlayer=uvlayer ) )
 				sorted_tuples = []
 				lcount = len( sorted_boundary_loops )
 				for i, l in enumerate( sorted_boundary_loops ):
 					prev_l = sorted_boundary_loops[i-1]
 					next_l = sorted_boundary_loops[(i+1)%lcount]
-					v1 = ( mathutils.Vector( prev_l.vert.co ) - mathutils.Vector( l.vert.co ) ).normalized()
-					v2 = ( mathutils.Vector( next_l.vert.co ) - mathutils.Vector( l.vert.co ) ).normalized()
+					v1 = ( mathutils.Vector( prev_l[uvlayer].uv ) - mathutils.Vector( l[uvlayer].uv ) ).normalized()
+					v2 = ( mathutils.Vector( next_l[uvlayer].uv ) - mathutils.Vector( l[uvlayer].uv ) ).normalized()
 					sorted_tuples.append( ( abs( v1.dot( v2 ) ), l ) )
 				sorted_tuples = sorted( sorted_tuples, key=lambda x: x[0] )
 				corner_loops = [ p[1] for p in sorted_tuples ][:4]
@@ -521,8 +561,10 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 
 
 def register():
+	print( 'register :: {}'.format( MESH_OT_uvrectangularize.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_uvrectangularize )
 	
 
 def unregister():
+	print( 'unregister :: {}'.format( MESH_OT_uvrectangularize.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_uvrectangularize )
