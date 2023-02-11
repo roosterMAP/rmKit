@@ -11,7 +11,7 @@ def GetLoopGroups( context, rmmesh, uvlayer, local ):
 	sel_mode = context.tool_settings.mesh_select_mode[:]
 	visible_faces = rmlib.rmPolygonSet()
 	if sel_mode[0]:		
-		for f in rmmesh.faces:
+		for f in rmmesh.bmesh.faces:
 			if f.hide:
 				continue
 			visible = True
@@ -22,7 +22,7 @@ def GetLoopGroups( context, rmmesh, uvlayer, local ):
 			if visible:
 				visible_faces.append( f )
 	elif sel_mode[1]:
-		for f in rmmesh.faces:
+		for f in rmmesh.bmesh.faces:
 			if f.hide:
 				continue
 			visible = True
@@ -278,8 +278,6 @@ class MESH_OT_uvslam( bpy.types.Operator ):
 					if 'w' in anchor_str:
 						anchor_pos[0] = bbmin[0]
 
-				print( '{} ::  {}'.format( anchor_str, anchor_pos ) )
-
 				#transform loops
 				for l in g:
 					uv = mathutils.Vector( l[uvlayer].uv.copy() )
@@ -505,6 +503,134 @@ class MESH_OT_uvflip( bpy.types.Operator ):
 		return { 'FINISHED' }
 
 
+class MESH_OT_uvfitsample( bpy.types.Operator ):
+	"""Store the uv bounds of the selection."""
+	bl_idname = 'mesh.rm_uvfitsample'
+	bl_label = 'Store Bounds'
+	bl_options = { 'UNDO' }
+
+	@classmethod
+	def poll( cls, context ):
+		return ( context.area.type == 'IMAGE_EDITOR' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
+				context.object.data.is_editmode )
+
+	def execute( self, context ):
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		if rmmesh is None:
+			return { 'CANCELLED' }
+		
+		with rmmesh as rmmesh:
+			uvlayer = rmmesh.active_uv
+			
+			#get loop groups	
+			groups = GetLoopGroups( context, rmmesh, uvlayer, False )			
+			for g in groups:
+				#compute the anchor pos
+				bbmin, bbmax = GetUVBounds( g, uvlayer )
+				context.scene.uv_fit_bounds_min = bbmin
+				context.scene.uv_fit_bounds_max = bbmax
+					
+		return { 'FINISHED' }
+
+
+class MESH_OT_uvfit( bpy.types.Operator ):
+	"""Map uv selection to the stored bounds."""
+	bl_idname = 'mesh.rm_uvfit'
+	bl_label = 'UV Fit'
+	bl_options = { 'UNDO' }
+
+	dir: bpy.props.EnumProperty(
+		items=[ ( "u", "U", "", 1 ),
+				( "v", "V", "", 2 ),
+				( "uv", "UV", "", 3 ),
+				( "lu", "LU", "", 4 ),
+				( "lv", "LV", "", 5 ),
+				( "luv", "LUV", "", 6 ),
+				( "u0", "U0", "", 7 ),
+				( "v0", "V0", "", 8 ),
+				( "uv0", "UV0", "", 9 ) ],
+		name="Direction",
+		default="u"
+	)
+
+	@classmethod
+	def poll( cls, context ):
+		return ( context.area.type == 'IMAGE_EDITOR' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
+				context.object.data.is_editmode )
+
+	def execute( self, context ):
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		if rmmesh is None:
+			return { 'CANCELLED' }
+
+		use_aspect = context.scene.uv_fit_aspect
+
+		if '0' in self.dir:
+			target_bounds_min = mathutils.Vector( ( 0.0, 0.0 ) )
+			target_bounds_max = mathutils.Vector( ( 1.0, 1.0 ) )
+		else:
+			target_bounds_min = mathutils.Vector( context.scene.uv_fit_bounds_min )
+			target_bounds_max = mathutils.Vector( context.scene.uv_fit_bounds_max )
+		target_bounds_center = ( target_bounds_max + target_bounds_min ) * 0.5
+		
+		with rmmesh as rmmesh:
+			uvlayer = rmmesh.active_uv
+			
+			#get loop groups	
+			groups = GetLoopGroups( context, rmmesh, uvlayer, 'l' in self.dir )			
+			for g in groups:
+				#compute the anchor pos
+				bbmin, bbmax = GetUVBounds( g, uvlayer )
+				bbcenter = ( bbmin + bbmax ) * 0.5
+				bbwidth = bbmax[0] - bbmin[0]
+				bbheight = bbmax[1] - bbmin[1]
+
+				trans_mat = mathutils.Matrix.Identity( 3 )
+				trans_mat[0][2] = bbcenter[0] * -1.0
+				trans_mat[1][2] = bbcenter[1] * -1.0
+				
+				trans_mat_inverse = mathutils.Matrix.Identity( 3 )
+				if context.scene.uv_fit_moveto:
+					trans_mat_inverse[0][2] = target_bounds_center[0]
+					trans_mat_inverse[1][2] = target_bounds_center[1]
+				else:
+					trans_mat_inverse[0][2] = bbcenter[0]
+					trans_mat_inverse[1][2] = bbcenter[1]
+
+				target_bounds_width = bbwidth
+				target_bounds_height = bbheight
+				if 'uv' in self.dir:
+					target_bounds_width = target_bounds_max[0] - target_bounds_min[0]
+					target_bounds_height = target_bounds_max[1] - target_bounds_min[1]
+				elif 'u' in self.dir:
+					target_bounds_width = target_bounds_max[0] - target_bounds_min[0]
+					if use_aspect:
+						target_bounds_height = target_bounds_width * ( bbheight / bbwidth )
+				elif 'v' in self.dir:
+					target_bounds_height = target_bounds_max[1] - target_bounds_min[1]
+					if use_aspect:
+						target_bounds_width = target_bounds_height * ( bbwidth / bbheight )
+				
+				scl_mat = mathutils.Matrix.Identity( 3 )
+				scl_mat[0][0] = target_bounds_width / bbwidth
+				scl_mat[1][1] = target_bounds_height / bbheight
+
+				mat = trans_mat_inverse @ scl_mat @ trans_mat
+
+				#transform loops
+				for l in g:
+					uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
+					uv[2] = 1.0
+					uv = mat @ uv
+					l[uvlayer].uv = uv.to_2d()
+					
+		return { 'FINISHED' }
+
+
 def redraw_view3d( context ):
 	for window in context.window_manager.windows:
 		for area in window.screen.areas:
@@ -698,6 +824,47 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			c3.operator( MESH_OT_uvflip.bl_idname, text='', icon_value=pcoll['V'].icon_id ).dir = 'v'
 
 
+		layout.separator( factor=0.2 )
+		r1 = layout.row()
+		r1.prop( context.scene, 'uv_fit_aspect' )
+		r1.prop( context.scene, 'uv_fit_moveto' )
+		r2 = layout.row()
+		r2.operator( MESH_OT_uvfitsample.bl_idname )
+		fit_grid = layout.grid_flow( columns=3, even_columns=True, align=True )
+
+		if MESH_OT_uvmodkey.mod_state[0] and not MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
+			c1 = fit_grid.column()
+			c1.alignment = 'EXPAND'
+			c1.operator( MESH_OT_uvfit.bl_idname, text='', icon_value=pcoll['fLU'].icon_id ).dir = 'lu'
+			c2 = fit_grid.column()
+			c2.alignment = 'EXPAND'
+			c2.operator( MESH_OT_uvfit.bl_idname, text='', icon_value=pcoll['fLV'].icon_id ).dir = 'lv'
+			c3 = fit_grid.column()
+			c3.alignment = 'EXPAND'
+			c3.operator( MESH_OT_uvfit.bl_idname, text='', icon_value=pcoll['fLUV'].icon_id ).dir = 'luv'
+
+		elif not MESH_OT_uvmodkey.mod_state[0] and MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
+			c1 = fit_grid.column()
+			c1.alignment = 'EXPAND'
+			c1.operator( MESH_OT_uvfit.bl_idname, text='', icon_value=pcoll['U0'].icon_id ).dir = 'u0'
+			c2 = fit_grid.column()
+			c2.alignment = 'EXPAND'
+			c2.operator( MESH_OT_uvfit.bl_idname, text='', icon_value=pcoll['V0'].icon_id ).dir = 'v0'
+			c3 = fit_grid.column()
+			c3.alignment = 'EXPAND'
+			c3.operator( MESH_OT_uvfit.bl_idname, text='', icon_value=pcoll['UV0'].icon_id ).dir = 'uv0'
+		else:
+			c1 = fit_grid.column()
+			c1.alignment = 'EXPAND'
+			c1.operator( MESH_OT_uvfit.bl_idname, text='', icon_value=pcoll['fU'].icon_id ).dir = 'u'
+			c2 = fit_grid.column()
+			c2.alignment = 'EXPAND'
+			c2.operator( MESH_OT_uvfit.bl_idname, text='', icon_value=pcoll['fV'].icon_id ).dir = 'v'
+			c3 = fit_grid.column()
+			c3.alignment = 'EXPAND'
+			c3.operator( MESH_OT_uvfit.bl_idname, text='', icon_value=pcoll['fUV'].icon_id ).dir = 'uv'
+
+
 @persistent
 def uv_startup_handler( dummy ):
 	bpy.ops.view3d.rm_modkey_uvtools( 'INVOKE_DEFAULT' )
@@ -790,7 +957,17 @@ def load_icons():
 	pcoll.load( 'U', os.path.join( icons_dir, 'U.png' ), 'IMAGE' )
 	pcoll.load( 'V', os.path.join( icons_dir, 'V.png' ), 'IMAGE' )
 	pcoll.load( 'LU', os.path.join( icons_dir, 'LU.png' ), 'IMAGE' )
-	pcoll.load( 'LV', os.path.join( icons_dir, 'LV.png' ), 'IMAGE' )	
+	pcoll.load( 'LV', os.path.join( icons_dir, 'LV.png' ), 'IMAGE' )
+
+	pcoll.load( 'fLU', os.path.join( icons_dir, 'LV.png' ), 'IMAGE' )
+	pcoll.load( 'fLV', os.path.join( icons_dir, 'LV.png' ), 'IMAGE' )
+	pcoll.load( 'fLUV', os.path.join( icons_dir, 'LV.png' ), 'IMAGE' )
+	pcoll.load( 'fU', os.path.join( icons_dir, 'LV.png' ), 'IMAGE' )
+	pcoll.load( 'fV', os.path.join( icons_dir, 'LV.png' ), 'IMAGE' )
+	pcoll.load( 'fUV', os.path.join( icons_dir, 'LV.png' ), 'IMAGE' )
+	pcoll.load( 'U0', os.path.join( icons_dir, 'LV.png' ), 'IMAGE' )
+	pcoll.load( 'V0', os.path.join( icons_dir, 'LV.png' ), 'IMAGE' )
+	pcoll.load( 'UV0', os.path.join( icons_dir, 'LV.png' ), 'IMAGE' )
 
 	preview_collections['main'] = pcoll
 	
@@ -804,16 +981,23 @@ def register():
 	print( 'register :: {}'.format( MESH_OT_uvscale.bl_idname ) )
 	print( 'register :: {}'.format( MESH_OT_uvflip.bl_idname ) )
 	print( 'register :: {}'.format( MESH_OT_uvmodkey.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_uvfit.bl_idname ) )
 	bpy.utils.register_class( UV_PT_UVTransformTools )
 	bpy.utils.register_class( MESH_OT_uvmove )
 	bpy.utils.register_class( MESH_OT_uvslam )
 	bpy.utils.register_class( MESH_OT_uvrotate )
 	bpy.utils.register_class( MESH_OT_uvscale )
 	bpy.utils.register_class( MESH_OT_uvflip )
+	bpy.utils.register_class( MESH_OT_uvfit )
+	bpy.utils.register_class( MESH_OT_uvfitsample )
 	bpy.types.Scene.uv_uvmove_offset = bpy.props.FloatProperty( name='Offset', default=1.0 )
 	bpy.types.Scene.uv_uvrotation_offset = bpy.props.FloatProperty( name='RotationOffset', default=15.0, min=0.0, max=180.0 )
 	bpy.types.Scene.uv_uvscale_factor = bpy.props.FloatProperty( name='Offset', default=2.0 )
 	bpy.types.Scene.anchor_val_prev = bpy.props.StringProperty( name='Anchor Prev Val', default=ANCHOR_PROP_LIST[4] )
+	bpy.types.Scene.uv_fit_aspect = bpy.props.BoolProperty( name='Use Aspect', default=False )
+	bpy.types.Scene.uv_fit_moveto = bpy.props.BoolProperty( name='Move To', default=True )
+	bpy.types.Scene.uv_fit_bounds_min = bpy.props.FloatVectorProperty( size=2, default=( 0.0, 0.0 ) )
+	bpy.types.Scene.uv_fit_bounds_max = bpy.props.FloatVectorProperty( size=2, default=( 1.0, 1.0 ) )
 	bpy.utils.register_class( AnchorProps )
 	bpy.types.Scene.anchorprops = bpy.props.PointerProperty( type=AnchorProps )	
 	bpy.utils.register_class( MESH_OT_uvmodkey )
@@ -832,16 +1016,23 @@ def unregister():
 	print( 'unregister :: {}'.format( MESH_OT_uvscale.bl_idname ) )
 	print( 'unregister :: {}'.format( MESH_OT_uvflip.bl_idname ) )
 	print( 'unregister :: {}'.format( MESH_OT_uvmodkey.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_uvfit.bl_idname ) )
 	bpy.utils.unregister_class( UV_PT_UVTransformTools )
 	bpy.utils.unregister_class( MESH_OT_uvmove )
 	bpy.utils.unregister_class( MESH_OT_uvslam )
 	bpy.utils.unregister_class( MESH_OT_uvrotate )
 	bpy.utils.unregister_class( MESH_OT_uvscale )
 	bpy.utils.unregister_class( MESH_OT_uvflip )
+	bpy.utils.unregister_class( MESH_OT_uvfit )
+	bpy.utils.unregister_class( MESH_OT_uvfitsample )
 	del bpy.types.Scene.uv_uvmove_offset
 	del bpy.types.Scene.uv_uvrotation_offset
 	del bpy.types.Scene.uv_uvscale_factor
 	del bpy.types.Scene.anchor_val_prev
+	del bpy.types.Scene.uv_fit_aspect
+	del bpy.types.Scene.uv_fit_moveto
+	del bpy.types.Scene.uv_fit_bounds_min
+	del bpy.types.Scene.uv_fit_bounds_max
 	bpy.utils.unregister_class( AnchorProps )
 	del bpy.types.Scene.anchorprops
 	bpy.utils.unregister_class( MESH_OT_uvmodkey )
