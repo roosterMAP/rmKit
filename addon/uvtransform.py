@@ -638,7 +638,7 @@ def redraw_view3d( context ):
 				for region in area.regions:
 					if region.type == 'UI':
 						region.tag_redraw()
-
+						
 
 class MESH_OT_uvmodkey( bpy.types.Operator ):
 	bl_idname = 'view3d.rm_modkey_uvtools'
@@ -652,13 +652,14 @@ class MESH_OT_uvmodkey( bpy.types.Operator ):
 	
 	def invoke( self, context, event ):
 		wm = context.window_manager
-		self._timer = wm.event_timer_add( 0.0625, window=context.window )
+		#self._timer = wm.event_timer_add( 0.0625, window=context.window )
 		wm.modal_handler_add( self )
 
 		return {'RUNNING_MODAL'}
 
 	def modal(self, context, event):
-		if event.type == 'TIMER':
+		if event.type == 'LEFT_CTRL' or event.type == 'LEFT_ALT' or event.type == 'LEFT_SHIFT':
+		#if event.type == 'TIMER':
 			state = [ event.ctrl, event.shift, event.alt ]
 
 			if ( MESH_OT_uvmodkey.mod_state[0] != state[0] or
@@ -867,7 +868,16 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 
 @persistent
 def uv_startup_handler( dummy ):
-	bpy.ops.view3d.rm_modkey_uvtools( 'INVOKE_DEFAULT' )
+	wm = bpy.context.window_manager
+	if len( wm.windows ) == 1:
+		bpy.ops.view3d.rm_modkey_uvtools( 'INVOKE_DEFAULT' )
+	else:
+		for window in wm.windows:
+			for area in window.screen.areas:
+				if area.type == 'IMAGE_EDITOR':
+					with bpy.context.temp_override( window=window, area=area ):
+						bpy.ops.view3d.rm_modkey_uvtools( 'INVOKE_DEFAULT' )
+					break
 
 
 def anchor_update( prop, context ):
