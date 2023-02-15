@@ -835,34 +835,34 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 		if MESH_OT_uvmodkey.mod_state[0] and not MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
 			c1 = fit_grid.column()
 			c1.alignment = 'EXPAND'
-			c1.operator( MESH_OT_uvfit.bl_idname, text='', icon_value=pcoll['fLU'].icon_id ).dir = 'lu'
+			c1.operator( MESH_OT_uvfit.bl_idname, text='LU' ).dir = 'lu'
 			c2 = fit_grid.column()
 			c2.alignment = 'EXPAND'
-			c2.operator( MESH_OT_uvfit.bl_idname, text='', icon_value=pcoll['fLV'].icon_id ).dir = 'lv'
+			c2.operator( MESH_OT_uvfit.bl_idname, text='LV' ).dir = 'lv'
 			c3 = fit_grid.column()
 			c3.alignment = 'EXPAND'
-			c3.operator( MESH_OT_uvfit.bl_idname, text='', icon_value=pcoll['fLUV'].icon_id ).dir = 'luv'
+			c3.operator( MESH_OT_uvfit.bl_idname, text='LUV' ).dir = 'luv'
 
 		elif not MESH_OT_uvmodkey.mod_state[0] and MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
 			c1 = fit_grid.column()
 			c1.alignment = 'EXPAND'
-			c1.operator( MESH_OT_uvfit.bl_idname, text='', icon_value=pcoll['U0'].icon_id ).dir = 'u0'
+			c1.operator( MESH_OT_uvfit.bl_idname, text='GU' ).dir = 'u0'
 			c2 = fit_grid.column()
 			c2.alignment = 'EXPAND'
-			c2.operator( MESH_OT_uvfit.bl_idname, text='', icon_value=pcoll['V0'].icon_id ).dir = 'v0'
+			c2.operator( MESH_OT_uvfit.bl_idname, text='GV' ).dir = 'v0'
 			c3 = fit_grid.column()
 			c3.alignment = 'EXPAND'
-			c3.operator( MESH_OT_uvfit.bl_idname, text='', icon_value=pcoll['UV0'].icon_id ).dir = 'uv0'
+			c3.operator( MESH_OT_uvfit.bl_idname, text='GUV' ).dir = 'uv0'
 		else:
 			c1 = fit_grid.column()
 			c1.alignment = 'EXPAND'
-			c1.operator( MESH_OT_uvfit.bl_idname, text='', icon_value=pcoll['fU'].icon_id ).dir = 'u'
+			c1.operator( MESH_OT_uvfit.bl_idname, text='U' ).dir = 'u'
 			c2 = fit_grid.column()
 			c2.alignment = 'EXPAND'
-			c2.operator( MESH_OT_uvfit.bl_idname, text='', icon_value=pcoll['fV'].icon_id ).dir = 'v'
+			c2.operator( MESH_OT_uvfit.bl_idname, text='V' ).dir = 'v'
 			c3 = fit_grid.column()
 			c3.alignment = 'EXPAND'
-			c3.operator( MESH_OT_uvfit.bl_idname, text='', icon_value=pcoll['fUV'].icon_id ).dir = 'uv'
+			c3.operator( MESH_OT_uvfit.bl_idname, text='UV' ).dir = 'uv'
 
 
 @persistent
