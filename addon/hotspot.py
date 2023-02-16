@@ -276,6 +276,12 @@ class Bounds2d():
 
 		return trans_mat_inverse @ scl_mat @ rot_mat @ trans_mat
 
+	def inset( self, f ):
+		self.__min[0] += f
+		self.__min[1] += f
+		self.__max[0] -= f
+		self.__max[1] -= f
+
 
 class Hotspot():
 	def __init__( self, bounds2d_list, **kwargs ):
@@ -790,6 +796,7 @@ class MESH_OT_moshotspot( bpy.types.Operator ):
 		use_trim = context.scene.use_trim
 
 		target_bounds = hotspot.nearest( self.mos_uv[0], self.mos_uv[1] )
+		target_bounds.inset( context.scene.hotspot_inset )
 
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		with rmmesh as rmmesh:
@@ -858,6 +865,7 @@ class MESH_OT_nrsthotspot( bpy.types.Operator ):
 						loops.add( l )
 				source_bounds = Bounds2d.from_loops( loops, uvlayer )
 				target_bounds = hotspot.overlapping( source_bounds )
+				target_bounds.inset( context.scene.hotspot_inset )
 				mat = source_bounds.transform( target_bounds, skip_rot=True, trim=use_trim )		
 				for l in loops:
 					uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
@@ -958,6 +966,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 							loops.add( l )
 					source_bounds = Bounds2d.from_loops( loops, uvlayer )
 					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance )
+					target_bounds.inset( context.scene.hotspot_inset )
 
 					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim )		
 					for l in loops:
@@ -980,6 +989,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 							loops.add( l )
 					source_bounds = Bounds2d.from_loops( loops, uvlayer )
 					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance )
+					target_bounds.inset( context.scene.hotspot_inset )
 
 					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim )		
 					for l in loops:
@@ -994,6 +1004,126 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 		return { 'FINISHED' }
 
 
+class MESH_OT_uvaspectscale( bpy.types.Operator ):
+	"""Inset Selected UV Islands"""
+	bl_idname = 'mesh.rm_uvaspectscale'
+	bl_label = 'UV Aspect Scale'
+	bl_options = { 'REGISTER', 'UNDO' }
+	
+	scale: bpy.props.FloatProperty(
+		name='Inset',
+		default=0.0
+	)
+
+	def __init__( self ):
+		self.bmesh = None
+		self.prev_delta = 0
+		self.shift_sensitivity = False
+
+	def __del__( self ):
+		try:
+			if self.bmesh is not None:
+				self.bmesh.free()
+		except AttributeError:
+			pass
+	
+	@classmethod
+	def poll( cls, context ):
+		return ( context.area.type == 'IMAGE_EDITOR' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
+				context.object.data.is_editmode )
+		
+	def execute( self, context ):
+		offset = self.scale / 10.0
+		if self.shift_sensitivity:
+			offset /= 10.0
+
+		targetObj = context.active_object
+		targetMesh = targetObj.data
+
+		bpy.ops.object.mode_set( mode='OBJECT', toggle=False )
+		
+		bm = self.bmesh.copy()
+		
+		uvlayer = bm.loops.layers.uv.verify()
+		
+		rmmesh = rmlib.rmMesh.from_bmesh( targetObj, bm )
+		faces = GetFaceSelection( context, rmmesh )
+		if len( faces ) < 1:
+			bpy.ops.object.mode_set( mode='EDIT', toggle=False )
+			return { 'CANCELLED' }
+
+		for island in faces.island( uvlayer ):
+			loops = set()
+			for f in island:
+				for l in f.loops:
+					loops.add( l )
+			source_bounds = Bounds2d.from_loops( loops, uvlayer )
+
+			new_min = source_bounds.min.copy()
+			new_min[0] += offset
+			new_min[1] += offset
+
+			new_max = source_bounds.max.copy()
+			new_max[0] -= offset
+			new_max[1] -= offset
+
+			target_bounds = Bounds2d( [ new_min, new_max ] )
+
+			mat = source_bounds.transform( target_bounds, skip_rot=True, trim=False )		
+			for l in loops:
+				uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
+				uv[2] = 1.0
+				uv = mat @ uv
+				l[uvlayer].uv = uv.to_2d()
+
+		
+		bm.to_mesh( targetMesh )
+		bm.calc_loop_triangles()
+		targetMesh.update()
+		bm.free()
+		
+		bpy.ops.object.mode_set( mode='EDIT', toggle=False )
+		
+		return { 'FINISHED' }
+
+	def modal( self, context, event ):
+		if event.type == 'LEFTMOUSE':
+			return { 'FINISHED' }
+		elif event.type == 'MOUSEMOVE':
+			self.shift_sensitivity = event.shift
+			delta_x = float( event.mouse_x - event.mouse_prev_press_x ) / context.region.width
+			if delta_x != self.prev_delta:
+				self.prev_delta = delta_x
+				self.scale = delta_x * 4.0
+				self.execute( context )			
+		elif event.type == 'ESC':
+			return { 'CANCELLED' }
+
+		return { 'RUNNING_MODAL' }
+	
+	def invoke( self, context, event ):
+		if context.object is None or context.mode == 'OBJECT':
+			return { 'CANCELLED' }
+		
+		if context.object.type != 'MESH':
+			return { 'CANCELLED' }
+
+		sel_mode = context.tool_settings.mesh_select_mode[:]
+		if not sel_mode[2]:
+			return { 'CANCELLED' }
+
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		if rmmesh is not None:
+			with rmmesh as rmmesh:
+				rmmesh.readme = True
+				self.bmesh = rmmesh.bmesh.copy()
+				
+		context.window_manager.modal_handler_add( self )
+		return { 'RUNNING_MODAL' }
+
+
 class UV_PT_UVHotspotTools( bpy.types.Panel ):
 	bl_parent_id = 'UV_PT_RMKIT_PARENT'
 	bl_idname = 'UV_PT_UVHotspotTools'
@@ -1005,11 +1135,13 @@ class UV_PT_UVHotspotTools( bpy.types.Panel ):
 	def draw( self, context ):
 		layout = self.layout
 		layout.prop( context.scene, 'use_subrect_atlas' )
-		r = layout.row()
-		r.label( text="Atlas: ")
-		r.prop_search( context.scene, "subrect_atlas", context.scene, "objects", text="", icon="MOD_MULTIRES" )
-		r.enabled = context.scene.use_subrect_atlas
-		layout.prop( context.scene, 'use_trim' )
+		r1 = layout.row()
+		r1.label( text="Atlas: ")
+		r1.prop_search( context.scene, "subrect_atlas", context.scene, "objects", text="", icon="MOD_MULTIRES" )
+		r1.enabled = context.scene.use_subrect_atlas
+		r2 = layout.row()
+		r2.prop( context.scene, 'use_trim' )
+		r2.prop( context.scene, 'hotspot_inset' )
 		layout.operator( 'mesh.savehotspot', text='Create Hotspot' )
 		layout.operator( 'mesh.matchhotspot', text='Hotspot Match' )
 		layout.operator( 'mesh.nrsthotspot', text='Hotspot Nearest' )
@@ -1022,10 +1154,12 @@ def register():
 	bpy.utils.register_class( MESH_OT_moshotspot )
 	bpy.utils.register_class( MESH_OT_grabapplyuvbounds )
 	bpy.types.Scene.use_subrect_atlas = bpy.props.BoolProperty( name='Use Override Atlas' )
+	bpy.types.Scene.hotspot_inset = bpy.props.FloatProperty( name='Inset', default=0.0 )
 	bpy.types.Scene.use_trim = bpy.props.BoolProperty( name='Use Trims' )
 	bpy.types.Scene.subrect_atlas = bpy.props.PointerProperty( name='Atlas', type=bpy.types.Object, description='atlas object' )
 	bpy.utils.register_class( UV_PT_UVHotspotTools )
 	bpy.utils.register_class( OBJECT_OT_repotoascii )
+	bpy.utils.register_class( MESH_OT_uvaspectscale )
 
 def unregister():
 	bpy.utils.unregister_class( OBJECT_OT_savehotspot )
@@ -1035,6 +1169,8 @@ def unregister():
 	bpy.utils.unregister_class( MESH_OT_grabapplyuvbounds )
 	del bpy.types.Scene.use_subrect_atlas
 	del bpy.types.Scene.subrect_atlas
+	del bpy.types.Scene.hotspot_inset
 	del bpy.types.Scene.use_trim
 	bpy.utils.unregister_class( UV_PT_UVHotspotTools )
 	bpy.utils.unregister_class( OBJECT_OT_repotoascii )
+	bpy.utils.unregister_class( MESH_OT_uvaspectscale )

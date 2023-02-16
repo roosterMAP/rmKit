@@ -48,7 +48,10 @@ def copy( context, cut=False ):
 		temp_bmesh.to_mesh( clipboard_mesh )
 
 		for old_idx in mat_indexes:
-			clipboard_mesh.materials.append( rmmesh.mesh.materials[old_idx] )
+			try:
+				clipboard_mesh.materials.append( rmmesh.mesh.materials[old_idx] )
+			except IndexError:
+				continue
 		
 		if cut:
 			bmesh.ops.delete( rmmesh.bmesh, geom=selected_polys, context='FACES' )
