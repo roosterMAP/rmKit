@@ -110,6 +110,8 @@ class MESH_OT_quickmaterial( bpy.types.Operator ):
 				material = obj.data.materials[mat_idx]
 			except IndexError:
 				material = obj.data.materials[0]
+			if material is None:
+				return { 'CANCELLED' }
 			bpy.context.scene.quickmatprops['prop_mat'] = material
 			bpy.context.scene.quickmatprops['prop_col'] = material.diffuse_color
 			bpy.context.scene.quickmatprops['prop_met'] = material.metallic

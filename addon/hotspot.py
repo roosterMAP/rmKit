@@ -275,6 +275,9 @@ class Bounds2d():
 				scl_mat[1][1] = other.height / self.height
 
 		return trans_mat_inverse @ scl_mat @ rot_mat @ trans_mat
+	
+	def copy( self ):
+		return Bounds2d( [ self.__min, self.__max ] )
 
 	def inset( self, f ):
 		self.__min[0] += f
@@ -795,7 +798,7 @@ class MESH_OT_moshotspot( bpy.types.Operator ):
 
 		use_trim = context.scene.use_trim
 
-		target_bounds = hotspot.nearest( self.mos_uv[0], self.mos_uv[1] )
+		target_bounds = hotspot.nearest( self.mos_uv[0], self.mos_uv[1] ).copy()
 		target_bounds.inset( context.scene.hotspot_inset )
 
 		rmmesh = rmlib.rmMesh.GetActive( context )
@@ -864,7 +867,7 @@ class MESH_OT_nrsthotspot( bpy.types.Operator ):
 					for l in f.loops:
 						loops.add( l )
 				source_bounds = Bounds2d.from_loops( loops, uvlayer )
-				target_bounds = hotspot.overlapping( source_bounds )
+				target_bounds = hotspot.overlapping( source_bounds ).copy()
 				target_bounds.inset( context.scene.hotspot_inset )
 				mat = source_bounds.transform( target_bounds, skip_rot=True, trim=use_trim )		
 				for l in loops:
@@ -965,7 +968,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 						for l in f.loops:
 							loops.add( l )
 					source_bounds = Bounds2d.from_loops( loops, uvlayer )
-					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance )
+					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance ).copy()
 					target_bounds.inset( context.scene.hotspot_inset )
 
 					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim )		
@@ -988,7 +991,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 						for l in f.loops:
 							loops.add( l )
 					source_bounds = Bounds2d.from_loops( loops, uvlayer )
-					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance )
+					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance ).copy()
 					target_bounds.inset( context.scene.hotspot_inset )
 
 					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim )		

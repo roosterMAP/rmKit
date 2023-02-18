@@ -47,11 +47,9 @@ def copy( context, cut=False ):
 		
 		temp_bmesh.to_mesh( clipboard_mesh )
 
-		for old_idx in mat_indexes:
-			try:
+		if len( rmmesh.mesh.materials ) > 0:
+			for old_idx in mat_indexes:
 				clipboard_mesh.materials.append( rmmesh.mesh.materials[old_idx] )
-			except IndexError:
-				continue
 		
 		if cut:
 			bmesh.ops.delete( rmmesh.bmesh, geom=selected_polys, context='FACES' )
@@ -93,8 +91,9 @@ def paste( context ):
 		paste_faces = rmlib.rmPolygonSet.from_selection( rmmesh )
 
 		#reassign material indexes
-		for f in paste_faces:
-			f.material_index = mat_lookup[ f.material_index ]
+		if len( mat_lookup ) > 0:
+			for f in paste_faces:
+				f.material_index = mat_lookup[ f.material_index ]
 
 		#transform paste verts
 		xfrm_inv = rmmesh.world_transform.inverted()
