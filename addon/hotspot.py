@@ -811,7 +811,7 @@ class MESH_OT_moshotspot( bpy.types.Operator ):
 		use_trim = context.scene.use_trim
 
 		target_bounds = hotspot.nearest( self.mos_uv[0], self.mos_uv[1] ).copy()
-		target_bounds.inset( context.scene.hotspot_inset )
+		target_bounds.inset( context.scene.hotspot_inset / 1024.0 )
 
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		with rmmesh as rmmesh:
@@ -880,7 +880,7 @@ class MESH_OT_nrsthotspot( bpy.types.Operator ):
 						loops.add( l )
 				source_bounds = Bounds2d.from_loops( loops, uvlayer )
 				target_bounds = hotspot.overlapping( source_bounds ).copy()
-				target_bounds.inset( context.scene.hotspot_inset )
+				target_bounds.inset( context.scene.hotspot_inset / 1024.0 )
 				mat = source_bounds.transform( target_bounds, skip_rot=True, trim=use_trim )		
 				for l in loops:
 					uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
@@ -981,7 +981,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 							loops.add( l )
 					source_bounds = Bounds2d.from_loops( loops, uvlayer )
 					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance ).copy()
-					target_bounds.inset( context.scene.hotspot_inset )
+					target_bounds.inset( context.scene.hotspot_inset / 1024.0 )
 
 					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim )		
 					for l in loops:
@@ -1004,7 +1004,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 							loops.add( l )
 					source_bounds = Bounds2d.from_loops( loops, uvlayer )
 					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance ).copy()
-					target_bounds.inset( context.scene.hotspot_inset )
+					target_bounds.inset( context.scene.hotspot_inset / 1024.0 )
 
 					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim )		
 					for l in loops:

@@ -254,8 +254,11 @@ class MESH_OT_uvstitcht( bpy.types.Operator ):
 			else:
 				sel_mode = context.tool_settings.mesh_select_mode[:]
 				visible_faces = GetUnsyncUVVisibleFaces( rmmesh, sel_mode )
-				#get all selected uv edges that have corresponding disontinuous uv edge to stitch to
-				edgeloop_selection = rmlib.rmUVLoopSet.from_edge_selection( rmmesh, uvlayer=uvlayer )
+				edgeloop_selection = rmlib.rmUVLoopSet( [], uvlayer=uvlayer )
+				for f in visible_faces:
+					for l in f.loops:
+						if l[uvlayer].select_edge:
+							edgeloop_selection.append( l )
 				border_edgeloop_selection = rmlib.rmUVLoopSet( [ l for l in edgeloop_selection if len( l.edge.link_faces ) > 1 ], uvlayer=uvlayer ).border_loops()
 			
 			#break up into groups
