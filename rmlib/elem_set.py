@@ -275,7 +275,10 @@ class rmPolygonSet( list ):
 							if e is None or not e.smooth:
 								continue
 						if use_angle != 180.0:
-							if pn.angle( mathutils.Vector( np.normal ) ) >= use_angle:
+							try:
+								if pn.angle( mathutils.Vector( np.normal ) ) >= use_angle:
+									continue
+							except ValueError:
 								continue
 						if element or np in self:
 							if util.AlmostEqual_v2( l[uvlayer].uv, nl[uvlayer].uv ):

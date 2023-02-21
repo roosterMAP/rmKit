@@ -322,6 +322,10 @@ class Hotspot():
 		for b in self.__data:
 			bounds_data += bytes( b )		
 		return bounds_data
+	
+	@property
+	def data( self ):
+		return self.__data
 
 	@staticmethod
 	def unpack( bytearray, offset ):
@@ -601,7 +605,7 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 				context.active_object.type == 'MESH' )
 
 	def execute( self, context ):
-		#generate new horspot obj from face selection
+		#generate new hotspot obj from face selection
 		hotspot = None
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		with rmmesh as rmmesh:
@@ -646,6 +650,7 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 					existing_hotspots.pop( i )
 				break
 
+		'''
 		#update hotspot database
 		hotspot_already_exists = False
 		for i, exhot in enumerate( existing_hotspots ):
@@ -656,9 +661,16 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 		if not hotspot_already_exists:
 			existing_materials.append( [ mat_name ] )
 			existing_hotspots.append( hotspot )
+		'''
+
+		#update hotspot database
+		existing_materials.append( [ mat_name ] )
+		existing_hotspots.append( hotspot )
+		
 
 		#write updated database
 		write_hot_file( hotfile, existing_materials, existing_hotspots )
+		self.report( { 'WARNING' }, 'Hotspot Repo Updated!!!' )
 
 		return  {'FINISHED' }
 
@@ -1125,6 +1137,117 @@ class MESH_OT_uvaspectscale( bpy.types.Operator ):
 				
 		context.window_manager.modal_handler_add( self )
 		return { 'RUNNING_MODAL' }
+	
+
+def enum_previews_from_directory_items(self, context):
+	enum_items = []
+
+	if context is None:
+		return enum_items
+	
+
+	hotfile = get_hotfile_path()
+	existing_materials, existing_hotspots = read_hot_file( hotfile )
+	
+	pcoll = preview_collections["main"]
+	for i in range( len( existing_hotspots ) ):
+		name = str( i )
+		icon = pcoll.get( name )
+		if not icon:
+			size = 64
+			thumb = pcoll.new( name )
+			thumb.image_size = [ size, size ]
+			raw_data = [ 1.0 ] * 4 * size * size
+
+			hotspot = existing_hotspots[i]
+			for b in hotspot.data:
+				color = rmlib.util.HSV_to_RGB( random.random(), random.random(), random.random() * 0.5 + 0.5 )
+				w = int( b.width * size )
+				h = int( b.height * size )
+				min_x = int( b.min[0] * size )
+				min_y = int( b.min[1] * size )
+				for m in range( h ):					
+					y = min_y + m
+					for n in range( w ):
+						x = min_x + n
+						idx = ( y * size + x ) * 4
+						raw_data[ idx ] = color[0]
+						raw_data[ idx + 1 ] = color[1]
+						raw_data[ idx + 2 ] = color[2]
+			thumb.image_pixels_float = raw_data
+			thumb.is_icon_custom = True			
+		else:
+			thumb = pcoll[name]
+		enum_items.append( ( name, name, "", thumb.icon_id, i ) )
+
+	pcoll.my_previews = enum_items
+	return pcoll.my_previews
+
+
+class MESH_OT_refhostpot( bpy.types.Operator ):
+	bl_idname = 'mesh.refhotspot'
+	bl_label = 'Ref Hotspot'
+	bl_options = { 'UNDO' }
+
+	my_previews: bpy.props.EnumProperty( items=enum_previews_from_directory_items )
+
+	@classmethod
+	def poll( cls, context ):
+		return ( ( context.area.type == 'VIEW_3D' or context.area.type == 'IMAGE_EDITOR' ) and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
+				context.object.data.is_editmode )
+
+	def execute( self, context ):		
+		img_name = self.my_previews
+
+		#get material name
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		with rmmesh as rmmesh:
+			rmmesh.readonly = True
+			
+			polys = rmlib.rmPolygonSet.from_selection( rmmesh )
+			if len( polys ) == 0:
+				return { 'CANCELLED' }
+			try:
+				mat_name = rmmesh.mesh.materials[ polys[0].material_index ].name
+			except KeyError:
+				return { 'CANCELLED' }
+
+		#load hotspot repo file
+		hotfile = get_hotfile_path()
+		existing_materials, existing_hotspots = read_hot_file( hotfile )
+
+		#remove matname from matgroup if it exists. it'll be added in later
+		for i, matgrp in enumerate( existing_materials ):
+			if mat_name in matgrp:
+				existing_materials[i].remove( mat_name )
+
+		#update hotspot database
+		hotspot_idx = int( img_name )
+		if hotspot_idx < len( existing_materials ):
+			existing_materials[hotspot_idx].append( mat_name )		
+
+		#write updated database
+		write_hot_file( hotfile, existing_materials, existing_hotspots )
+		self.report( { 'WARNING' }, 'Hotspot Repo Updated!!!' )
+
+		return  {'FINISHED' }
+
+	def draw(self, context):
+		layout = self.layout
+		layout.template_icon_view( self, "my_previews" )
+
+	def invoke( self, context, event ):
+		sel_mode = context.tool_settings.mesh_select_mode[:]
+		if not sel_mode[2]:
+			return { 'CANCELLED' }
+
+		random.seed( 0 )
+		return context.window_manager.invoke_props_dialog( self, width=128 )
+
+
+preview_collections = {}
 
 
 class UV_PT_UVHotspotTools( bpy.types.Panel ):
@@ -1145,7 +1268,8 @@ class UV_PT_UVHotspotTools( bpy.types.Panel ):
 		r2 = layout.row()
 		r2.prop( context.scene, 'use_trim' )
 		r2.prop( context.scene, 'hotspot_inset' )
-		layout.operator( 'mesh.savehotspot', text='Create Hotspot' )
+		layout.operator( 'mesh.savehotspot', text='New Hotspot' )
+		layout.operator( 'mesh.refhotspot', text='Ref Hotspot' )
 		layout.operator( 'mesh.matchhotspot', text='Hotspot Match' )
 		layout.operator( 'mesh.nrsthotspot', text='Hotspot Nearest' )
 		layout.operator( 'mesh.moshotspot', text='Hotspot MOS' )
@@ -1164,6 +1288,12 @@ def register():
 	bpy.utils.register_class( OBJECT_OT_repotoascii )
 	bpy.utils.register_class( MESH_OT_uvaspectscale )
 
+	pcoll = bpy.utils.previews.new()
+	pcoll.my_previews = ()
+	preview_collections["main"] = pcoll
+	bpy.utils.register_class( MESH_OT_refhostpot )
+
+
 def unregister():
 	bpy.utils.unregister_class( OBJECT_OT_savehotspot )
 	bpy.utils.unregister_class( MESH_OT_matchhotspot )
@@ -1177,3 +1307,8 @@ def unregister():
 	bpy.utils.unregister_class( UV_PT_UVHotspotTools )
 	bpy.utils.unregister_class( OBJECT_OT_repotoascii )
 	bpy.utils.unregister_class( MESH_OT_uvaspectscale )
+
+	for pcoll in preview_collections.values():
+		bpy.utils.previews.remove(pcoll)
+	preview_collections.clear()
+	bpy.utils.unregister_class( MESH_OT_refhostpot )
