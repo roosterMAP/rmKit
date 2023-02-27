@@ -1,4 +1,4 @@
-import bpy
+import bpy, mathutils
 from .. import rmlib
 
 def edge_ring( edge, poly, ring ):
@@ -381,6 +381,16 @@ class MESH_OT_uvloop( bpy.types.Operator ):
 					
 					for l in group:
 						l[uvlayer].select_edge = True
+						uvcoord = mathutils.Vector( l[uvlayer].uv )
+						for n_l in l.vert.link_loops:
+							n_uvcoord = mathutils.Vector( n_l[uvlayer].uv )
+							if rmlib.util.AlmostEqual_v2( uvcoord, n_uvcoord ):
+								n_l[uvlayer].select = True
+						uvcoord = mathutils.Vector( l.link_loop_next[uvlayer].uv )
+						for n_l in l.link_loop_next.vert.link_loops:
+							n_uvcoord = mathutils.Vector( n_l[uvlayer].uv )
+							if rmlib.util.AlmostEqual_v2( uvcoord, n_uvcoord ):
+								n_l[uvlayer].select = True
 				
 				for f in rmmesh.bmesh.faces:
 					for l in f.loops:
@@ -429,10 +439,21 @@ class MESH_OT_uvring( bpy.types.Operator ):
 						
 						for l in group:
 							l[uvlayer].select_edge = True
+							uvcoord = mathutils.Vector( l[uvlayer].uv )
+							for n_l in l.vert.link_loops:
+								n_uvcoord = mathutils.Vector( n_l[uvlayer].uv )
+								if rmlib.util.AlmostEqual_v2( uvcoord, n_uvcoord ):
+									n_l[uvlayer].select = True
+							uvcoord = mathutils.Vector( l.link_loop_next[uvlayer].uv )
+							for n_l in l.link_loop_next.vert.link_loops:
+								n_uvcoord = mathutils.Vector( n_l[uvlayer].uv )
+								if rmlib.util.AlmostEqual_v2( uvcoord, n_uvcoord ):
+									n_l[uvlayer].select = True
 					
 					for f in rmmesh.bmesh.faces:
 						for l in f.loops:
 							l.tag = False
+
 
 				elif sel_mode == 'FACE':					
 					uvlayer = rmmesh.active_uv

@@ -128,17 +128,46 @@ class MESH_OT_uvmove( bpy.types.Operator ):
 		default="n"
 	)
 
+	'''
+	def __init__( self ):
+		self.__ctrl = False
+		self.__shift = False
+		self.__alt = False
+	'''
+
 	@classmethod
 	def poll( cls, context ):
 		return ( context.area.type == 'IMAGE_EDITOR' and
 				context.active_object is not None and
 				context.active_object.type == 'MESH' and
 				context.object.data.is_editmode )
+	
+	'''
+	def invoke( self, context, event ):
+		self.__ctrl = event.ctrl and event.value == 'PRESS'
+		self.__shift = event.shift and event.value == 'PRESS'
+		self.__alt = event.alt and event.value == 'PRESS'
+		return self.execute( context )
+	'''
 
 	def execute( self, context ):
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		if rmmesh is None:
 			return { 'CANCELLED' }
+		
+		'''
+		if self.__ctrl:
+			bpy.ops.mesh.rm_uvslam( "INVOKE_DEFAULT", dir=( 'l' + self.dir ) )
+			print( 'CTRL' )
+			return { 'FINISHED' }
+		if self.__shift:
+			bpy.ops.mesh.rm_uvslam( "INVOKE_DEFAULT", dir=( self.dir ) )
+			print( 'SHIFT' )
+			return { 'FINISHED' }
+		if self.__alt:
+			print( 'ALT' )
+			return { 'FINISHED' }
+		'''
 		
 		with rmmesh as rmmesh:
 			uvlayer = rmmesh.active_uv

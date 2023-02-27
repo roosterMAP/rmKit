@@ -106,8 +106,6 @@ class MESH_OT_polypatch( bpy.types.Operator ):
 				groups = sel_polys.group()
 				if len( groups ) == 2:
 					bpy.ops.mesh.bridge_edge_loops()
-				else:
-					bpy.ops.mesh.duplicate_move()
 
 		return { 'FINISHED' }
 	

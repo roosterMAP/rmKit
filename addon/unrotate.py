@@ -31,6 +31,16 @@ def GetUnsyncUVVisibleFaces( rmmesh, sel_mode ):
 		
 	return visible_faces
 
+def clear_tags( rmmesh ):
+	for v in rmmesh.bmesh.verts:
+		v.tag = False
+	for e in rmmesh.bmesh.edges:
+		e.tag = False
+	for f in rmmesh.bmesh.faces:
+		f.tag = False
+		for l in f.loops:
+			l.tag = False
+
 class MESH_OT_uvunrotate( bpy.types.Operator ):
 	"""Unrotate UV Islands based on the current selection."""
 	bl_idname = 'mesh.rm_uvunrotate'
@@ -85,6 +95,7 @@ class MESH_OT_uvunrotate( bpy.types.Operator ):
 					for l in loop_selection:
 						if l.face in visible_faces:
 							visible_loop_selection.append( l )
+					clear_tags( rmmesh )
 					loop_groups = visible_loop_selection.group_vertices()
 					
 				elif sel_mode_uv == 'EDGE':
@@ -93,6 +104,7 @@ class MESH_OT_uvunrotate( bpy.types.Operator ):
 					for l in loop_selection:
 						if l.face in visible_faces:
 							visible_loop_selection.append( l )
+					clear_tags( rmmesh )
 					loop_groups = visible_loop_selection.group_vertices( element=True )
 
 				else: #face
@@ -101,6 +113,7 @@ class MESH_OT_uvunrotate( bpy.types.Operator ):
 					for l in loop_selection:
 						if l.face in visible_faces:
 							visible_loop_selection.append( l )
+					clear_tags( rmmesh )
 					loop_groups = visible_loop_selection.group_vertices( element=True )
 
 			if len( loop_groups ) == 0:
