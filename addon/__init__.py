@@ -55,6 +55,7 @@ from . import dimensions
 from . import uvgrowshrink
 from . import preferences
 from . import quickboolean
+from . import naming
 
 def register():
 	bpy.utils.register_class( rmKitPannel )
@@ -94,6 +95,7 @@ def register():
 	quickboolean.register()
 	uvgrowshrink.register()
 	preferences.register()
+	naming.register()
 
 def unregister():
 	bpy.utils.unregister_class( rmKitPannel )
@@ -133,3 +135,4 @@ def unregister():
 	quickboolean.unregister()
 	uvgrowshrink.unregister()
 	preferences.unregister()
+	naming.unregister()

@@ -26,6 +26,8 @@ class VIEW3D_PT_UTILS( bpy.types.Panel ):
 		layout.operator( 'wm.call_menu_pie', text='3D Cursor Pie' ).name = 'VIEW3D_MT_PIE_cursor'
 		layout.operator( 'view3d.rm_dimensions', text='Toggle Dimensions' )
 
+		layout.operator( 'mesh.rm_itemnametomeshname' )
+		
 
 class UV_PT_UVTOOLS( bpy.types.Panel ):
 	bl_parent_id = 'UV_PT_RMKIT_PARENT'

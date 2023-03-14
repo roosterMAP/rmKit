@@ -317,7 +317,7 @@ class MESH_OT_zerocursor( bpy.types.Operator ):
 		
 	def execute( self, context ):
 		global GRID_RENDER
-		if GRID_RENDER is None:
+		if GRID_RENDER is None or not GRID_RENDER.active:
 			context.scene.cursor.location = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
 		else:
 			context.scene.cursor.location = GRID_RENDER.matrix.to_translation()
