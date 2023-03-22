@@ -3,12 +3,12 @@ import bmesh
 import mathutils
 from bpy_extras import view3d_utils
 
-def iter_edit_meshes( context, mode_filter=False ):
-	#when mode_filter is True, then meshes get added to list even if they're not in editmode
+def iter_edit_meshes( context, mode_filter=True ):
+	#when mode_filter is False, then meshes get added to list even if they're not in editmode
 	meshes = set()
 	rmmeshlist = []
 	for meshobj in context.editable_objects:
-		if meshobj.type == 'MESH' and ( meshobj.data.is_editmode or mode_filter ) and meshobj.data not in meshes:
+		if meshobj.type == 'MESH' and ( meshobj.data.is_editmode or not mode_filter ) and meshobj.data not in meshes:
 			meshes.add( meshobj.data )
 			rmmeshlist.append( rmMesh( meshobj ) )
 	return rmmeshlist

@@ -27,6 +27,8 @@ class VIEW3D_PT_UTILS( bpy.types.Panel ):
 		layout.operator( 'view3d.rm_dimensions', text='Toggle Dimensions' )
 
 		layout.operator( 'mesh.rm_itemnametomeshname' )
+
+		layout.operator( 'mesh.rm_matclearnup', text='Material Cleanup' )
 		
 
 class UV_PT_UVTOOLS( bpy.types.Panel ):
@@ -54,6 +56,8 @@ class UV_PT_UVTOOLS( bpy.types.Panel ):
 		layout.operator( 'mesh.rm_uvunrotate', text='Unrotate' )
 		layout.operator( 'mesh.rm_relativeislands' )
 		layout.operator( 'mesh.rm_scaletomaterialsize' )
+		layout.operator( 'mesh.rm_uvgrowshrink', text='UV Grow' ).mode = 'GROW'
+		layout.operator( 'mesh.rm_uvgrowshrink', text='UV Shrink' ).mode = 'SHRINK'
 
 		r2 = layout.row()
 		r2.alignment = 'EXPAND'
@@ -137,23 +141,6 @@ class VIEW3D_PT_MESHEDIT( bpy.types.Panel ):
 		c3.operator( 'mesh.rm_targetweld', text='Target Weld' )
 
 
-class VIEW3D_PT_MATERIALS( bpy.types.Panel ):
-	bl_parent_id = 'VIEW3D_PT_RMKIT_PARENT'
-	bl_label = 'Materials'
-	bl_region_type = 'UI'
-	bl_space_type = 'VIEW_3D'
-	bl_options = {'DEFAULT_CLOSED'}
-
-	def draw( self, context ):
-		layout = self.layout
-
-		r1 = layout.column()
-		r1.alignment = 'EXPAND'
-		r1.operator( 'mesh.rm_grabapplymat', text='GrabApplyMat (MOS)' )
-		r1.operator( 'mesh.rm_quickmaterial', text='QuickMaterial (MOS)' )
-		r1.operator( 'mesh.rm_matclearnup', text='Material Cleanup' )
-
-
 class VIEW3D_PT_LAYERS( bpy.types.Panel ):
 	bl_idname = 'VIEW3D_PT_LAYERS'
 	bl_parent_id = 'VIEW3D_PT_RMKIT_PARENT'
@@ -177,7 +164,6 @@ def register():
 	bpy.utils.register_class( VIEW3D_PT_SELECTION )
 	bpy.utils.register_class( VIEW3D_PT_MESHEDIT )
 	bpy.utils.register_class( VIEW3D_PT_LAYERS )
-	bpy.utils.register_class( VIEW3D_PT_MATERIALS )
 	bpy.utils.register_class( UV_PT_UVTOOLS )
 	
 
@@ -186,5 +172,4 @@ def unregister():
 	bpy.utils.unregister_class( VIEW3D_PT_SELECTION )
 	bpy.utils.unregister_class( VIEW3D_PT_MESHEDIT )
 	bpy.utils.unregister_class( VIEW3D_PT_LAYERS )
-	bpy.utils.unregister_class( VIEW3D_PT_MATERIALS )
 	bpy.utils.unregister_class( UV_PT_UVTOOLS )

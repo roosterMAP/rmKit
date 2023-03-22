@@ -162,35 +162,32 @@ class MESH_OT_rm_matcleanup( bpy.types.Operator ):
 				context.object is not None )
 		
 	def execute( self, context ):
-		rmmesh = rmlib.rmMesh.GetActive( context )
-		if rmmesh is None:
-			return { 'CANCELLED' }
+		for rmmesh in rmlib.iter_edit_meshes( context, mode_filter=False ):
+			#get mesh material list
+			old_materials = [ m for m in rmmesh.mesh.materials ]
 
-		#get mesh material list
-		old_materials = [ m for m in rmmesh.mesh.materials ]
+			#remap
+			new_materials = []
+			with rmmesh as rmmesh:
+				overflow_faces = set()
+				for p in rmmesh.bmesh.faces:
+					if p.material_index >= len( old_materials ):
+						overflow_faces.add( p )
+						continue
 
-		#remap
-		new_materials = []
-		with rmmesh as rmmesh:
-			overflow_faces = set()
-			for p in rmmesh.bmesh.faces:
-				if p.material_index >= len( old_materials ):
-					overflow_faces.add( p )
-					continue
+					idx = p.material_index
+					try:
+						p.material_index = new_materials.index( old_materials[idx] ) #gets rid of duplicates
+					except ValueError:
+						p.material_index = len( new_materials )
+						new_materials.append( old_materials[idx] )
 
-				idx = p.material_index
-				try:
-					p.material_index = new_materials.index( old_materials[idx] ) #gets rid of duplicates
-				except ValueError:
-					p.material_index = len( new_materials )
-					new_materials.append( old_materials[idx] )
+				for f in overflow_faces:
+					f.material_index = len( new_materials ) - 1
 
-			for f in overflow_faces:
-				f.material_index = len( new_materials ) - 1
-
-			rmmesh.mesh.materials.clear()
-			for m in new_materials:
-				rmmesh.mesh.materials.append( m )
+				rmmesh.mesh.materials.clear()
+				for m in new_materials:
+					rmmesh.mesh.materials.append( m )
 
 		return { 'FINISHED' }
 	

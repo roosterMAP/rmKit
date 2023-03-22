@@ -1,6 +1,10 @@
 import bpy, bmesh, mathutils, bpy_extras
 from .. import rmlib
 
+def ResetSubdivModLevels( mods ):
+	for mod, level in mods.items():
+		mod.levels = level
+
 class MESH_OT_grabapplymat( bpy.types.Operator ):
 	"""Sample the material of the face under the cursor and apply it to the selected faces."""
 	bl_idname = 'mesh.rm_grabapplymat'
@@ -89,6 +93,14 @@ class MESH_OT_grabapplymat( bpy.types.Operator ):
 			mos_rmmesh = rmlib.rmMesh.from_mos( context, mouse_pos ) #used to get mat data. using eval mat data causes crash
 			if mos_rmmesh is None:
 				return { 'CANCELLED' }
+
+			#cache the levels of each subdiv mod for the mos_rmmesh and set their levels to 0
+			subdiv_mods = {}
+			for mod in mos_rmmesh.object.modifiers:
+				if mod.type == 'SUBSURF':
+					subdiv_mods[mod] = mod.levels
+					mod.levels = 0
+
 			eval_rmmesh = mos_rmmesh.GetEvaluated( context ) #used to get mos polygon after modifiers and anims
 
 			#get the material index from the evaluated mesh under the mouse
@@ -97,13 +109,15 @@ class MESH_OT_grabapplymat( bpy.types.Operator ):
 				try:
 					source_poly = rmlib.rmPolygonSet.from_mos( eval_rmmesh, context, mouse_pos, ignore_hidden=eval_rmmesh.mesh.is_editmode )[0]
 				except IndexError:
+					ResetSubdivModLevels( subdiv_mods )
 					print( 'ERROR :: GrabApplyMat :: from_mos failed' )
 					return { 'CANCELLED' }				
 				source_mat_idx = source_poly.material_index
 
 			if len( mos_rmmesh.mesh.materials ) < 1:
+				ResetSubdivModLevels( subdiv_mods )
 				self.report( { 'WARNING' }, 'Material under cursor is emply!!!' )
-				return { 'CANCELLED' }
+				return { 'CANCELLED' }			
 
 			#apply material
 			match_found = False
@@ -117,6 +131,8 @@ class MESH_OT_grabapplymat( bpy.types.Operator ):
 				rmmesh.object.data.materials.append( mos_rmmesh.mesh.materials[source_mat_idx] )
 				for f in faces:
 					f.material_index = len( rmmesh.object.data.materials ) - 1
+
+			ResetSubdivModLevels( subdiv_mods )
 
 		return { 'FINISHED' }
 		
