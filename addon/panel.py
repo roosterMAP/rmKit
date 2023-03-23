@@ -56,8 +56,9 @@ class UV_PT_UVTOOLS( bpy.types.Panel ):
 		layout.operator( 'mesh.rm_uvunrotate', text='Unrotate' )
 		layout.operator( 'mesh.rm_relativeislands' )
 		layout.operator( 'mesh.rm_scaletomaterialsize' )
-		layout.operator( 'mesh.rm_uvgrowshrink', text='UV Grow' ).mode = 'GROW'
-		layout.operator( 'mesh.rm_uvgrowshrink', text='UV Shrink' ).mode = 'SHRINK'
+		r3 = layout.row()
+		r3.operator( 'mesh.rm_uvgrowshrink', text='UV Grow' ).mode = 'GROW'
+		r3.operator( 'mesh.rm_uvgrowshrink', text='UV Shrink' ).mode = 'SHRINK'
 
 		r2 = layout.row()
 		r2.alignment = 'EXPAND'
@@ -75,6 +76,7 @@ class VIEW3D_PT_SELECTION( bpy.types.Panel ):
 	def draw( self, context ):
 		layout = self.layout
 
+		'''
 		box1 = layout.box()
 
 		r1 = box1.row()
@@ -91,12 +93,22 @@ class VIEW3D_PT_SELECTION( bpy.types.Panel ):
 		r3.alignment = 'EXPAND'
 		r3.operator( 'mesh.rm_changemodeto', text='Face Mode' ).mode_to = 'FACE'
 		r3.operator( 'mesh.rm_convertmodeto', text='Convert to Face' ).mode_to = 'FACE'
+		'''
 
-		layout.operator( 'mesh.rm_loop', text='Loop' ).force_boundary = False
-		layout.operator( 'mesh.rm_loop', text='Loop Alt' ).force_boundary = True	
+		r4 = layout.row()
+		r4.alignment = 'EXPAND'
+
+		r4.operator( 'mesh.rm_loop', text='Loop' ).force_boundary = False
+		r4.operator( 'mesh.rm_loop', text='Loop Alt' ).force_boundary = True
+
 		layout.operator( 'mesh.rm_ring', text='Ring' )
-		layout.operator( 'mesh.rm_continuous', text='Set Continuous' ).add = False
-		layout.operator( 'mesh.rm_continuous', text='Add Continuous' ).add = True
+
+		r5 = layout.row()
+		r5.alignment = 'EXPAND'
+
+		r5.operator( 'mesh.rm_continuous', text='Set Continuous' ).add = False
+		r5.operator( 'mesh.rm_continuous', text='Add Continuous' ).add = True
+
 		layout.operator( 'mesh.rm_invertcontinuous', text='Invert Continuous' )
 
 
