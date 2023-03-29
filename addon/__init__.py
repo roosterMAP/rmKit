@@ -1,6 +1,6 @@
 import bpy
 
-class rmKitPannel( bpy.types.Panel ):
+class rmKitPannel_parent( bpy.types.Panel ):
 	bl_idname = "VIEW3D_PT_RMKIT_PARENT"
 	bl_label = "rmKit"
 	bl_space_type = "VIEW_3D"
@@ -10,7 +10,7 @@ class rmKitPannel( bpy.types.Panel ):
 	def draw( self, context ):
 		layout = self.layout
 
-class rmKitPannel_uv( bpy.types.Panel ):
+class rmKitPannel_parent_uv( bpy.types.Panel ):
 	bl_idname = "UV_PT_RMKIT_PARENT"
 	bl_label = "rmKit"
 	bl_space_type = "IMAGE_EDITOR"
@@ -58,8 +58,8 @@ from . import quickboolean
 from . import naming
 
 def register():
-	bpy.utils.register_class( rmKitPannel )
-	bpy.utils.register_class( rmKitPannel_uv )	
+	bpy.utils.register_class( rmKitPannel_parent )
+	bpy.utils.register_class( rmKitPannel_parent_uv )	
 	polypatch.register()
 	reduce.register()
 	context_bevel.register()
@@ -98,8 +98,8 @@ def register():
 	naming.register()
 
 def unregister():
-	bpy.utils.unregister_class( rmKitPannel )
-	bpy.utils.unregister_class( rmKitPannel_uv )	
+	bpy.utils.unregister_class( rmKitPannel_parent )
+	bpy.utils.unregister_class( rmKitPannel_parent_uv )	
 	polypatch.unregister()
 	reduce.unregister()
 	context_bevel.unregister()
