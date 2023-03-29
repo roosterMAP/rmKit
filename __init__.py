@@ -6,7 +6,7 @@ bl_info = {
     "location": "View3D > Sidebar",
     "warning": "",
     "description": "Collection of Tools",
-    "doc_url": "https://github.com/roosterMAP",
+    "doc_url": "https://rmkit.readthedocs.io/en/latest/",
 }
 
 
