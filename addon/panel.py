@@ -165,9 +165,21 @@ class VIEW3D_PT_LAYERS( bpy.types.Panel ):
 		layout = self.layout
 		
 		layout.operator( 'wm.call_menu_pie', text='Edge Weight Pie' ).name = 'VIEW3D_MT_PIE_setedgeweight_crease'
+
+
+class VIEW3D_PT_VIEW3D_UV( bpy.types.Panel ):
+	bl_idname = 'VIEW3D_PT_VIEW3D_UV'
+	bl_parent_id = 'VIEW3D_PT_RMKIT_PARENT'
+	bl_label = 'View3D UV Tools'
+	bl_region_type = 'UI'
+	bl_space_type = 'VIEW_3D'
+	bl_options = {'DEFAULT_CLOSED'}
+
+	def draw( self, context ):
+		layout = self.layout
+
 		layout.operator( 'mesh.rm_uvgridify', text='UV Gridify' )
 		layout.operator( 'mesh.rm_uvrectangularize', text='UV Rectangularize' )
-		layout.operator( 'mesh.grabapplyuvbounds' )
 		layout.operator( 'mesh.matchhotspot' )
 	
 	
@@ -177,6 +189,7 @@ def register():
 	bpy.utils.register_class( VIEW3D_PT_MESHEDIT )
 	bpy.utils.register_class( VIEW3D_PT_LAYERS )
 	bpy.utils.register_class( UV_PT_UVTOOLS )
+	bpy.utils.register_class( VIEW3D_PT_VIEW3D_UV )
 	
 
 def unregister():
@@ -185,3 +198,4 @@ def unregister():
 	bpy.utils.unregister_class( VIEW3D_PT_MESHEDIT )
 	bpy.utils.unregister_class( VIEW3D_PT_LAYERS )
 	bpy.utils.unregister_class( UV_PT_UVTOOLS )
+	bpy.utils.unregister_class( VIEW3D_PT_VIEW3D_UV )

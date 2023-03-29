@@ -415,7 +415,7 @@ class VIEW3D_PT_VNORMS( bpy.types.Panel ):
 	bl_label = "VNormal Kit"
 	bl_region_type = "UI"
 	bl_space_type = "VIEW_3D"
-	bl_options = {'DEFAULT_CLOSED'}
+	bl_options = {}
 
 	def draw( self, context ):
 		layout = self.layout

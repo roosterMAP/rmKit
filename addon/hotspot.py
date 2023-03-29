@@ -615,7 +615,7 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 				return { 'CANCELLED' }
 			uvlayer = rmmesh.active_uv
 			
-			polys = rmlib.rmPolygonSet.from_selection( rmmesh )
+			polys = rmlib.rmPolygonSet.from_mesh( rmmesh, filter_hidden=False )
 			if len( polys ) == 0:
 				return { 'CANCELLED' }
 
@@ -1272,7 +1272,7 @@ class UV_PT_UVHotspotTools( bpy.types.Panel ):
 		layout.operator( 'mesh.refhotspot', text='Ref Hotspot' )
 		layout.operator( 'mesh.matchhotspot', text='Hotspot Match' )
 		layout.operator( 'mesh.nrsthotspot', text='Hotspot Nearest' )
-		layout.operator( 'mesh.moshotspot', text='Hotspot MOS' )
+		#layout.operator( 'mesh.moshotspot', text='Hotspot MOS' )
 
 def register():
 	bpy.utils.register_class( OBJECT_OT_savehotspot )
