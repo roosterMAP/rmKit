@@ -368,9 +368,6 @@ def loopgroupnormal( loops, weighted, member_pidxs ):
 			avg += f.normal.copy()
 	return avg.normalized()
 
-
-OP_LABEL = { 'unqualified':'unqualified', 'ctrl':'ctrl' }
-
 def redraw_view3d( context ):
 	for window in context.window_manager.windows:
 		for area in window.screen.areas:
@@ -378,36 +375,6 @@ def redraw_view3d( context ):
 				for region in area.regions:
 					if region.type == 'UI':
 						region.tag_redraw()
-
-class MESH_OT_view3modkey( bpy.types.Operator ):
-	bl_idname = 'view3d.rm_modkey'
-	bl_label = 'View3d Modkey Tracker'
-	bl_options = { 'INTERNAL' }
-	mod_state = 'unqualified'
-	
-	@classmethod
-	def poll( cls, context ):
-		return True
-	
-	def invoke( self, context, event ):
-		wm = context.window_manager
-		self._timer = wm.event_timer_add( 0.0625, window=context.window )
-		wm.modal_handler_add( self )
-
-		return {'RUNNING_MODAL'}
-
-	def modal(self, context, event):
-		if event.type == 'TIMER':
-			if event.ctrl:
-				if MESH_OT_view3modkey.mod_state != 'ctrl':
-					MESH_OT_view3modkey.mod_state = 'ctrl'
-					redraw_view3d( context )
-			else:
-				if MESH_OT_view3modkey.mod_state != 'unqualified':
-					MESH_OT_view3modkey.mod_state = 'unqualified'
-					redraw_view3d( context )
-
-		return { 'PASS_THROUGH' }
 
 
 class VIEW3D_PT_VNORMS( bpy.types.Panel ):
@@ -428,52 +395,49 @@ class VIEW3D_PT_VNORMS( bpy.types.Panel ):
 		row_selset1 = box.row()
 		row_selset1.operator( MESH_OT_selectvnormselset.bl_idname, text='SEL1' ).selset = 'SELSET1'
 
-		if MESH_OT_view3modkey.mod_state == 'ctrl':
-			op = row_selset1.operator( MESH_OT_setvnormselset.bl_idname, text='++' )
-			op.selset = 'SELSET1'
-			op.override = True
-		else:
-			op = row_selset1.operator( MESH_OT_setvnormselset.bl_idname, text='+' )
-			op.selset = 'SELSET1'
-			op.override = False
+
+		op = row_selset1.operator( MESH_OT_setvnormselset.bl_idname, text='++' )
+		op.selset = 'SELSET1'
+		op.override = True
+		
+		op = row_selset1.operator( MESH_OT_setvnormselset.bl_idname, text='+' )
+		op.selset = 'SELSET1'
+		op.override = False
 
 		row_selset1.operator( MESH_OT_removevnormselset.bl_idname, text='-' ).selset = 'SELSET1'
-		row_selset1.operator( MESH_OT_applyvnorms.bl_idname, text='Apply' ).selset = 'SELSET1'
+		#row_selset1.operator( MESH_OT_applyvnorms.bl_idname, text='Apply' ).selset = 'SELSET1'
 
 		row_selset2 = box.row()
 		row_selset2.operator( MESH_OT_selectvnormselset.bl_idname, text='SEL2' ).selset = 'SELSET2'
-		if MESH_OT_view3modkey.mod_state == 'ctrl':
-			op = row_selset2.operator( MESH_OT_setvnormselset.bl_idname, text='++' )
-			op.selset = 'SELSET2'
-			op.override = True
-		else:
-			op = row_selset2.operator( MESH_OT_setvnormselset.bl_idname, text='+' )
-			op.selset = 'SELSET2'
-			op.override = False
+		
+		op = row_selset2.operator( MESH_OT_setvnormselset.bl_idname, text='++' )
+		op.selset = 'SELSET2'
+		op.override = True
+		
+		op = row_selset2.operator( MESH_OT_setvnormselset.bl_idname, text='+' )
+		op.selset = 'SELSET2'
+		op.override = False
+
 		row_selset2.operator( MESH_OT_removevnormselset.bl_idname, text='-' ).selset = 'SELSET2'
-		row_selset2.operator( MESH_OT_applyvnorms.bl_idname, text='Apply' ).selset = 'SELSET2'
+		#row_selset2.operator( MESH_OT_applyvnorms.bl_idname, text='Apply' ).selset = 'SELSET2'
 
 		row_selset3 = box.row()
 		row_selset3.operator( MESH_OT_selectvnormselset.bl_idname, text='SEL3' ).selset = 'SELSET3'
-		if MESH_OT_view3modkey.mod_state == 'ctrl':
-			op = row_selset3.operator( MESH_OT_setvnormselset.bl_idname, text='++' )
-			op.selset = 'SELSET3'
-			op.override = True
-		else:
-			op = row_selset3.operator( MESH_OT_setvnormselset.bl_idname, text='+' )
-			op.selset = 'SELSET3'
-			op.override = False
+		
+		op = row_selset3.operator( MESH_OT_setvnormselset.bl_idname, text='++' )
+		op.selset = 'SELSET3'
+		op.override = True
+		
+		op = row_selset3.operator( MESH_OT_setvnormselset.bl_idname, text='+' )
+		op.selset = 'SELSET3'
+		op.override = False
+
 		row_selset3.operator( MESH_OT_removevnormselset.bl_idname, text='-' ).selset = 'SELSET3'
-		row_selset3.operator( MESH_OT_applyvnorms.bl_idname, text='Apply' ).selset = 'SELSET3'
+		#row_selset3.operator( MESH_OT_applyvnorms.bl_idname, text='Apply' ).selset = 'SELSET3'
 
 		row_applyall = box.row()
-		row_applyall.operator( MESH_OT_applyall.bl_idname, text='ALL' )
+		row_applyall.operator( MESH_OT_applyall.bl_idname, text='APPLY' )
 		row_applyall.alignment = 'EXPAND'
-		
- 
-@persistent
-def startup_handler( dummy ):
-	bpy.ops.view3d.rm_modkey( 'INVOKE_DEFAULT' )
 	
 	
 def register():
@@ -491,9 +455,7 @@ def register():
 		name="Area Weights",
 		default=False
 	)
-	bpy.utils.register_class( MESH_OT_view3modkey )
 	bpy.utils.register_class( VIEW3D_PT_VNORMS )
-	bpy.app.handlers.load_post.append( startup_handler )
 	
 
 def unregister():
@@ -508,5 +470,4 @@ def unregister():
 	bpy.utils.unregister_class( MESH_OT_applyvnorms )
 	bpy.utils.unregister_class( MESH_OT_applyall )
 	del bpy.types.Scene.vn_selsetweighted
-	bpy.utils.unregister_class( MESH_OT_view3modkey )
 	bpy.utils.unregister_class( VIEW3D_PT_VNORMS )

@@ -7,6 +7,8 @@ ANCHOR_PROP_LIST = ( 'uv_anchor_nw', 'uv_anchor_n', 'uv_anchor_ne',
 			'uv_anchor_w', 'uv_anchor_c', 'uv_anchor_e',
 			'uv_anchor_sw', 'uv_anchor_s', 'uv_anchor_se' )
 
+STATE_PROP_LIST = ( 'uv_state_ctrl', 'uv_state_shift', 'uv_state_alt' )
+
 def GetLoopGroups( context, rmmesh, uvlayer, local ):
 	sel_mode = context.tool_settings.mesh_select_mode[:]
 	visible_faces = rmlib.rmPolygonSet()
@@ -660,48 +662,6 @@ class MESH_OT_uvfit( bpy.types.Operator ):
 		return { 'FINISHED' }
 
 
-def redraw_view3d( context ):
-	for window in context.window_manager.windows:
-		for area in window.screen.areas:
-			if area.type == 'IMAGE_EDITOR':
-				for region in area.regions:
-					if region.type == 'UI':
-						region.tag_redraw()
-						
-
-class MESH_OT_uvmodkey( bpy.types.Operator ):
-	bl_idname = 'view3d.rm_modkey_uvtools'
-	bl_label = 'View3d Modkey Tracker'
-	bl_options = { 'INTERNAL' }
-	mod_state = [ False, False, False ]
-	
-	@classmethod
-	def poll( cls, context ):
-		return True
-	
-	def invoke( self, context, event ):
-		wm = context.window_manager
-		#self._timer = wm.event_timer_add( 0.0625, window=context.window )
-		wm.modal_handler_add( self )
-
-		return {'RUNNING_MODAL'}
-
-	def modal(self, context, event):
-		if event.type == 'LEFT_CTRL' or event.type == 'LEFT_ALT' or event.type == 'LEFT_SHIFT':
-		#if event.type == 'TIMER':
-			state = [ event.ctrl, event.shift, event.alt ]
-
-			if ( MESH_OT_uvmodkey.mod_state[0] != state[0] or
-			MESH_OT_uvmodkey.mod_state[1] != state[1] or
-			MESH_OT_uvmodkey.mod_state[2] != state[2] ):
-				MESH_OT_uvmodkey.mod_state[0] = state[0]
-				MESH_OT_uvmodkey.mod_state[1] = state[1]
-				MESH_OT_uvmodkey.mod_state[2] = state[2]
-				redraw_view3d( context )
-
-		return { 'PASS_THROUGH' }
-
-
 class UV_PT_UVTransformTools( bpy.types.Panel ):
 	bl_parent_id = 'UV_PT_RMKIT_PARENT'
 	bl_idname = 'UV_PT_UVTransformTools'
@@ -712,10 +672,17 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 
 	def draw( self, context ):
 		layout = self.layout
+
+		r = layout.row()
+		r.prop( context.scene.stateprops, 'uv_state_ctrl', toggle=1 )
+		r.prop( context.scene.stateprops, 'uv_state_shift', toggle=1 )
+		r.prop( context.scene.stateprops, 'uv_state_alt', toggle=1 )
+		layout.separator( factor=0.2 )
+
 		pcoll = preview_collections['main']
 		flow = layout.grid_flow( columns=3, even_columns=True, align=True )
 
-		if MESH_OT_uvmodkey.mod_state[0] and not MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
+		if context.scene.stateprops.uv_state_ctrl:
 			c1 = flow.column()
 			c1.alignment = 'EXPAND'
 			c1.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['nw_c'].icon_id ).dir = 'lnw'
@@ -734,7 +701,7 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			c3.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['e_c'].icon_id ).dir = 'le'			
 			c3.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['se_c'].icon_id ).dir = 'lse'
 
-		elif not MESH_OT_uvmodkey.mod_state[0] and MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
+		elif context.scene.stateprops.uv_state_shift:
 			c1 = flow.column()
 			c1.alignment = 'EXPAND'
 			c1.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['nw_b'].icon_id ).dir = 'nw'
@@ -753,7 +720,7 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			c3.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['e_b'].icon_id ).dir = 'e'			
 			c3.operator( MESH_OT_uvslam.bl_idname, text='', icon_value=pcoll['se_b'].icon_id ).dir = 'se'
 
-		elif not MESH_OT_uvmodkey.mod_state[0] and not MESH_OT_uvmodkey.mod_state[1] and MESH_OT_uvmodkey.mod_state[2]:
+		elif context.scene.stateprops.uv_state_alt :
 			c1 = flow.column()
 			c1.alignment = 'EXPAND'
 			c1.prop( context.scene.anchorprops, 'uv_anchor_nw', toggle=1, icon_only =True, icon_value=pcoll['anch_nw'].icon_id )
@@ -794,7 +761,7 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 		layout.separator( factor=0.2 )
 		rot_grid = layout.grid_flow( columns=3, even_columns=True, align=True )
 
-		if MESH_OT_uvmodkey.mod_state[0] and not MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
+		if context.scene.stateprops.uv_state_ctrl:
 			c1 = rot_grid.column()
 			c1.alignment = 'EXPAND'
 			c1.operator( MESH_OT_uvrotate.bl_idname, text='', icon_value=pcoll['lcw'].icon_id ).dir = 'lcw'
@@ -819,7 +786,7 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 		layout.separator( factor=0.2 )
 		scl_grid = layout.grid_flow( columns=3, even_columns=True, align=True )
 
-		if MESH_OT_uvmodkey.mod_state[0] and not MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:			
+		if context.scene.stateprops.uv_state_ctrl:			
 			c1 = scl_grid.column()
 			c1.alignment = 'EXPAND'
 			c1.operator( MESH_OT_uvscale.bl_idname, text='', icon_value=pcoll['LUV+'].icon_id ).dir = 'luv+'
@@ -862,7 +829,7 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 		r2.operator( MESH_OT_uvfitsample.bl_idname )
 		fit_grid = layout.grid_flow( columns=3, even_columns=True, align=True )
 
-		if MESH_OT_uvmodkey.mod_state[0] and not MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
+		if context.scene.stateprops.uv_state_ctrl:
 			c1 = fit_grid.column()
 			c1.alignment = 'EXPAND'
 			c1.operator( MESH_OT_uvfit.bl_idname, text='LU' ).dir = 'lu'
@@ -873,7 +840,7 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			c3.alignment = 'EXPAND'
 			c3.operator( MESH_OT_uvfit.bl_idname, text='LUV' ).dir = 'luv'
 
-		elif not MESH_OT_uvmodkey.mod_state[0] and MESH_OT_uvmodkey.mod_state[1] and not MESH_OT_uvmodkey.mod_state[2]:
+		elif context.scene.stateprops.uv_state_shift:
 			c1 = fit_grid.column()
 			c1.alignment = 'EXPAND'
 			c1.operator( MESH_OT_uvfit.bl_idname, text='GU' ).dir = 'u0'
@@ -895,20 +862,6 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			c3.operator( MESH_OT_uvfit.bl_idname, text='UV' ).dir = 'uv'
 
 
-@persistent
-def uv_startup_handler( dummy ):
-	wm = bpy.context.window_manager
-	if len( wm.windows ) == 1:
-		bpy.ops.view3d.rm_modkey_uvtools( 'INVOKE_DEFAULT' )
-	else:
-		for window in wm.windows:
-			for area in window.screen.areas:
-				if area.type == 'IMAGE_EDITOR':
-					with bpy.context.temp_override( window=window, area=area ):
-						bpy.ops.view3d.rm_modkey_uvtools( 'INVOKE_DEFAULT' )
-					break
-
-
 def anchor_update( prop, context ):
 	prev_value = context.scene.anchor_val_prev
 	if prev_value != '':
@@ -926,6 +879,33 @@ def anchor_update( prop, context ):
 		context.scene.anchor_val_prev = ''
 
 
+def redraw_view3d( context ):
+	for window in context.window_manager.windows:
+		for area in window.screen.areas:
+			if area.type == 'IMAGE_EDITOR':
+				for region in area.regions:
+					if region.type == 'UI':
+						region.tag_redraw()
+
+
+def state_update( prop, context ):
+	prev_value = context.scene.state_val_prev
+	if prev_value != '':
+		prop[prev_value] = False
+	all_false = True
+	for a in STATE_PROP_LIST:
+		try:
+			if prop[a]:
+				all_false = False
+				context.scene.state_val_prev = a
+				break
+		except KeyError:
+			continue
+	if all_false:
+		context.scene.state_val_prev = ''
+	redraw_view3d( context )
+
+
 class AnchorProps( bpy.types.PropertyGroup ):
 	uv_anchor_nw: bpy.props.BoolProperty( name='ANW', default=False, update=lambda self, context : anchor_update( self, context ) )
 	uv_anchor_n: bpy.props.BoolProperty( name='AN', default=False, update=lambda self, context : anchor_update( self, context ) )
@@ -936,6 +916,11 @@ class AnchorProps( bpy.types.PropertyGroup ):
 	uv_anchor_sw: bpy.props.BoolProperty( name='ASW', default=False, update=lambda self, context : anchor_update( self, context ) )
 	uv_anchor_s: bpy.props.BoolProperty( name='AS', default=False, update=lambda self, context : anchor_update( self, context ) )
 	uv_anchor_se: bpy.props.BoolProperty( name='ASE', default=False, update=lambda self, context : anchor_update( self, context ) )
+
+class StateProps( bpy.types.PropertyGroup ):
+	uv_state_ctrl: bpy.props.BoolProperty( name='Local', default=False, update=lambda self, context : state_update( self, context ) )
+	uv_state_shift: bpy.props.BoolProperty( name='Group', default=False, update=lambda self, context : state_update( self, context ) )
+	uv_state_alt: bpy.props.BoolProperty( name='Anchor', default=False, update=lambda self, context : state_update( self, context ) )
 	
 preview_collections = {}
 
@@ -1019,7 +1004,6 @@ def register():
 	print( 'register :: {}'.format( MESH_OT_uvrotate.bl_idname ) )
 	print( 'register :: {}'.format( MESH_OT_uvscale.bl_idname ) )
 	print( 'register :: {}'.format( MESH_OT_uvflip.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_uvmodkey.bl_idname ) )
 	print( 'register :: {}'.format( MESH_OT_uvfit.bl_idname ) )
 	bpy.utils.register_class( UV_PT_UVTransformTools )
 	bpy.utils.register_class( MESH_OT_uvmove )
@@ -1030,17 +1014,18 @@ def register():
 	bpy.utils.register_class( MESH_OT_uvfit )
 	bpy.utils.register_class( MESH_OT_uvfitsample )
 	bpy.types.Scene.uv_uvmove_offset = bpy.props.FloatProperty( name='Offset', default=1.0 )
-	bpy.types.Scene.uv_uvrotation_offset = bpy.props.FloatProperty( name='RotationOffset', default=15.0, min=0.0, max=180.0 )
+	bpy.types.Scene.uv_uvrotation_offset = bpy.props.FloatProperty( name='RotationOffset', default=90.0, min=0.0, max=180.0 )
 	bpy.types.Scene.uv_uvscale_factor = bpy.props.FloatProperty( name='Offset', default=2.0 )
 	bpy.types.Scene.anchor_val_prev = bpy.props.StringProperty( name='Anchor Prev Val', default=ANCHOR_PROP_LIST[4] )
+	bpy.types.Scene.state_val_prev = bpy.props.StringProperty( name='State Prev Val', default='' )
 	bpy.types.Scene.uv_fit_aspect = bpy.props.BoolProperty( name='Use Aspect', default=False )
 	bpy.types.Scene.uv_fit_moveto = bpy.props.BoolProperty( name='Move To', default=True )
 	bpy.types.Scene.uv_fit_bounds_min = bpy.props.FloatVectorProperty( size=2, default=( 0.0, 0.0 ) )
 	bpy.types.Scene.uv_fit_bounds_max = bpy.props.FloatVectorProperty( size=2, default=( 1.0, 1.0 ) )
 	bpy.utils.register_class( AnchorProps )
-	bpy.types.Scene.anchorprops = bpy.props.PointerProperty( type=AnchorProps )	
-	bpy.utils.register_class( MESH_OT_uvmodkey )
-	bpy.app.handlers.load_post.append( uv_startup_handler )
+	bpy.utils.register_class( StateProps )
+	bpy.types.Scene.anchorprops = bpy.props.PointerProperty( type=AnchorProps )
+	bpy.types.Scene.stateprops = bpy.props.PointerProperty( type=StateProps )
 	
 
 def unregister():
@@ -1054,7 +1039,6 @@ def unregister():
 	print( 'unregister :: {}'.format( MESH_OT_uvrotate.bl_idname ) )
 	print( 'unregister :: {}'.format( MESH_OT_uvscale.bl_idname ) )
 	print( 'unregister :: {}'.format( MESH_OT_uvflip.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_uvmodkey.bl_idname ) )
 	print( 'unregister :: {}'.format( MESH_OT_uvfit.bl_idname ) )
 	bpy.utils.unregister_class( UV_PT_UVTransformTools )
 	bpy.utils.unregister_class( MESH_OT_uvmove )
@@ -1068,10 +1052,12 @@ def unregister():
 	del bpy.types.Scene.uv_uvrotation_offset
 	del bpy.types.Scene.uv_uvscale_factor
 	del bpy.types.Scene.anchor_val_prev
+	del bpy.types.Scene.state_val_prev
 	del bpy.types.Scene.uv_fit_aspect
 	del bpy.types.Scene.uv_fit_moveto
 	del bpy.types.Scene.uv_fit_bounds_min
 	del bpy.types.Scene.uv_fit_bounds_max
 	bpy.utils.unregister_class( AnchorProps )
+	bpy.utils.unregister_class( StateProps )
 	del bpy.types.Scene.anchorprops
-	bpy.utils.unregister_class( MESH_OT_uvmodkey )
+	del bpy.types.Scene.stateprops
