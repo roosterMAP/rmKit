@@ -3,6 +3,27 @@ import bmesh
 from .. import rmlib
 import mathutils
 
+def get_vec( v_a, v_b, face_normals ):
+	avg_nml = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
+	avg_nml_backup = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
+	e = rmlib.rmEdgeSet.from_endpoints( v_a, v_b )
+	for f in v_a.link_faces:
+		if f not in e.link_faces:
+			avg_nml += face_normals[f]
+		else:
+			avg_nml_backup += face_normals[f]
+	if avg_nml.length < 0.0001:
+		avg_nml = avg_nml_backup.normalized()
+	else:
+		avg_nml.normalize()
+	edge_vec = v_b.co - v_a.co
+	edge_vec.normalize()
+	cross = avg_nml.cross( edge_vec )
+	cross.normalize()
+	edge_vec = cross.cross( avg_nml )
+	edge_vec.normalize()
+	return edge_vec
+
 def ScaleLine( p0, p1, scale ):
 	v = p1 - p0
 	m = v.length
@@ -13,13 +34,25 @@ def ScaleLine( p0, p1, scale ):
 
 def arc_adjust( bm, scale ):
 	edges = rmlib.rmEdgeSet( [ e for e in bm.edges if e.select ] )
+
+	normals_cache = {}
+	for v in edges.vertices:
+		for f in v.link_faces:
+			normals_cache[f] = f.normal.copy()
+
 	chains = edges.chain()
 	for chain in chains:
-		if len( chain ) < 3:
-			continue
+		if len( chain ) < 3:				
+			v_a = get_vec( chain[0][0], chain[0][1], normals_cache )
+			v_b = get_vec( chain[-1][-1], chain[-1][-2], normals_cache )
+			print( v_a )
+			print( v_b )
+			a, b = ScaleLine( chain[0][0].co.copy(), chain[0][0].co.copy() + v_a, 10000.0 )			
+			c, d = ScaleLine( chain[-1][-1].co.copy(), chain[-1][-1].co.copy() + v_b , 10000.0 )
+		else:
+			a, b = ScaleLine( chain[0][0].co.copy(), chain[0][1].co.copy(), 10000.0 )			
+			c, d = ScaleLine( chain[-1][-1].co.copy(), chain[-1][-1].co.copy() , 10000.0 )
 
-		a, b = ScaleLine( chain[0][0].co.copy(), chain[0][1].co.copy(), 10000.0 )
-		c, d = ScaleLine( chain[-1][0].co.copy(), chain[-1][1].co.copy() , 10000.0 )
 		p0, p1 = mathutils.geometry.intersect_line_line( a, b, c, d )
 		c = ( p0 + p1 ) * 0.5
 		s = mathutils.Matrix.Identity( 3 )
@@ -28,9 +61,15 @@ def arc_adjust( bm, scale ):
 		s[2][2] = scale
 
 		verts = rmlib.rmVertexSet()
-		for pair in chain[1:]:
-			if pair[0] not in verts:
-				verts.append( pair[0] )
+		if len( chain ) == 1:
+			verts = list( chain[0] )
+		elif len( chain ) == 2:
+			verts = list( chain[0] )
+			verts.append( chain[1][1] )
+		else:
+			for pair in chain[1:]:
+				if pair[0] not in verts:
+					verts.append( pair[0] )
 		for v in verts:
 			pos = v.co - c
 			pos = s @ pos
@@ -38,6 +77,9 @@ def arc_adjust( bm, scale ):
 
 		if abs( scale ) <= 0.0000001:
 			bmesh.ops.remove_doubles( bm, verts=verts, dist=0.00001 )
+			
+	return True
+
 
 def ComputePlane( chain ):
 	a, b = ScaleLine( chain[0].co.copy(), chain[1].co.copy(), 10000.0 )
@@ -135,10 +177,16 @@ def RemapChain( chain, nearest_center ):
 
 def radial_arc_adjust( bm, scale ):
 	edges = rmlib.rmEdgeSet( [ e for e in bm.edges if e.select ] )
-	if len( edges ) < 3:
-		return False
 	
 	chains = edges.vert_chain()
+	
+	min_edgecount_in_chains = 999999
+	for chain in chains:
+		if len( chain ) < min_edgecount_in_chains:
+			min_edgecount_in_chains = len( chain )
+	if min_edgecount_in_chains <= 3:
+		return arc_adjust( bm, scale )
+	
 	for i in range( 1, len( chains ) ):
 		a = ( chains[i][-2].co - chains[0][1].co ).length
 		b = ( chains[i][1].co - chains[0][1].co ).length
@@ -149,7 +197,7 @@ def radial_arc_adjust( bm, scale ):
 	circle_center, diagonal_vector = ComputeCircleCenter( chains[chain_idx] )
 	if circle_center is None:
 		return False
-	circle_center += diagonal_vector * scale
+	circle_center += diagonal_vector * ( scale - 1.0 )
 	
 	for chain in chains:
 		if len( chain ) < 4:

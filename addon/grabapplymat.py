@@ -33,6 +33,7 @@ class MESH_OT_grabapplymat( bpy.types.Operator ):
 		if mos_rmmesh is None:
 			return { 'CANCELLED' }
 
+		mos_edge = None
 		bevel_weight = None
 		crease_weight = None
 		with mos_rmmesh as mos_rmmesh:
@@ -41,6 +42,8 @@ class MESH_OT_grabapplymat( bpy.types.Operator ):
 			mos_edges = rmlib.rmEdgeSet.from_mos( mos_rmmesh, context, mouse_pos, pixel_radius=8 )
 			if len( mos_edges ) < 1:
 				return { 'CANCELLED' }
+			
+			mos_edge = mos_edges[0]
 
 			bevlayers = mos_rmmesh.bmesh.edges.layers.bevel_weight
 			try:
@@ -70,6 +73,9 @@ class MESH_OT_grabapplymat( bpy.types.Operator ):
 		with target_rmmesh as rmmesh:
 			edges = rmlib.rmEdgeSet.from_selection( rmmesh )
 			for e in edges:
+				if mos_edge is not None:
+					e.seam = mos_edge.seam
+					e.smooth = mos_edge.smooth
 				if blyr is not None:
 					e[blyr] = bevel_weight
 				if clyr is not None:
