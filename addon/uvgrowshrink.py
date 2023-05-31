@@ -143,14 +143,14 @@ class MESH_OT_uvgrowshrink( bpy.types.Operator ):
 		if rmmesh is None:
 			return { 'CANCELLED' }
 				
-		sel_sync = context.tool_settings.use_uv_select_sync	
+		sel_sync = context.tool_settings.use_uv_select_sync
+		sel_mode_uv = context.tool_settings.uv_select_mode	
 		if sel_sync:
 			if self.mode == 'GROW':
 				bpy.ops.uv.select_more( type=sel_mode_uv )
 			else:
 				bpy.ops.uv.select_less( type=sel_mode_uv )
-		else:
-			sel_mode_uv = context.tool_settings.uv_select_mode		
+		else:				
 			if self.mode == 'GROW':
 				if sel_mode_uv == 'FACE':
 					with rmmesh as rmmesh:

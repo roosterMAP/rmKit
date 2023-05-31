@@ -32,27 +32,24 @@ def GetFaceSelection( context, rmmesh ):
 			return faces
 	else:
 		sel_mode = context.tool_settings.uv_select_mode
-		if sel_mode == 'FACE':
-			loops = rmlib.rmUVLoopSet.from_selection( rmmesh, uvlayer=uvlayer )
-			loop_faces = set()
-			for l in loops:
-				if not l.face.select:
-					continue
-				if not l[uvlayer].select_edge:
-					continue
-				loop_faces.add( l.face )
-				l.tag = True
-			for f in loop_faces:
-				all_loops_tagged = True
-				for l in f.loops:
-					if not l.tag:
-						all_loops_tagged = False
-					else:
-						l.tag = False
-				if all_loops_tagged:
-					faces.append( f )
-		else:
-			return faces
+		loops = rmlib.rmUVLoopSet.from_selection( rmmesh, uvlayer=uvlayer )
+		loop_faces = set()
+		for l in loops:
+			if not l.face.select and sel_mode != 'EDGE':
+				continue
+			if not l[uvlayer].select_edge and sel_mode != 'VERT':
+				continue
+			loop_faces.add( l.face )
+			l.tag = True
+		for f in loop_faces:
+			all_loops_tagged = True
+			for l in f.loops:
+				if not l.tag:
+					all_loops_tagged = False
+				else:
+					l.tag = False
+			if all_loops_tagged:
+				faces.append( f )
 
 	clear_tags( rmmesh )
 
@@ -205,6 +202,24 @@ class Bounds2d():
 		#return corner coords of self in (u,v) domain
 		return [ self.__min, mathutils.Vector( ( self.__max[0], self.__min[1] ) ), self.__max, mathutils.Vector( ( self.__min[0], self.__max[1] ) ) ]
 
+	def clamp( self ):
+		new_bounds = Bounds2d( [ self.__min, self.__max ] )
+
+		#move into unit square
+		center = ( new_bounds.__min + new_bounds.__max ) / 2.0
+		center.x = math.floor( center.x )
+		center.y = math.floor( center.y )
+		new_bounds.__min -= center
+		new_bounds.__max -= center
+
+		#clamp to 0.0-1.0 range
+		new_bounds.__min.x = max( new_bounds.__min.x, 0.0 )
+		new_bounds.__min.y = max( new_bounds.__min.y, 0.0 )
+		new_bounds.__max.x = min( new_bounds.__max.x, 1.0 )
+		new_bounds.__max.y = min( new_bounds.__max.y, 1.0 )
+
+		return new_bounds
+
 	def normalized( self ):
 		#ensure bounds overlapps the 0-1 region
 		center = self.center
@@ -249,18 +264,18 @@ class Bounds2d():
 				rot_mat[1][0] = math.sin( math.pi  / 2.0 ) * -1.0
 				rot_mat[0][1] = math.sin( math.pi  / 2.0 )
 				rot_mat[1][1] = math.cos( math.pi  / 2.0 )
-				if self.width >= 1.0:
-					scl_mat[0][0] = other.width / self.height
-					scl_mat[1][1] = scl_mat[0][0]
+				if other.width >= 1.0:
+					scl_mat[1][1] = other.width / self.height
+					scl_mat[0][0] = scl_mat[1][1]
 				else:
 					scl_mat[0][0] = other.height / self.width
 					scl_mat[1][1] = scl_mat[0][0]
 			else:
-				if self.width >= 1.0:
-					scl_mat[0][0] = other.width / self.width
-					scl_mat[1][1] = scl_mat[0][0]
+				if other.width >= 1.0:
+					scl_mat[1][1] = other.height / self.height
+					scl_mat[0][0] = scl_mat[1][1]
 				else:
-					scl_mat[0][0] = other.height / self.height
+					scl_mat[0][0] = other.width / self.width
 					scl_mat[1][1] = scl_mat[0][0]
 		else:
 			if self.horizontal != other.horizontal and not skip_rot:
@@ -628,7 +643,7 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 					for i in range( 2 ):
 						pmin[i] = min( pmin[i], p[i] )
 						pmax[i] = max( pmax[i], p[i] )
-				bounds.append( Bounds2d( [ pmin, pmax ] ) )
+				bounds.append( Bounds2d( [ pmin, pmax ] ).clamp() )
 
 			try:
 				mat_name = rmmesh.mesh.materials[ polys[0].material_index ].name
@@ -879,9 +894,10 @@ class MESH_OT_nrsthotspot( bpy.types.Operator ):
 					for l in f.loops:
 						loops.add( l )
 				source_bounds = Bounds2d.from_loops( loops, uvlayer )
-				target_bounds = hotspot.overlapping( source_bounds ).copy()
-				target_bounds.inset( context.scene.hotspot_inset / 1024.0 )
-				mat = source_bounds.transform( target_bounds, skip_rot=True, trim=use_trim )		
+				#target_bounds = hotspot.overlapping( source_bounds ).copy()
+				target_bounds = hotspot.nearest( source_bounds.center.x, source_bounds.center.y ).copy()
+				target_bounds.inset( context.scene.hotspot_inset / 1024.0 )				
+				mat = source_bounds.transform( target_bounds, skip_rot=True, trim=use_trim )
 				for l in loops:
 					uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 					uv[2] = 1.0
@@ -1157,7 +1173,7 @@ def enum_previews_from_directory_items(self, context):
 			size = 64
 			thumb = pcoll.new( name )
 			thumb.image_size = [ size, size ]
-			raw_data = [ 1.0 ] * 4 * size * size
+			raw_data = [ 0.1 ] * 4 * size * size
 
 			hotspot = existing_hotspots[i]
 			for b in hotspot.data:
