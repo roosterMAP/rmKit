@@ -150,29 +150,44 @@ class MESH_OT_convertmodeto( bpy.types.Operator ):
 	def execute( self, context ):
 		#get the selection mode
 		if context.object is None or context.mode == 'OBJECT':
-			return { 'CANCELLED' }		
-
+			return { 'CANCELLED' }
+			
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		if rmmesh is None:
 			return { 'CANCELLED' }
 
 		with rmmesh as rmmesh:
-			sel_mode = context.tool_settings.mesh_select_mode[:]
-			if ( sel_mode[0] and self.mode_to == 'VERT' ) or ( sel_mode[1] and self.mode_to == 'EDGE' ) or ( sel_mode[2] and self.mode_to == 'FACE' ):
-				return { 'FINISHED' }
+			intlayers_v = rmmesh.bmesh.verts.layers.int
+			selset = intlayers_v.get( BACKGROUND_LAYERNAME, None )
+			if selset is None:
+				selset = intlayers_v.new( BACKGROUND_LAYERNAME )
 
-			if sel_mode[0]:
+			intlayers_e = rmmesh.bmesh.edges.layers.int
+			selset = intlayers_e.get( BACKGROUND_LAYERNAME, None )
+			if selset is None:
+				selset = intlayers_e.new( BACKGROUND_LAYERNAME )
+
+			intlayers_f = rmmesh.bmesh.faces.layers.int
+			selset = intlayers_f.get( BACKGROUND_LAYERNAME, None )
+			if selset is None:
+				selset = intlayers_f.new( BACKGROUND_LAYERNAME )
+
+		sel_mode = context.tool_settings.mesh_select_mode[:]
+		if ( sel_mode[0] and self.mode_to == 'VERT' ) or ( sel_mode[1] and self.mode_to == 'EDGE' ) or ( sel_mode[2] and self.mode_to == 'FACE' ):
+			return { 'FINISHED' }
+
+		if sel_mode[0]:
+			rmmesh = rmlib.rmMesh.GetActive( context )
+			with rmmesh as rmmesh:
 				verts = rmlib.rmVertexSet.from_selection( rmmesh )
-				bpy.ops.mesh.rm_changemodeto( mode_to=self.mode_to )
-				bpy.ops.mesh.select_all( action='DESELECT' )
 				if self.mode_to == 'EDGE':
-					for e in verts.edges:
-						e.select = True
+					SetSelsetMembership( rmmesh.bmesh, self.mode_to, verts.edges, BACKGROUND_LAYERNAME )
 				elif self.mode_to == 'FACE':
-					for f in verts.polygons:
-						f.select = True
-
-			elif sel_mode[1]:
+					SetSelsetMembership( rmmesh.bmesh, self.mode_to, verts.polygons, BACKGROUND_LAYERNAME )
+				
+		elif sel_mode[1]:
+			rmmesh = rmlib.rmMesh.GetActive( context )
+			with rmmesh as rmmesh:
 				edges = rmlib.rmEdgeSet.from_selection( rmmesh )
 
 				sel_faces = set()
@@ -191,29 +206,30 @@ class MESH_OT_convertmodeto( bpy.types.Operator ):
 						if ( is_open and not selected_boundary ) or sel_count > 1:
 							for f in v.link_faces:
 								sel_faces.add( f )
-
-				bpy.ops.mesh.rm_changemodeto( mode_to=self.mode_to )
-				bpy.ops.mesh.select_all( action='DESELECT' )
+								
 				if self.mode_to == 'VERT':
-					for v in edges.vertices:
-						v.select = True
+					SetSelsetMembership( rmmesh.bmesh, self.mode_to, edges.vertices, BACKGROUND_LAYERNAME )
 				elif self.mode_to == 'FACE':
-					for f in edges.polygons:
-						f.select = True
-					for f in sel_faces:
-						f.select = True
+					faces = set( edges.polygons ).union( sel_faces )
+					SetSelsetMembership( rmmesh.bmesh, self.mode_to, faces, BACKGROUND_LAYERNAME )
 
-			elif sel_mode[2]:
+		elif sel_mode[2]:
+			rmmesh = rmlib.rmMesh.GetActive( context )
+			with rmmesh as rmmesh:
 				faces = rmlib.rmPolygonSet.from_selection( rmmesh )
-				bpy.ops.mesh.rm_changemodeto( mode_to=self.mode_to )
-				bpy.ops.mesh.select_all( action='DESELECT' )
 				if self.mode_to == 'VERT':
-					for v in faces.vertices:
-						v.select = True
+					SetSelsetMembership( rmmesh.bmesh, self.mode_to, faces.vertices, BACKGROUND_LAYERNAME )
 				elif self.mode_to == 'EDGE':
-					for e in faces.edges:
-						e.select = True
-					
+					SetSelsetMembership( rmmesh.bmesh, self.mode_to, faces.edges, BACKGROUND_LAYERNAME )
+						
+		bpy.ops.mesh.select_mode( type=self.mode_to )
+		bpy.ops.mesh.select_all( action='DESELECT' )
+
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		with rmmesh as rmmesh:
+			#rmmesh.readonly = True
+			for elem in GetSelsetMembership( rmmesh.bmesh, self.mode_to, BACKGROUND_LAYERNAME ):
+				elem.select = True
 				
 		return { 'FINISHED' }
 

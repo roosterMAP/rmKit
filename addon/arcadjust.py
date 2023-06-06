@@ -53,7 +53,11 @@ def arc_adjust( bm, scale ):
 			a, b = ScaleLine( chain[0][0].co.copy(), chain[0][1].co.copy(), 10000.0 )			
 			c, d = ScaleLine( chain[-1][-1].co.copy(), chain[-1][-1].co.copy() , 10000.0 )
 
-		p0, p1 = mathutils.geometry.intersect_line_line( a, b, c, d )
+		try:
+			p0, p1 = mathutils.geometry.intersect_line_line( a, b, c, d )
+		except TypeError:
+			return False
+
 		c = ( p0 + p1 ) * 0.5
 		s = mathutils.Matrix.Identity( 3 )
 		s[0][0] = scale
@@ -249,9 +253,14 @@ class MESH_OT_arcadjust( bpy.types.Operator ):
 			success = radial_arc_adjust( bm, self.scale - 1.0 )
 			if not success:
 				self.report( { 'WARNING' }, 'Invalid edge selection!!!' )
+				bpy.ops.object.mode_set( mode='EDIT', toggle=False )
 				return { 'CANCELLED' }
 		else:
-			arc_adjust( bm, self.scale )
+			result = arc_adjust( bm, self.scale )
+			if not result:
+				self.report( { 'WARNING' }, 'Invalid edge selection!!!' )
+				bpy.ops.object.mode_set( mode='EDIT', toggle=False )
+				return { 'CANCELLED' }
 
 		targetMesh = context.active_object.data
 		bm.to_mesh( targetMesh )
@@ -328,7 +337,10 @@ class MESH_OT_unbevel( bpy.types.Operator ):
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		if rmmesh is not None:
 			with rmmesh as rmmesh:
-				arc_adjust( rmmesh.bmesh, 0.0 )
+				result = arc_adjust( rmmesh.bmesh, 0.0 )
+				if not result:
+					self.report( { 'WARNING' }, 'Invalid edge selection!!!' )
+					return { 'CANCELLED' }
 				
 		return { 'FINISHED' }
 
