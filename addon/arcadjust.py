@@ -45,13 +45,11 @@ def arc_adjust( bm, scale ):
 		if len( chain ) < 3:				
 			v_a = get_vec( chain[0][0], chain[0][1], normals_cache )
 			v_b = get_vec( chain[-1][-1], chain[-1][-2], normals_cache )
-			print( v_a )
-			print( v_b )
 			a, b = ScaleLine( chain[0][0].co.copy(), chain[0][0].co.copy() + v_a, 10000.0 )			
 			c, d = ScaleLine( chain[-1][-1].co.copy(), chain[-1][-1].co.copy() + v_b , 10000.0 )
 		else:
 			a, b = ScaleLine( chain[0][0].co.copy(), chain[0][1].co.copy(), 10000.0 )			
-			c, d = ScaleLine( chain[-1][-1].co.copy(), chain[-1][-1].co.copy() , 10000.0 )
+			c, d = ScaleLine( chain[-1][-1].co.copy(), chain[-1][-2].co.copy() , 10000.0 )
 
 		try:
 			p0, p1 = mathutils.geometry.intersect_line_line( a, b, c, d )

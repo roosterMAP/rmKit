@@ -285,8 +285,6 @@ class VIEW3D_MT_quickbool( bpy.types.Menu ):
 				layout.operator( 'mesh.intersect_boolean', text='Intersect', icon="SELECT_INTERSECT" ).operation = 'INTERSECT'
 				layout.operator( 'mesh.intersect', text='Slice', icon="SELECT_DIFFERENCE" ).mode = 'SELECT_UNSELECT'
 
-		return { 'FINISHED' }
-
 
 def register():
 	print( 'register :: {}'.format( VIEW3D_MT_quickbool.bl_idname ) )
