@@ -222,62 +222,59 @@ class MESH_OT_ring( bpy.types.Operator ):
 
 	@classmethod
 	def poll( cls, context ):
-		return ( ( context.area.type == 'VIEW_3D' or context.area.type == 'IMAGE_EDITOR' ) and
-				context.active_object is not None and
-				context.active_object.type == 'MESH' and
-				context.object.data.is_editmode )
+		return ( context.area.type == 'VIEW_3D' and len( context.editable_objects ) > 0 )
 
 	def execute( self, context ):
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 
-		rmmesh = rmlib.rmMesh.GetActive( context )
-		with rmmesh as rmmesh:
-			rmmesh.readonly = True
-			for e in rmmesh.bmesh.edges:
-				e.tag = False
-			for p in rmmesh.bmesh.faces:
-				p.tag = False
-				
-
-			if sel_mode[1]:
-				selected_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
-			elif sel_mode[2]:
-				selected_polygons = rmlib.rmPolygonSet.from_selection( rmmesh )
-				shared_edges = set()
-
-				allEdges = []
-				for p in selected_polygons:
-					allEdges += p.edges
-
-				while( len( allEdges ) > 0 ):
-					e = allEdges.pop( 0 )
-					if e in allEdges:
-						shared_edges.add( e )
-
-				selected_edges = rmlib.rmEdgeSet( shared_edges )
-			else:
-				return { 'CANCELLED' }
-			
-			for e in selected_edges:
-				if e.tag:
-					continue
-				
-				ring = rmlib.rmEdgeSet( [e] )		
-				try:
-					ring = edge_ring( e, e.link_faces[0], ring )
-					ring += edge_ring( e, e.link_faces[1], ring )
-				except IndexError:
-					pass
+		for rmmesh in rmlib.iter_edit_meshes( context, mode_filter=True ):
+			with rmmesh as rmmesh:
+				rmmesh.readonly = True
+				for e in rmmesh.bmesh.edges:
+					e.tag = False
+				for p in rmmesh.bmesh.faces:
+					p.tag = False
+					
 
 				if sel_mode[1]:
-					ring.select( replace=False )
+					selected_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
+				elif sel_mode[2]:
+					selected_polygons = rmlib.rmPolygonSet.from_selection( rmmesh )
+					shared_edges = set()
+
+					allEdges = []
+					for p in selected_polygons:
+						allEdges += p.edges
+
+					while( len( allEdges ) > 0 ):
+						e = allEdges.pop( 0 )
+						if e in allEdges:
+							shared_edges.add( e )
+
+					selected_edges = rmlib.rmEdgeSet( shared_edges )
 				else:
-					ring.polygons.select( replace=False )
+					return { 'CANCELLED' }
 				
-			for e in rmmesh.bmesh.edges:
-				e.tag = False
-			for p in rmmesh.bmesh.faces:
-				p.tag = False
+				for e in selected_edges:
+					if e.tag:
+						continue
+					
+					ring = rmlib.rmEdgeSet( [e] )		
+					try:
+						ring = edge_ring( e, e.link_faces[0], ring )
+						ring += edge_ring( e, e.link_faces[1], ring )
+					except IndexError:
+						pass
+
+					if sel_mode[1]:
+						ring.select( replace=False )
+					else:
+						ring.polygons.select( replace=False )
+					
+				for e in rmmesh.bmesh.edges:
+					e.tag = False
+				for p in rmmesh.bmesh.faces:
+					p.tag = False
 
 		return { 'FINISHED' }
 
@@ -296,10 +293,7 @@ class MESH_OT_loop( bpy.types.Operator ):
 	
 	@classmethod
 	def poll( cls, context ):
-		return ( ( context.area.type == 'VIEW_3D' or context.area.type == 'IMAGE_EDITOR' ) and
-				context.active_object is not None and
-				context.active_object.type == 'MESH' and
-				context.object.data.is_editmode )
+		return ( context.area.type == 'VIEW_3D' and len( context.editable_objects ) > 0 )
 
 	def execute( self, context ):
 		sel_mode = context.tool_settings.mesh_select_mode[:]
@@ -307,25 +301,25 @@ class MESH_OT_loop( bpy.types.Operator ):
 			bpy.ops.mesh.rm_ring()
 			return { 'FINISHED' }
 		
-		rmmesh = rmlib.rmMesh.GetActive( context )
-		with rmmesh as rmmesh:
-			for e in rmmesh.bmesh.edges:
-				e.tag = False
-			
-			rmmesh.readonly = True
-			selected_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
-			selected_edges.tag( True )
-			for e in selected_edges:
-				if not e.tag:
-					continue
+		for rmmesh in rmlib.iter_edit_meshes( context, mode_filter=True ):
+			with rmmesh as rmmesh:
+				for e in rmmesh.bmesh.edges:
+					e.tag = False
 				
-				loop = edge_loop( e, e.verts[0], rmlib.rmEdgeSet( [e] ), self.force_boundary )
-				loop = edge_loop( e, e.verts[1], loop, self.force_boundary )
-				
-				loop.select( False )
-				
-			for e in rmmesh.bmesh.edges:
-				e.tag = False
+				rmmesh.readonly = True
+				selected_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
+				selected_edges.tag( True )
+				for e in selected_edges:
+					if not e.tag:
+						continue
+					
+					loop = edge_loop( e, e.verts[0], rmlib.rmEdgeSet( [e] ), self.force_boundary )
+					loop = edge_loop( e, e.verts[1], loop, self.force_boundary )
+					
+					loop.select( False )
+					
+				for e in rmmesh.bmesh.edges:
+					e.tag = False
 
 		return { 'FINISHED' }
 

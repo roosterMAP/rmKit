@@ -4,14 +4,13 @@ import mathutils
 from bpy_extras import view3d_utils
 
 def iter_edit_meshes( context, mode_filter=True ):
-	#when mode_filter is False, then meshes get added to list even if they're not in editmode
+	#when mode_filter is False, then meshes get yielded even if they're not in editmode
 	meshes = set()
 	rmmeshlist = []
-	for meshobj in context.editable_objects:
-		if meshobj.type == 'MESH' and ( meshobj.data.is_editmode or not mode_filter ) and meshobj.data not in meshes:
-			meshes.add( meshobj.data )
-			rmmeshlist.append( rmMesh( meshobj ) )
-	return rmmeshlist
+	for o in context.editable_objects:
+		if o.type == 'MESH' and ( o.data.is_editmode or not mode_filter ) and o.data not in meshes:
+			meshes.add( o.data )
+			yield rmMesh( o )
 
 
 class rmMesh():
@@ -23,6 +22,7 @@ class rmMesh():
 	
 		if object.type != 'MESH':
 			raise TypeError( 'object arg must be of type MESH!!!' )
+
 		self.__object = object
 		self.__mesh = object.data
 	
@@ -73,7 +73,7 @@ class rmMesh():
 		return self
 			
 	def __exit__( self ,type, value, traceback ):
-		if self.__bmesh.is_wrapped:
+		if self.__bmesh.is_wrapped: #True when this mesh is owned by blender (typically the editmode BMesh).
 			bmesh.update_edit_mesh( self.__mesh, loop_triangles=( not self.__readonly ), destructive=( not self.__readonly ) )
 			self.__bmesh.select_flush_mode()
 		else:
