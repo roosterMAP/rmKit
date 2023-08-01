@@ -56,6 +56,7 @@ from . import uvgrowshrink
 from . import preferences
 from . import quickboolean
 from . import naming
+from . import quicksculptnav
 
 def register():
 	bpy.utils.register_class( rmKitPannel_parent )
@@ -94,6 +95,7 @@ def register():
 	dimensions.register()
 	quickboolean.register()
 	uvgrowshrink.register()
+	quicksculptnav.register()
 	preferences.register()
 	naming.register()
 
@@ -134,5 +136,6 @@ def unregister():
 	dimensions.unregister()
 	quickboolean.unregister()
 	uvgrowshrink.unregister()
+	quicksculptnav.unregister()
 	preferences.unregister()
 	naming.unregister()
