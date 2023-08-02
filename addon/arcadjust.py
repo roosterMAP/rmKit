@@ -226,45 +226,49 @@ class MESH_OT_arcadjust( bpy.types.Operator ):
 	)
 
 	def __init__( self ):
-		self.bmesh = None
+		self.meshList = []
+		self.bmList = []
 
 	def __del__( self ):
 		try:
-			if self.bmesh is not None:
-				self.bmesh.free()
+			if len( self.bmList ) != 0:
+				for bm in self.bmList:
+					bm.free()
+			self.meshList.clear()
+			self.bmList.clear()
 		except AttributeError:
 			pass
 	
 	@classmethod
 	def poll( cls, context ):
-		return ( context.area.type == 'VIEW_3D' and
-				context.object is not None and
-				context.object.type == 'MESH' and
-				context.object.data.is_editmode )
+		return ( context.area.type == 'VIEW_3D' and len( context.editable_objects ) > 0 )
 		
 	def execute( self, context ):
 		bpy.ops.object.mode_set( mode='OBJECT', toggle=False )
 		
-		bm = self.bmesh.copy()
-		
-		if self.radial:
-			success = radial_arc_adjust( bm, self.scale - 1.0 )
-			if not success:
-				self.report( { 'WARNING' }, 'Invalid edge selection!!!' )
-				bpy.ops.object.mode_set( mode='EDIT', toggle=False )
-				return { 'CANCELLED' }
-		else:
-			result = arc_adjust( bm, self.scale )
-			if not result:
-				self.report( { 'WARNING' }, 'Invalid edge selection!!!' )
-				bpy.ops.object.mode_set( mode='EDIT', toggle=False )
-				return { 'CANCELLED' }
+		for i, bmlistelem in enumerate( self.bmList ):
+			bm = bmlistelem.copy()
+			
+			if self.radial:
+				success = radial_arc_adjust( bm, self.scale - 1.0 )
+				if not success:
+					self.report( { 'WARNING' }, 'Invalid edge selection!!!' )
+					bpy.ops.object.mode_set( mode='EDIT', toggle=False )
+					bm.free()
+					continue
+			else:
+				result = arc_adjust( bm, self.scale )
+				if not result:
+					self.report( { 'WARNING' }, 'Invalid edge selection!!!' )
+					bpy.ops.object.mode_set( mode='EDIT', toggle=False )
+					bm.free()
+					continue
 
-		targetMesh = context.active_object.data
-		bm.to_mesh( targetMesh )
-		bm.calc_loop_triangles()
-		targetMesh.update()
-		bm.free()
+			targetMesh = self.meshList[i]
+			bm.to_mesh( targetMesh )
+			bm.calc_loop_triangles()
+			targetMesh.update()
+			bm.free()
 		
 		bpy.ops.object.mode_set( mode='EDIT', toggle=False )
 		
@@ -297,11 +301,11 @@ class MESH_OT_arcadjust( bpy.types.Operator ):
 		if not sel_mode[1]:
 			return { 'CANCELLED' }
 
-		rmmesh = rmlib.rmMesh.GetActive( context )
-		if rmmesh is not None:
+		for rmmesh in rmlib.iter_edit_meshes( context ):
 			with rmmesh as rmmesh:
 				rmmesh.readme = True
-				self.bmesh = rmmesh.bmesh.copy()
+				self.meshList.append( rmmesh.mesh )
+				self.bmList.append( rmmesh.bmesh.copy() )
 				
 		context.window_manager.modal_handler_add( self )
 		return { 'RUNNING_MODAL' }
@@ -314,11 +318,7 @@ class MESH_OT_unbevel( bpy.types.Operator ):
 	
 	@classmethod
 	def poll( cls, context ):
-		#used by blender to test if operator can show up in a menu or as a button in the UI
-		return ( context.area.type == 'VIEW_3D' and
-				context.active_object is not None and
-				context.active_object.type == 'MESH' and
-				context.object.data.is_editmode )
+		return ( context.area.type == 'VIEW_3D' and len( context.editable_objects ) > 0 )
 		
 	def execute( self, context ):
 		#get the selection mode
@@ -332,8 +332,7 @@ class MESH_OT_unbevel( bpy.types.Operator ):
 		if not sel_mode[1]:
 			return { 'CANCELLED' }
 
-		rmmesh = rmlib.rmMesh.GetActive( context )
-		if rmmesh is not None:
+		for rmmesh in rmlib.iter_edit_meshes( context ):
 			with rmmesh as rmmesh:
 				result = arc_adjust( rmmesh.bmesh, 0.0 )
 				if not result:
