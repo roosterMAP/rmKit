@@ -53,6 +53,16 @@ class VIEW3D_OT_quicknavigate( bpy.types.Operator ):
 		return { 'FINISHED' }
 
 	def invoke( self, context, event ):
+		if not bpy.ops.sculpt.brush_stroke.poll():
+			if self.nav == 'rot':
+				bpy.ops.view3d.rotate( 'INVOKE_DEFAULT' )
+			elif self.nav == 'scl':
+				bpy.ops.view3d.zoom( 'INVOKE_DEFAULT' )
+			else:
+				bpy.ops.view3d.move( 'INVOKE_DEFAULT' )
+			self.nav = 'rot' #reset to default (modkeyless nav op)
+			return { 'FINISHED' }
+		
 		# get the context arguments
 		scene = context.scene
 		region = context.region
