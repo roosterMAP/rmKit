@@ -1,57 +1,90 @@
 import mathutils
-from .. import rmlib
-import bpy
+import rmKit.rmlib as rmlib
+import bpy, bmesh
 
-def move_to_furthest( groups, dir_vec, constrain, center ):
-	plane_nml = -dir_vec
-	for g in groups:		
-		#find the plane_position (min_pos)
-		avg_pos = g[0].co.copy()
-		plane_pos = g[0].co.copy()
-		max_dot = dir_vec.dot( g[0].co )
-		for i in range( 1, len( g ) ):
-			v = g[i]
-			avg_pos += v.co
-			dot = dir_vec.dot( v.co )
-			if dot > max_dot:
-				max_dot = dot
-				plane_pos = v.co.copy()
+def find_furthest( elems, dir_vec, center ):
+	plane_pos = None
+	avg_pos = mathutils.Vector()
+	vcount = 0
+	for rmmesh, groups in elems.items():
+		xfrm = rmmesh.world_transform
+		for g in groups:
+			#find the plane_position (min_pos)
+			avg_pos += xfrm @ g[0].co
+			vcount += len( g )
+			group_plane_pos = xfrm @ g[0].co
+			max_dot = dir_vec.dot( group_plane_pos )
+			for i in range( 1, len( g ) ):
+				vpos = xfrm @ g[i].co
+				avg_pos += vpos
+				dot = dir_vec.dot( vpos )
+				if dot > max_dot:
+					max_dot = dot
+					group_plane_pos = vpos
+			if plane_pos is None:
+				plane_pos = group_plane_pos.copy()
+			else:
+				if dir_vec.dot( group_plane_pos ) > dir_vec.dot( plane_pos ):
+					plane_pos = group_plane_pos
+				
 
-		#for horizontal/vertical, plane_pos is the avg pos
-		avg_pos *= 1.0 / len( g )
-		if center:
-			plane_pos = avg_pos
-				
-		if constrain:
-			new_pos = [ None ] * len( g )
-			for i, v in enumerate( g ):			
-				max_dot = -1
-				edge_dir = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
-				for e in v.link_edges:
-					other_v = e.other_vert( v )
-					edge_vec = other_v.co - v.co
-					dot = dir_vec.dot( edge_vec.normalized() )
-					if dot >= max_dot:
-						max_dot = dot
-						edge_dir = edge_vec
-						
-				if max_dot <= 0.00001:
-					new_pos[i] = v.co
-					continue
-				
-				intersection_pos = mathutils.geometry.intersect_line_plane( v.co, v.co + edge_dir, plane_pos, plane_nml )
-				if intersection_pos is None:
-					new_pos[i] = v.co + edge_dir
-				else:
-					new_pos[i] = intersection_pos
+	#for horizontal/vertical, plane_pos is the avg pos	
+	print( vcount )
+	if center:
+		avg_pos *= 1.0 / float( vcount )
+		plane_pos = avg_pos
+
+	return plane_pos
+
+
+def move_to_furthest( elems, plane_pos, plane_nml, constrain, center, local ):	
+	for rmmesh, groups in elems.items():
+		for g in groups:
+			
+			if local:
+				local_elems = { rmmesh : [g] }
+				plane_pos = find_furthest( local_elems, -plane_nml, center )
+			
+			inv_rot_mat = rmmesh.world_transform.to_3x3().inverted()
+			plane_nml_objspc = ( inv_rot_mat @ -plane_nml ).normalized()
+
+			inv_xfrm = rmmesh.world_transform.inverted()
+			plane_pos_objspc = inv_xfrm @ plane_pos
+
+			if constrain:
+				new_pos = [ None ] * len( g )
+				for i, v in enumerate( g ):			
+					max_dot = -1
+					edge_dir = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
+					for e in v.link_edges:
+						other_v = e.other_vert( v )
+						edge_vec = other_v.co - v.co
+						dot = plane_nml_objspc.dot( edge_vec.normalized() )
+						if dot >= max_dot:
+							max_dot = dot
+							edge_dir = edge_vec
+							
+					if max_dot <= 0.00001:
+						new_pos[i] = v.co
+						continue
 					
-			for i, v in enumerate( g ):
-				v.co = new_pos[i]
-				
-		else:		
-			for v in g:
-				dist = mathutils.geometry.distance_point_to_plane( v.co.copy(), plane_pos, plane_nml )
-				v.co = v.co.copy() + ( -plane_nml * dist )
+					intersection_pos = mathutils.geometry.intersect_line_plane( v.co, v.co + edge_dir, plane_pos_objspc, plane_nml_objspc )
+					if intersection_pos is None:
+						new_pos[i] = v.co + edge_dir
+					elif ( v.co - intersection_pos ).length > edge_dir.length:
+						new_pos[i] = v.co + edge_dir
+					else:
+						new_pos[i] = intersection_pos
+						
+				for i, v in enumerate( g ):
+					v.co = new_pos[i]
+					
+			else:		
+				for v in g:
+					dist = mathutils.geometry.distance_point_to_plane( v.co.copy(), plane_pos_objspc, plane_nml_objspc )
+					v.co = v.co.copy() + ( -plane_nml_objspc * dist )
+					
+		bmesh.update_edit_mesh( rmmesh.mesh, loop_triangles=True, destructive=True )
 				
 				
 class MESH_OT_movetofurthest( bpy.types.Operator ):
@@ -102,13 +135,15 @@ class MESH_OT_movetofurthest( bpy.types.Operator ):
 			
 		rm_vp = rmlib.rmViewport( context )
 		dir_idx, cam_dir_vec, grid_dir_vec = rm_vp.get_nearest_direction_vector( self.str_dir, grid_matrix )
-
-		rmmesh = rmlib.rmMesh.GetActive( context )
-		if rmmesh is None:
-			return { 'CANCELLED' }
-
+		
 		sel_mode = context.tool_settings.mesh_select_mode[:]
-		with rmmesh as rmmesh:		
+		elems = {}
+		for rmmesh in rmlib.iter_edit_meshes( context, mode_filter=True ):
+			elems[ rmmesh ] = None
+			
+			bm = bmesh.from_edit_mesh( rmmesh.mesh )
+			rmmesh.bmesh = bm
+			
 			if sel_mode[0]:
 				selected_verts = rmlib.rmVertexSet.from_selection( rmmesh )
 				if len( selected_verts ) < 1:
@@ -117,6 +152,7 @@ class MESH_OT_movetofurthest( bpy.types.Operator ):
 					vert_groups = selected_verts.group()
 				else:
 					vert_groups = [ selected_verts ]
+				elems[ rmmesh ] = vert_groups
 			elif sel_mode[1]:
 				selected_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
 				if len( selected_edges ) < 1:
@@ -125,6 +161,7 @@ class MESH_OT_movetofurthest( bpy.types.Operator ):
 					vert_groups = [ g.vertices for g in selected_edges.group() ]
 				else:
 					vert_groups = [ selected_edges.vertices ]
+				elems[ rmmesh ] = vert_groups
 			elif sel_mode[2]:
 				selected_polys = rmlib.rmPolygonSet.from_selection( rmmesh )
 				if len( selected_polys ) < 1:
@@ -132,14 +169,16 @@ class MESH_OT_movetofurthest( bpy.types.Operator ):
 				if self.local:
 					vert_groups = [ g.vertices for g in selected_polys.group() ]
 				else:
-					vert_groups = [ selected_polys.vertices ]					
+					vert_groups = [ selected_polys.vertices ]
+				elems[ rmmesh ] = vert_groups			
 			else:
 				return { 'CANCELLED' }
-			
-			center = self.str_dir == 'horizontal' or self.str_dir == 'vertical'
-			inv_rot_mat = rmmesh.world_transform.to_3x3().inverted()
-			grid_dir_vec = ( inv_rot_mat @ grid_dir_vec ).normalized()
-			move_to_furthest( vert_groups, grid_dir_vec, self.constrain, center )
+
+		center = self.str_dir == 'horizontal' or self.str_dir == 'vertical'
+		plane_pos = mathutils.Vector()
+		if not self.local:
+			plane_pos = find_furthest( elems, grid_dir_vec, center )		
+		move_to_furthest( elems, plane_pos, -grid_dir_vec, self.constrain, center, self.local )
 			
 		return { 'FINISHED' }
 
@@ -623,3 +662,5 @@ def unregister():
 	bpy.utils.unregister_class( IMAGE_EDITOR_MT_PIE_uvmovetofurthest_local )
 	del bpy.types.Object.mtf_prop_on
 	del bpy.types.Object.mtf_prop_off
+	
+register()
