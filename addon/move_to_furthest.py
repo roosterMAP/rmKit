@@ -29,7 +29,6 @@ def find_furthest( elems, dir_vec, center ):
 				
 
 	#for horizontal/vertical, plane_pos is the avg pos
-	print( vcount )
 	if center:
 		avg_pos *= 1.0 / float( vcount )
 		plane_pos = avg_pos
