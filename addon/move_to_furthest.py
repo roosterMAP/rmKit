@@ -1,5 +1,5 @@
 import mathutils
-import rmKit.rmlib as rmlib
+from .. import rmlib
 import bpy, bmesh
 
 def find_furthest( elems, dir_vec, center ):
