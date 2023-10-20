@@ -133,6 +133,10 @@ class rmMesh():
 			raise RuntimeError( 'bmesh cannot be accessed outside of a "with" context!!!' )
 		return self.__bmesh
 
+	@bmesh.setter
+	def bmesh( self, bm ):
+		self.__bmesh = bm
+
 	@property
 	def readonly( self ):
 		return self.__readonly
