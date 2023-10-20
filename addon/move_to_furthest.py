@@ -1,5 +1,5 @@
 import mathutils
-import rmKit.rmlib as rmlib
+from .. import rmlib
 import bpy, bmesh
 
 def find_furthest( elems, dir_vec, center ):
@@ -29,6 +29,7 @@ def find_furthest( elems, dir_vec, center ):
 				
 
 	#for horizontal/vertical, plane_pos is the avg pos
+	print( vcount )
 	if center:
 		avg_pos *= 1.0 / float( vcount )
 		plane_pos = avg_pos
@@ -661,5 +662,3 @@ def unregister():
 	bpy.utils.unregister_class( IMAGE_EDITOR_MT_PIE_uvmovetofurthest_local )
 	del bpy.types.Object.mtf_prop_on
 	del bpy.types.Object.mtf_prop_off
-	
-register()
