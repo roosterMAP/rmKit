@@ -247,7 +247,11 @@ class MESH_OT_scaletomaterialsize( bpy.types.Operator ):
 				island_center = island_center * ( 1.0 / lcount )
 				
 				target_uvarea = island_3darea / ( material_size[0] * material_size[1] )
-				scale_factor = math.sqrt( target_uvarea ) / math.sqrt( island_uvarea )
+
+				try:
+					scale_factor = math.sqrt( target_uvarea ) / math.sqrt( island_uvarea )
+				except ZeroDivisionError:
+					scale_factor = 1.0
 
 				#scale uv islands to target texel density				
 				for f in island:
