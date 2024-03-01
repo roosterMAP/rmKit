@@ -1,5 +1,4 @@
 import bpy
-import bgl
 import gpu
 from gpu_extras.batch import batch_for_shader
 from bpy_extras.view3d_utils import region_2d_to_vector_3d, region_2d_to_location_3d
@@ -21,7 +20,7 @@ class GridRenderManager:
 	scale = 1.0
 
 	def __init__( self, context ):
-		GridRenderManager.shader = gpu.shader.from_builtin( '3D_SMOOTH_COLOR' )
+		GridRenderManager.shader = gpu.shader.from_builtin( 'POLYLINE_SMOOTH_COLOR' )
 		self.update_scale( context )
 
 	def update_scale( self, context ):
@@ -88,28 +87,21 @@ class GridRenderManager:
 		GridRenderManager.batch = batch_for_shader( GridRenderManager.shader, 'LINES', content )
 
 	def draw( self ):
-		if GridRenderManager.batch:
-			bgl.glEnable( bgl.GL_BLEND )
-			bgl.glEnable( bgl.GL_DEPTH_TEST )
-			bgl.glEnable( bgl.GL_LINE_SMOOTH )
-			bgl.glLineWidth( 2 )
-			
+		if GridRenderManager.batch:			
 			gpu.matrix.push()
 			gpu.matrix.load_matrix( GridRenderManager.matrix )			
 			gpu.matrix.push_projection()    
 			gpu.matrix.load_projection_matrix( bpy.context.region_data.perspective_matrix )
 			
 			GridRenderManager.shader.bind()
+			GridRenderManager.shader.uniform_float( 'lineWidth', 1 )
+			region = bpy.context.region
+			GridRenderManager.shader.uniform_float( 'viewportSize', ( region.width, region.height ) )
+			
 			GridRenderManager.batch.draw( GridRenderManager.shader )
 
-			# restore opengl defaults
 			gpu.matrix.pop()
 			gpu.matrix.pop_projection()
-
-			bgl.glDisable( bgl.GL_BLEND )
-			bgl.glDisable( bgl.GL_DEPTH_TEST )
-			bgl.glDisable( bgl.GL_LINE_SMOOTH )
-			bgl.glLineWidth( 1 )
 
 	def doDraw( self ):
 		GridRenderManager.handle = bpy.types.SpaceView3D.draw_handler_add( self.draw, (), 'WINDOW', 'POST_VIEW' )
