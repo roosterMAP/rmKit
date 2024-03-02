@@ -20,8 +20,14 @@ def SetEdgeCrease( context, weight ):
 	rmmesh = rmlib.rmMesh.GetActive( context )	
 	with rmmesh as rmmesh:
 		rmmesh.skipchecks = True
-		c_layers = rmmesh.bmesh.edges.layers.crease
-		clyr = c_layers.verify()
+		clyr = None
+		if bpy.app.version < (4,0,0):
+			c_layers = rmmesh.bmesh.edges.layers.crease
+			clyr = c_layers.verify()
+		else:
+			clyr = rmmesh.bmesh.edges.layers.float.get( 'crease_edge', None )
+			if clyr is None:
+				clyr = rmmesh.bmesh.edges.layers.float.new( 'crease_edge' )
 		for e in GetEdges( rmmesh.bmesh, sel_mode ):
 			e[clyr] = weight
 
@@ -31,8 +37,14 @@ def SetEdgeBevelWeight( context, weight ):
 	rmmesh = rmlib.rmMesh.GetActive( context )	
 	with rmmesh as rmmesh:
 		rmmesh.skipchecks = True
-		b_layers = rmmesh.bmesh.edges.layers.bevel_weight
-		blyr = b_layers.verify()
+		blyr = None
+		if bpy.app.version < (4,0,0):
+			b_layers = rmmesh.bmesh.edges.layers.bevel_weight
+			blyr = b_layers.verify()
+		else:
+			blyr = rmmesh.bmesh.edges.layers.float.get( 'bevel_weight_edge', None )
+			if blyr is None:
+				blyr = rmmesh.bmesh.edges.layers.float.new( 'bevel_weight_edge' )
 		for e in GetEdges( rmmesh.bmesh, sel_mode ):
 			e[blyr] = weight
 

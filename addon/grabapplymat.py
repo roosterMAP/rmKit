@@ -33,7 +33,8 @@ class MESH_OT_grabapplymat( bpy.types.Operator ):
 		if mos_rmmesh is None:
 			return { 'CANCELLED' }
 
-		mos_edge = None
+		mos_edge_seam = None
+		mos_edge_smooth = None
 		bevel_weight = None
 		crease_weight = None
 		with mos_rmmesh as mos_rmmesh:
@@ -42,43 +43,62 @@ class MESH_OT_grabapplymat( bpy.types.Operator ):
 			mos_edges = rmlib.rmEdgeSet.from_mos( mos_rmmesh, context, mouse_pos, pixel_radius=8 )
 			if len( mos_edges ) < 1:
 				return { 'CANCELLED' }
-			
-			mos_edge = mos_edges[0]
+		
+			mos_edge_seam = mos_edges[0].seam
+			mos_edge_smooth = mos_edges[0].smooth
 
-			bevlayers = mos_rmmesh.bmesh.edges.layers.bevel_weight
-			try:
-				bev_layer = bevlayers.items()[0]
-				bevel_weight = mos_edges[0][bev_layer[1]]
-			except IndexError:
-				pass
+			if bpy.app.version < (4,0,0):
+				bevlayers = mos_rmmesh.bmesh.edges.layers.bevel_weight
+				try:
+					bev_layer = bevlayers.items()[0]
+					bevel_weight = mos_edges[0][bev_layer[1]]
+				except IndexError:
+					pass
 
-			crslayers = mos_rmmesh.bmesh.edges.layers.crease
-			try:
-				crs_layer = crslayers.items()[0]
-				crease_weight = mos_edges[0][crs_layer[1]]
-			except IndexError:
-				pass
+				crslayers = mos_rmmesh.bmesh.edges.layers.crease
+				try:
+					crs_layer = crslayers.items()[0]
+					crease_weight = mos_edges[0][crs_layer[1]]
+				except IndexError:
+					pass
+			else:
+				bev_layer = mos_rmmesh.bmesh.edges.layers.float.get( 'bevel_weight_edge', None )
+				if bev_layer is not None:
+					bevel_weight = mos_edges[0][bev_layer]
+
+				crs_layer = mos_rmmesh.bmesh.edges.layers.float.get( 'crease_edge', None )
+				if crs_layer is not None:
+					crease_weight = mos_edges[0][crs_layer]
 
 		blyr = None
 		clyr = None
 		with target_rmmesh as rmmesh:
-			if bevel_weight is not None:
-				b_layers = rmmesh.bmesh.edges.layers.bevel_weight
-				blyr = b_layers.verify()
+			if bpy.app.version < (4,0,0):
+				if bevel_weight is not None:
+					b_layers = rmmesh.bmesh.edges.layers.bevel_weight
+					blyr = b_layers.verify()
 
-			if crease_weight is not None:
-				c_layers = rmmesh.bmesh.edges.layers.crease
-				clyr = c_layers.verify()
+				if crease_weight is not None:
+					c_layers = rmmesh.bmesh.edges.layers.crease
+					clyr = c_layers.verify()
+			else:
+				blyr = rmmesh.bmesh.edges.layers.float.get( 'bevel_weight_edge', None )
+				if blyr is None:
+					blyr = rmmesh.bmesh.edges.layers.float.new( 'bevel_weight_edge' )
 
-		with target_rmmesh as rmmesh:
+				clyr = rmmesh.bmesh.edges.layers.float.get( 'crease_edge', None )
+				if clyr is None:
+					clyr = rmmesh.bmesh.edges.layers.float.new( 'crease_edge' )
+
 			edges = rmlib.rmEdgeSet.from_selection( rmmesh )
 			for e in edges:
-				if mos_edge is not None:
-					e.seam = mos_edge.seam
-					e.smooth = mos_edge.smooth
-				if blyr is not None:
+				if mos_edge_seam is not None:
+					e.seam = mos_edge_seam
+				if mos_edge_smooth is not None:
+					e.smooth = mos_edge_smooth
+				if blyr is not None and bevel_weight is not None:
 					e[blyr] = bevel_weight
-				if clyr is not None:
+				if clyr is not None and crease_weight is not None:
 					e[clyr] = crease_weight
 
 		return { 'FINISHED' }

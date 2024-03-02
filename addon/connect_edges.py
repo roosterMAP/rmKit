@@ -321,8 +321,12 @@ class CEPoly( object ):
 			next_vert = verts[ ( i + 1 ) % len( verts ) ]
 			if next_vert.GetEndVerts( self.polygon )[1] == end_vert or end_vert == next_vert:
 				#transfer crease weight
-				if CEPoly.BMesh.edges.layers.crease is not None:
+				if bpy.app.version < (4,0,0) and CEPoly.BMesh.edges.layers.crease is not None:
 					for layer in CEPoly.BMesh.edges.layers.crease.values():
+						subvert_loop.edge[layer] = loop.edge[layer]
+						subvert_loop.edge.tag = True
+				else:
+					for layer in CEPoly.BMesh.edges.layers.float.get( 'crease_edge', [] ):
 						subvert_loop.edge[layer] = loop.edge[layer]
 						subvert_loop.edge.tag = True
 
