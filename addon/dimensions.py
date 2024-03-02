@@ -29,7 +29,7 @@ class DimensionsManager:
 
 	def __init__( self, context ):
 		self.factor = 1.0
-		DimensionsManager.shader = gpu.shader.from_builtin( '3D_SMOOTH_COLOR' )
+		DimensionsManager.shader = gpu.shader.from_builtin( 'POLYLINE_SMOOTH_COLOR' )
 		self.shader_batch()
 
 	def update( self, context ):
@@ -93,18 +93,19 @@ class DimensionsManager:
 		DimensionsManager.batch = batch_for_shader( DimensionsManager.shader, 'LINES', content )
 
 	def draw( self ):
-		if DimensionsManager.batch:
-			gpu.state.line_width_set( 2.0 )
-			
+		if DimensionsManager.batch:			
 			DimensionsManager.shader.bind()
-			DimensionsManager.batch.draw( DimensionsManager.shader )
 
-			gpu.state.line_width_set( 1.0 )
+			DimensionsManager.shader.uniform_float( 'lineWidth', 1 )
+			region = bpy.context.region
+			DimensionsManager.shader.uniform_float( 'viewportSize', ( region.width, region.height ) )
+
+			DimensionsManager.batch.draw( DimensionsManager.shader )
 
 	def draw_text( self ):
 		blf.color( 0, 1.0, 0.0, 0.0, 1.0 )
 		blf.position( 0, DimensionsManager._x_handle[0], DimensionsManager._x_handle[1], 0 )
-		blf.size( 0, 16, 72 )
+		blf.size( 0, 16 )
 		d = ( DimensionsManager._x_max - DimensionsManager._joint ).length
 		d *= self.factor
 		d = round( d, 4 )
@@ -112,7 +113,7 @@ class DimensionsManager:
 
 		blf.color( 0, 0.0, 1.0, 0.0, 1.0 )
 		blf.position( 0, DimensionsManager._y_handle[0], DimensionsManager._y_handle[1], 0 )
-		blf.size( 0, 16, 72 )
+		blf.size( 0, 16 )
 		d = ( DimensionsManager._y_max - DimensionsManager._joint ).length
 		d *= self.factor
 		d = round( d, 4 )
@@ -120,7 +121,7 @@ class DimensionsManager:
 
 		blf.color( 0, 0.0, 0.0, 1.0, 1.0 )
 		blf.position( 0, DimensionsManager._z_handle[0], DimensionsManager._z_handle[1], 0 )
-		blf.size( 0, 16, 72 )
+		blf.size( 0, 16 )
 		d = ( DimensionsManager._z_max - DimensionsManager._joint ).length
 		d *= self.factor
 		d = round( d, 4 )
@@ -255,7 +256,7 @@ class MESH_OT_dimensions( bpy.types.Operator ):
 	def invoke(self, context, event):
 		#add a timer to modal
 		wm = context.window_manager
-		self._timer = wm.event_timer_add( 1.0 / 16.0, window=context.window )
+		self._timer = wm.event_timer_add( 1.0 / 64.0, window=context.window )
 		wm.modal_handler_add( self )
 
 		self.execute( context )
