@@ -550,10 +550,12 @@ class MESH_OT_uvboundstransform( bpy.types.Operator ):
 
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_uvboundstransform.bl_idname ) )
-	bpy.utils.register_class( MESH_OT_uvboundstransform )
+	if bpy.app.version < ( 4, 0, 0 ):
+		print( 'register :: {}'.format( MESH_OT_uvboundstransform.bl_idname ) )
+		bpy.utils.register_class( MESH_OT_uvboundstransform )
 	
 
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_uvboundstransform.bl_idname ) )
-	bpy.utils.unregister_class( MESH_OT_uvboundstransform )
+	if bpy.app.version < ( 4, 0, 0 ):
+		print( 'unregister :: {}'.format( MESH_OT_uvboundstransform.bl_idname ) )
+		bpy.utils.unregister_class( MESH_OT_uvboundstransform )
