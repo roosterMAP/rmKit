@@ -192,6 +192,10 @@ class MESH_OT_uvmove( bpy.types.Operator ):
 
 			#offset loops
 			for g in groups:
+				if context.scene.uv_fit_movecontinuous:
+					g = g.group_vertices( element=True )[0]
+					g.add_overlapping_loops( True )
+
 				for l in g:
 					uv = mathutils.Vector( l[uvlayer].uv.copy() )
 					l[uvlayer].uv = uv + offset_vec
@@ -309,6 +313,10 @@ class MESH_OT_uvslam( bpy.types.Operator ):
 					if 'w' in anchor_str:
 						anchor_pos[0] = bbmin[0]
 
+				if context.scene.uv_fit_movecontinuous:
+					g = g.group_vertices( element=True )[0]
+					g.add_overlapping_loops( True )
+
 				#transform loops
 				for l in g:
 					uv = mathutils.Vector( l[uvlayer].uv.copy() )
@@ -375,6 +383,10 @@ class MESH_OT_uvrotate( bpy.types.Operator ):
 					anchor_pos[0] = bbmax[0]
 				if 'w' in anchor_str:
 					anchor_pos[0] = bbmin[0]
+
+				if context.scene.uv_fit_movecontinuous:
+					g = g.group_vertices( element=True )[0]
+					g.add_overlapping_loops( True )
 
 				#transform loops
 				for l in g:
@@ -456,6 +468,10 @@ class MESH_OT_uvscale( bpy.types.Operator ):
 				if 'w' in anchor_str:
 					anchor_pos[0] = bbmin[0]
 
+				if context.scene.uv_fit_movecontinuous:
+					g = g.group_vertices( element=True )[0]
+					g.add_overlapping_loops( True )
+
 				#transform loops
 				for l in g:
 					uv = mathutils.Vector( l[uvlayer].uv )
@@ -522,6 +538,10 @@ class MESH_OT_uvflip( bpy.types.Operator ):
 					anchor_pos[0] = bbmax[0]
 				if 'w' in anchor_str:
 					anchor_pos[0] = bbmin[0]
+
+				if context.scene.uv_fit_movecontinuous:
+					g = g.group_vertices( element=True )[0]
+					g.add_overlapping_loops( True )
 
 				#transform loops
 				for l in g:
@@ -651,6 +671,10 @@ class MESH_OT_uvfit( bpy.types.Operator ):
 				scl_mat[1][1] = target_bounds_height / bbheight
 
 				mat = trans_mat_inverse @ scl_mat @ trans_mat
+
+				if context.scene.uv_fit_movecontinuous:
+					g = g.group_vertices( element=True )[0]
+					g.add_overlapping_loops( True )
 
 				#transform loops
 				for l in g:
@@ -861,6 +885,8 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 			c3.alignment = 'EXPAND'
 			c3.operator( MESH_OT_uvfit.bl_idname, text='UV' ).dir = 'uv'
 
+		layout.prop( context.scene, 'uv_fit_movecontinuous' )
+
 
 def anchor_update( prop, context ):
 	prev_value = context.scene.anchor_val_prev
@@ -1014,7 +1040,7 @@ def register():
 	bpy.utils.register_class( MESH_OT_uvfit )
 	bpy.utils.register_class( MESH_OT_uvfitsample )
 	bpy.types.Scene.uv_uvmove_offset = bpy.props.FloatProperty( name='Offset', default=1.0 )
-	bpy.types.Scene.uv_uvrotation_offset = bpy.props.FloatProperty( name='RotationOffset', default=90.0, min=0.0, max=180.0 )
+	bpy.types.Scene.uv_uvrotation_offset = bpy.props.FloatProperty( name='RotationOffset', default=45.0, min=0.0, max=180.0 )
 	bpy.types.Scene.uv_uvscale_factor = bpy.props.FloatProperty( name='Offset', default=2.0 )
 	bpy.types.Scene.anchor_val_prev = bpy.props.StringProperty( name='Anchor Prev Val', default=ANCHOR_PROP_LIST[4] )
 	bpy.types.Scene.state_val_prev = bpy.props.StringProperty( name='State Prev Val', default='' )
@@ -1022,6 +1048,7 @@ def register():
 	bpy.types.Scene.uv_fit_moveto = bpy.props.BoolProperty( name='Move To', default=True )
 	bpy.types.Scene.uv_fit_bounds_min = bpy.props.FloatVectorProperty( size=2, default=( 0.0, 0.0 ) )
 	bpy.types.Scene.uv_fit_bounds_max = bpy.props.FloatVectorProperty( size=2, default=( 1.0, 1.0 ) )
+	bpy.types.Scene.uv_fit_movecontinuous = bpy.props.BoolProperty( name='Transform Continuous', default=False )
 	bpy.utils.register_class( AnchorProps )
 	bpy.utils.register_class( StateProps )
 	bpy.types.Scene.anchorprops = bpy.props.PointerProperty( type=AnchorProps )
@@ -1057,6 +1084,7 @@ def unregister():
 	del bpy.types.Scene.uv_fit_moveto
 	del bpy.types.Scene.uv_fit_bounds_min
 	del bpy.types.Scene.uv_fit_bounds_max
+	del bpy.types.Scene.uv_fit_movecontinuous
 	bpy.utils.unregister_class( AnchorProps )
 	bpy.utils.unregister_class( StateProps )
 	del bpy.types.Scene.anchorprops
