@@ -14,7 +14,7 @@ def register_keyboard_keymap():
 		km_3dview = kc.keymaps.new( name='3D View', space_type='VIEW_3D' )
 		km_mesh = kc.keymaps.new( name='Mesh', space_type='EMPTY' )
 		km_uv = kc.keymaps.new( name='UV Editor', space_type='EMPTY' )
-		km_sculpt = kc.keymaps.new( name='Sculpt', space_type='EMPTY' )
+		#km_sculpt = kc.keymaps.new( name='Sculpt', space_type='EMPTY' )
 
 		#3D VIEW KEYMAPS
 		RM_3DVIEW_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_dimensions', 'NONE', 'PRESS' ) ) )
@@ -166,8 +166,8 @@ def register_keyboard_keymap():
 		kmi.properties.mode = 'SHRINK'
 		RM_UV_KEYMAP.append( ( km_uv, kmi ) )
 
-
-		#SCULPT EDITOR KEYMAPS
+		'''
+		#SCULPT EDITOR KEYMAPS		
 		kmi = km_sculpt.keymap_items.new( 'view3d.rm_quicknav', 'LEFTMOUSE', 'PRESS', shift=0, ctrl=0, alt=0 )
 		kmi.properties.nav = 'rot'
 		RM_SCULPT_KEYMAP.append( ( km_sculpt, kmi ) )
@@ -179,9 +179,7 @@ def register_keyboard_keymap():
 		kmi = km_sculpt.keymap_items.new( 'view3d.rm_quicknav', 'LEFTMOUSE', 'PRESS', shift=0, ctrl=0, alt=1 )
 		kmi.properties.nav = 'pan'
 		RM_SCULPT_KEYMAP.append( ( km_sculpt, kmi ) )
-
-		for foo in RM_SCULPT_KEYMAP:
-			print( foo )
+		'''
 
 
 def unregister_keyboard_keymap():
@@ -191,12 +189,12 @@ def unregister_keyboard_keymap():
 		km.keymap_items.remove( kmi )
 	for km, kmi in RM_UV_KEYMAP:
 		km.keymap_items.remove( kmi )
-	for km, kmi in RM_SCULPT_KEYMAP:
-		km.keymap_items.remove( kmi )
+	#for km, kmi in RM_SCULPT_KEYMAP:
+	#	km.keymap_items.remove( kmi )
 	RM_3DVIEW_KEYMAP.clear()
 	RM_MESH_KEYMAP.clear()
 	RM_UV_KEYMAP.clear()
-	RM_SCULPT_KEYMAP.clear()
+	#RM_SCULPT_KEYMAP.clear()
 	RM_GUI_NAMES.clear()
 
 
@@ -207,7 +205,7 @@ class RMKITPreferences( bpy.types.AddonPreferences ):
 	v3d_checkbox: bpy.props.BoolProperty( name="3D View", default=False )
 	mesh_checkbox: bpy.props.BoolProperty( name="Mesh", default=False )
 	uv_checkbox: bpy.props.BoolProperty( name="UV Editor", default=False )
-	sculpt_checkbox: bpy.props.BoolProperty( name="Sculpt", default=False )
+	#sculpt_checkbox: bpy.props.BoolProperty( name="Sculpt", default=False )
 
 	def draw( self, context ):
 		layout = self.layout
@@ -234,12 +232,14 @@ class RMKITPreferences( bpy.types.AddonPreferences ):
 			col = box.column( align=True )
 			self.draw_keymap_items( col, 'UV Editor', RM_UV_KEYMAP, {'KEYBOARD'}, False )
 
+		'''
 		row_sculpt = box.row()
 		row_sculpt.prop( self, 'sculpt_checkbox', icon='TRIA_DOWN' if self.sculpt_checkbox else 'TRIA_RIGHT', icon_only=True, emboss=False )
 		row_sculpt.label( text='Sculpt' )
 		if self.sculpt_checkbox:
 			col = box.column( align=True )
 			self.draw_keymap_items( col, 'Sculpt', RM_SCULPT_KEYMAP, {'MOUSE'}, False )
+		'''
 
 	@staticmethod
 	def draw_keymap_items( col, km_name, keymap, map_type, allow_remove=False ):

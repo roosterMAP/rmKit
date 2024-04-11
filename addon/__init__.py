@@ -1,4 +1,5 @@
 import bpy
+from bpy.app.handlers import persistent
 
 class rmKitPannel_parent( bpy.types.Panel ):
 	bl_idname = "VIEW3D_PT_RMKIT_PARENT"
@@ -19,6 +20,31 @@ class rmKitPannel_parent_uv( bpy.types.Panel ):
 
 	def draw( self, context ):
 		layout = self.layout
+
+def callback_workspace_change( *args ):
+	if bpy.context.workspace.name == 'Sculpting':
+		bpy.context.preferences.inputs.use_mouse_emulate_3_button = True
+		bpy.context.workspace.status_text_set( 'use_mouse_emulate_3_button: True' )
+	else:
+		bpy.context.preferences.inputs.use_mouse_emulate_3_button = False
+		bpy.context.workspace.status_text_set( None )
+
+owner = object()
+def subscribe_workspace_change():
+	subscribe_to = ( bpy.types.Window, "workspace" )
+	bpy.msgbus.subscribe_rna(
+		key=subscribe_to,
+		owner=owner,
+		args=( None, ),
+		notify=callback_workspace_change,
+	)
+
+def unsubscribe_workspace_change():
+	bpy.msgbus.clear_by_owner( owner )
+
+@persistent
+def load_workspace_handler( dummy ):
+	subscribe_workspace_change()
 
 from . import polypatch
 from . import reduce
@@ -56,11 +82,12 @@ from . import uvgrowshrink
 from . import preferences
 from . import quickboolean
 from . import naming
-from . import quicksculptnav
 
 def register():
 	bpy.utils.register_class( rmKitPannel_parent )
-	bpy.utils.register_class( rmKitPannel_parent_uv )	
+	bpy.utils.register_class( rmKitPannel_parent_uv )
+	bpy.app.handlers.load_post.append( load_workspace_handler )
+	subscribe_workspace_change()
 	polypatch.register()
 	reduce.register()
 	context_bevel.register()
@@ -95,13 +122,14 @@ def register():
 	dimensions.register()
 	quickboolean.register()
 	uvgrowshrink.register()
-	quicksculptnav.register()
 	preferences.register()
 	naming.register()
 
 def unregister():
 	bpy.utils.unregister_class( rmKitPannel_parent )
-	bpy.utils.unregister_class( rmKitPannel_parent_uv )	
+	bpy.utils.unregister_class( rmKitPannel_parent_uv )
+	bpy.app.handlers.load_post.remove( load_workspace_handler )
+	unsubscribe_workspace_change()
 	polypatch.unregister()
 	reduce.unregister()
 	context_bevel.unregister()
@@ -136,6 +164,5 @@ def unregister():
 	dimensions.unregister()
 	quickboolean.unregister()
 	uvgrowshrink.unregister()
-	quicksculptnav.unregister()
 	preferences.unregister()
 	naming.unregister()
