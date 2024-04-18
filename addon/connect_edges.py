@@ -329,7 +329,8 @@ class CEPoly( object ):
 					clyr = CEPoly.BMesh.edges.layers.float.get( 'crease_edge', None )
 					if clyr is None:
 						clyr = CEPoly.BMesh.edges.layers.float.get( 'crease_edge' )
-					subvert_loop.edge[clyr] = loop.edge[clyr]
+					if clyr is not None:
+						subvert_loop.edge[clyr] = loop.edge[clyr]
 					subvert_loop.edge.tag = True
 
 				#transfer sharp and seam
