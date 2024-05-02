@@ -307,26 +307,25 @@ class MESH_OT_applyvnorms( bpy.types.Operator ):
 			rmmesh.readonly = True
 			
 			#get selset layer
-			str_layer = rmmesh.mesh.polygon_layers_string.get( CUSTOM_VNORM_LAYERNAME, None )
+			str_layer = rmmesh.bmesh.faces.layers.string.get( CUSTOM_VNORM_LAYERNAME, None )
 			if str_layer is None:
 				bpy.ops.object.mode_set( mode='EDIT', toggle=False )
 				return { 'CANCELLED' }
 			
 			#set smoothing on mesh object to make custom vnorms visible
-			rmmesh.mesh.use_auto_smooth = True
+			if bpy.app.version < (4,0,0):
+				rmmesh.mesh.use_auto_smooth = True
+				rmmesh.mesh.create_normals_split()
 			
-			#load all existing vnorms
-			rmmesh.mesh.calc_normals_split()
 			vnorms = [ mathutils.Vector( loop.normal ) for loop in rmmesh.mesh.loops ]
 				
 			#store all pidxs and vertices for this selset
 			vertices = set()
 			selset_pidxs = set()
-			for p in rmmesh.bmesh.faces:
-				val = str_layer.data[p.index].value.decode( 'utf-8' ).strip()
-				if self.selset in val:
-					vertices |= set( p.verts )
-					selset_pidxs.add( p.index )
+
+			for p in GetPolysBySelSet( rmmesh.bmesh, str_layer, self.selset ):
+				vertices |= set( p.verts )
+				selset_pidxs.add( p.index )
 			
 			for v in vertices:					
 				#compute the vnorm for this poly group. a group is all polys that link a vert broken up by sharp edges
@@ -347,7 +346,6 @@ class MESH_OT_applyvnorms( bpy.types.Operator ):
 						for l in loop_group:
 							vnorms[l.index] = nml
 					
-		#since split normals can only be set through the old mesh interface which is pretty lame
 		mesh = context.active_object.data
 		mesh.normals_split_custom_set( vnorms )
 		mesh.update()
