@@ -260,15 +260,15 @@ class Bounds2d():
 		scl_mat = mathutils.Matrix.Identity( 3 )
 		if trim and ( other.width >= 1.0 or other.height >= 1.0 ):
 			if self.horizontal != other.horizontal and not skip_rot:
-				rot_mat[0][0] = math.cos( math.pi  / 2.0 )
-				rot_mat[1][0] = math.sin( math.pi  / 2.0 ) * -1.0
-				rot_mat[0][1] = math.sin( math.pi  / 2.0 )
-				rot_mat[1][1] = math.cos( math.pi  / 2.0 )
+				rot_mat[0][0] = math.cos( math.pi / 2.0 )
+				rot_mat[1][0] = math.sin( math.pi / 2.0 ) * -1.0
+				rot_mat[0][1] = math.sin( math.pi / 2.0 )
+				rot_mat[1][1] = math.cos( math.pi / 2.0 )
 				if other.width >= 1.0:
-					scl_mat[1][1] = other.width / self.height
+					scl_mat[1][1] = self.height / other.width
 					scl_mat[0][0] = scl_mat[1][1]
 				else:
-					scl_mat[0][0] = other.height / self.width
+					scl_mat[0][0] = self.width / other.height
 					scl_mat[1][1] = scl_mat[0][0]
 			else:
 				if other.width >= 1.0:
@@ -279,10 +279,10 @@ class Bounds2d():
 					scl_mat[1][1] = scl_mat[0][0]
 		else:
 			if self.horizontal != other.horizontal and not skip_rot:
-				rot_mat[0][0] = math.cos( math.pi  / 2.0 )
-				rot_mat[1][0] = math.sin( math.pi  / 2.0 ) * -1.0
-				rot_mat[0][1] = math.sin( math.pi  / 2.0 )
-				rot_mat[1][1] = math.cos( math.pi  / 2.0 )
+				rot_mat[0][0] = math.cos( math.pi / 2.0 )
+				rot_mat[1][0] = math.sin( math.pi / 2.0 ) * -1.0
+				rot_mat[0][1] = math.sin( math.pi / 2.0 )
+				rot_mat[1][1] = math.cos( math.pi / 2.0 )
 				scl_mat[0][0] = other.width / self.height
 				scl_mat[1][1] = other.height / self.width
 			else:
@@ -612,12 +612,51 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 	bl_label = 'Create Hotspot'
 	bl_options = { 'UNDO' }
 
+	matname: bpy.props.StringProperty( name='Name' )
+
 	@classmethod
 	def poll( cls, context ):
 		return ( context.area.type == 'IMAGE_EDITOR' and
 				context.active_object is not None and
 				context.mode == 'OBJECT' and
 				context.active_object.type == 'MESH' )
+	
+	def draw( self, context ):
+		self.layout.label( text='Save hotspot entry: \"{}\"?'.format( self.matname ) )
+
+	def invoke(self, context, event):
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		with rmmesh as rmmesh:
+			rmmesh.readonly = True
+
+			if len( rmmesh.bmesh.loops.layers.uv.values() ) == 0:
+				self.report( { 'WARNING' }, 'No uv data found!!!' )
+				return { 'CANCELLED' }
+			uvlayer = rmmesh.active_uv
+			
+			polys = rmlib.rmPolygonSet.from_mesh( rmmesh, filter_hidden=False )
+			if len( polys ) == 0:
+				self.report( { 'WARNING' }, 'No faces selected!!!' )
+				return { 'CANCELLED' }
+
+			bounds = []
+			for f in polys:
+				uvlist = [ mathutils.Vector( l[uvlayer].uv.copy() ) for l in f.loops ]
+				pmin = mathutils.Vector( uvlist[0] )
+				pmax = mathutils.Vector( uvlist[0] )
+				for p in uvlist:
+					for i in range( 2 ):
+						pmin[i] = min( pmin[i], p[i] )
+						pmax[i] = max( pmax[i], p[i] )
+				bounds.append( Bounds2d( [ pmin, pmax ] ).clamp() )
+
+			try:
+				self.matname = rmmesh.mesh.materials[ polys[0].material_index ].name
+			except IndexError:
+				self.report( { 'WARNING' }, 'Material lookup failed!!!' )
+				return { 'CANCELLED' }
+			
+		return context.window_manager.invoke_props_dialog( self )
 
 	def execute( self, context ):
 		#generate new hotspot obj from face selection
@@ -685,9 +724,23 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 
 		#write updated database
 		write_hot_file( hotfile, existing_materials, existing_hotspots )
-		self.report( { 'WARNING' }, 'Hotspot Repo Updated!!!' )
+		self.report( { 'INFO' }, 'Hotspot Repo Updated!!! {} added'.format( mat_name ) )
 
 		return  {'FINISHED' }
+		
+	
+
+class OBJECT_PT_savehotspotpanel( bpy.types.Panel ):
+	bl_label = "Save Hotspot Panel"
+	bl_idname = "OBJECT_PT_savehotspotpanel"
+	bl_space_type = "VIEW_3D"   
+	bl_region_type = "UI"
+	bl_category = "Tools"
+	bl_context = "objectmode"
+
+	def draw( self, context ):
+		layout = self.layout
+		layout.operator( OBJECT_OT_savehotspot.bl_idname )
 
 
 class OBJECT_OT_repotoascii( bpy.types.Operator ):
@@ -896,6 +949,7 @@ class MESH_OT_nrsthotspot( bpy.types.Operator ):
 				source_bounds = Bounds2d.from_loops( loops, uvlayer )
 				#target_bounds = hotspot.overlapping( source_bounds ).copy()
 				target_bounds = hotspot.nearest( source_bounds.center.x, source_bounds.center.y ).copy()
+				print( target_bounds )
 				target_bounds.inset( context.scene.hotspot_inset / 1024.0 )				
 				mat = source_bounds.transform( target_bounds, skip_rot=True, trim=use_trim )
 				for l in loops:
@@ -927,10 +981,12 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 	def execute( self, context ):
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 		if not sel_mode[2]:
+			self.report( { 'WARNING' }, 'Must be in face selection mode.' )
 			return { 'CANCELLED' }
 
 		hotspot = get_hotspot( context )
 		if hotspot is None:
+			self.report( { 'WARNING' }, 'Could not find hotspot atlas!!!' )
 			return { 'CANCELLED' }
 
 		use_trim = context.scene.use_trim
@@ -942,16 +998,18 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 			with rmmesh as rmmesh:
 				rmmesh.readonly = True
 				if len( rmmesh.bmesh.loops.layers.uv.values() ) == 0:
+					self.report( { 'WARNING' }, 'No uv data found!!!' )
 					return { 'CANCELLED' }
 
 				uvlayer = rmmesh.active_uv
 
 				faces = rmlib.rmPolygonSet.from_selection( rmmesh )
 				if len( faces ) < 1:
+					self.report( { 'WARNING' }, 'No faces selected!!!' )
 					return { 'CANCELLED' }
 
 				auto_smooth_angle = math.pi
-				if rmmesh.mesh.use_auto_smooth:
+				if bpy.app.version < (4,0,0) and rmmesh.mesh.use_auto_smooth:
 					auto_smooth_angle = rmmesh.mesh.auto_smooth_angle
 
 				for island in faces.group( element=False, use_seam=True, use_material=True, use_sharp=True, use_angle=auto_smooth_angle ):
@@ -969,12 +1027,14 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 			with rmmesh as rmmesh:
 				rmmesh.readonly = True
 				if len( rmmesh.bmesh.loops.layers.uv.values() ) == 0:
+					self.report( { 'WARNING' }, 'No uv data found!!!' )
 					return { 'CANCELLED' }
 
 				uvlayer = rmmesh.active_uv
 
 				faces = GetFaceSelection( context, rmmesh )
 				if len( faces ) < 1:
+					self.report( { 'WARNING' }, 'No uv faces selected!!!' )
 					return { 'CANCELLED' }
 				for island in faces.island( uvlayer, use_seam=True ):
 					islands_as_indexes.append( [ f.index for f in island ] )
@@ -1292,6 +1352,7 @@ class UV_PT_UVHotspotTools( bpy.types.Panel ):
 
 def register():
 	bpy.utils.register_class( OBJECT_OT_savehotspot )
+	bpy.utils.register_class( OBJECT_PT_savehotspotpanel )
 	bpy.utils.register_class( MESH_OT_matchhotspot )
 	bpy.utils.register_class( MESH_OT_nrsthotspot )
 	bpy.utils.register_class( MESH_OT_moshotspot )
@@ -1311,6 +1372,7 @@ def register():
 
 
 def unregister():
+	bpy.utils.unregister_class( OBJECT_PT_savehotspotpanel )
 	bpy.utils.unregister_class( OBJECT_OT_savehotspot )
 	bpy.utils.unregister_class( MESH_OT_matchhotspot )
 	bpy.utils.unregister_class( MESH_OT_nrsthotspot )
