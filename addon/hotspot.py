@@ -948,6 +948,17 @@ class MESH_OT_nrsthotspot( bpy.types.Operator ):
 				return { 'CANCELLED' }
 
 			for island in faces.island( uvlayer ):
+				#get the material aspect ratio on the first poly of this island
+				material_aspect = 1.0
+				try:
+					material = rmmesh.mesh.materials[island[0].material_index]
+				except IndexError:
+					pass
+				try:
+					material_aspect = material["WorldMappingWidth"] / material["WorldMappingHeight"]
+				except:
+					pass
+
 				loops = set()
 				for f in island:
 					for l in f.loops:
@@ -955,9 +966,7 @@ class MESH_OT_nrsthotspot( bpy.types.Operator ):
 				source_bounds = Bounds2d.from_loops( loops, uvlayer )
 				#target_bounds = hotspot.overlapping( source_bounds ).copy()
 				target_bounds = hotspot.nearest( source_bounds.center.x, source_bounds.center.y ).copy()
-				print( target_bounds )
-				target_bounds.inset( context.scene.hotspot_inset / 1024.0 )				
-				mat = source_bounds.transform( target_bounds, skip_rot=True, trim=use_trim )
+				mat = source_bounds.transform( target_bounds, skip_rot=True, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0, aspect=material_aspect )
 				for l in loops:
 					uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 					uv[2] = 1.0
