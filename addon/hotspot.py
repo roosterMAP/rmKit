@@ -246,7 +246,7 @@ class Bounds2d():
 		max_y = min( self.__max[1], bounds.max[1] )
 		return ( max_x - min_x ) * ( max_y - min_y )
 
-	def transform( self, other, skip_rot=False, trim=False ):
+	def transform( self, other, skip_rot=False, trim=False, inset=0.0, aspect=1.0 ):
 		#compute the 3x3 matrix that transforms bound 'other' to self
 		trans_mat = mathutils.Matrix.Identity( 3 )
 		trans_mat[0][2] = self.center[0] * -1.0
@@ -256,6 +256,9 @@ class Bounds2d():
 		trans_mat_inverse[0][2] = other.center[0]
 		trans_mat_inverse[1][2] = other.center[1]
 
+		other_inset_width = other.width - inset * aspect
+		other_inset_height = other.height - inset * aspect
+
 		rot_mat = mathutils.Matrix.Identity( 3 )
 		scl_mat = mathutils.Matrix.Identity( 3 )
 		if trim and ( other.width >= 1.0 or other.height >= 1.0 ):
@@ -264,18 +267,21 @@ class Bounds2d():
 				rot_mat[1][0] = math.sin( math.pi / 2.0 ) * -1.0
 				rot_mat[0][1] = math.sin( math.pi / 2.0 )
 				rot_mat[1][1] = math.cos( math.pi / 2.0 )
+
+				scl_mat[0][0] = other_inset_height / other_inset_width
+
 				if other.width >= 1.0:
-					scl_mat[1][1] = self.height / other.width
-					scl_mat[0][0] = scl_mat[1][1]
+					scl_mat[1][1] *= other_inset_height / self.width
+					scl_mat[0][0] *= scl_mat[1][1]
 				else:
-					scl_mat[0][0] = self.width / other.height
-					scl_mat[1][1] = scl_mat[0][0]
+					scl_mat[0][0] *= other_inset_width / self.height
+					scl_mat[1][1] *= scl_mat[0][0]
 			else:
 				if other.width >= 1.0:
-					scl_mat[1][1] = other.height / self.height
+					scl_mat[1][1] = other_inset_height / self.height
 					scl_mat[0][0] = scl_mat[1][1]
 				else:
-					scl_mat[0][0] = other.width / self.width
+					scl_mat[0][0] = other_inset_width / self.width
 					scl_mat[1][1] = scl_mat[0][0]
 		else:
 			if self.horizontal != other.horizontal and not skip_rot:
@@ -283,21 +289,21 @@ class Bounds2d():
 				rot_mat[1][0] = math.sin( math.pi / 2.0 ) * -1.0
 				rot_mat[0][1] = math.sin( math.pi / 2.0 )
 				rot_mat[1][1] = math.cos( math.pi / 2.0 )
-				scl_mat[0][0] = other.width / self.height
-				scl_mat[1][1] = other.height / self.width
+				scl_mat[0][0] = other_inset_width / self.height
+				scl_mat[1][1] = other_inset_height / self.width
 			else:
-				scl_mat[0][0] = other.width / self.width
-				scl_mat[1][1] = other.height / self.height
+				scl_mat[0][0] = other_inset_width / self.width
+				scl_mat[1][1] = other_inset_height / self.height
 
 		return trans_mat_inverse @ scl_mat @ rot_mat @ trans_mat
 	
 	def copy( self ):
 		return Bounds2d( [ self.__min, self.__max ] )
 
-	def inset( self, f ):
-		self.__min[0] += f
+	def inset( self, f, aspect=1.0 ):
+		self.__min[0] += f * aspect
 		self.__min[1] += f
-		self.__max[0] -= f
+		self.__max[0] -= f * aspect
 		self.__max[1] -= f
 
 
@@ -1020,6 +1026,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 						bpy.ops.uv.unwrap( 'INVOKE_DEFAULT', method='CONFORMAL' )
 						bpy.ops.mesh.rm_uvunrotate() #unrotate uv by longest edge in island
 						#bpy.ops.mesh.rm_uvrectangularize() #rectangularize
+					bpy.ops.mesh.rm_normalizetexels() #account for non-square materials
 					bpy.ops.mesh.rm_scaletomaterialsize() #scale to mat size
 
 		elif context.area.type == 'IMAGE_EDITOR': #iv in uvvp, scale to mat sizecomplete_failure
@@ -1050,6 +1057,18 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 				initial_selection = []
 				for pidx_list in islands_as_indexes:
 					island = [ rmmesh.bmesh.faces[pidx] for pidx in pidx_list ]
+
+					#get the material aspect ratio on the first poly of this island
+					material_aspect = 1.0
+					try:
+						material = rmmesh.mesh.materials[island[0].material_index]
+					except IndexError:
+						pass
+					try:
+						material_aspect = material["WorldMappingWidth"] / material["WorldMappingHeight"]
+					except:
+						pass
+
 					initial_selection += set( island )
 					loops = set()
 					for f in island:
@@ -1057,10 +1076,13 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 							loops.add( l )
 					source_bounds = Bounds2d.from_loops( loops, uvlayer )
 					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance ).copy()
-					target_bounds.inset( context.scene.hotspot_inset / 1024.0 )
 
-					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim )		
+					print( 'target_bounds :: {}'.format( target_bounds ) )
+
+					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0, aspect=material_aspect )
+					print( 'mat :: {}'.format( mat ) )
 					for l in loops:
+						print()
 						uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 						uv[2] = 1.0
 						uv = mat @ uv
@@ -1073,6 +1095,18 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 				initial_selection = []
 				for pidx_list in islands_as_indexes:					
 					island = [ rmmesh.bmesh.faces[pidx] for pidx in pidx_list ]
+
+					#get the material aspect ratio on the first poly of this island
+					material_aspect = 1.0
+					try:
+						material = rmmesh.mesh.materials[island[0].material_index]
+					except IndexError:
+						pass
+					try:
+						material_aspect = material["WorldMappingWidth"] / material["WorldMappingHeight"]
+					except:
+						pass
+
 					initial_selection += set( island )
 					loops = set()
 					for f in island:
@@ -1080,9 +1114,8 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 							loops.add( l )
 					source_bounds = Bounds2d.from_loops( loops, uvlayer )
 					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance ).copy()
-					target_bounds.inset( context.scene.hotspot_inset / 1024.0 )
 
-					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim )		
+					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0, aspect=material_aspect )		
 					for l in loops:
 						uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 						uv[2] = 1.0
@@ -1146,6 +1179,18 @@ class MESH_OT_uvaspectscale( bpy.types.Operator ):
 			return { 'CANCELLED' }
 
 		for island in faces.island( uvlayer ):
+
+			#get the material aspect ratio on the first poly of this island
+			material_aspect = 1.0
+			try:
+				material = rmmesh.mesh.materials[island[0].material_index]
+			except IndexError:
+				pass
+			try:
+				material_aspect = material["WorldMappingWidth"] / material["WorldMappingHeight"]
+			except:
+				pass
+
 			loops = set()
 			for f in island:
 				for l in f.loops:
@@ -1162,7 +1207,7 @@ class MESH_OT_uvaspectscale( bpy.types.Operator ):
 
 			target_bounds = Bounds2d( [ new_min, new_max ] )
 
-			mat = source_bounds.transform( target_bounds, skip_rot=True, trim=False )		
+			mat = source_bounds.transform( target_bounds, skip_rot=True, trim=False, inset=0.0, aspect=material_aspect )		
 			for l in loops:
 				uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 				uv[2] = 1.0

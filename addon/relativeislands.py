@@ -219,7 +219,7 @@ class MESH_OT_scaletomaterialsize( bpy.types.Operator ):
 				try:
 					material_size[0] = material["WorldMappingWidth"]
 					material_size[1] = material["WorldMappingHeight"]
-				except KeyError:
+				except:
 					pass
 
 				#compute uv island area
@@ -280,8 +280,7 @@ class MESH_OT_normalizetexels( bpy.types.Operator ):
 
 	@classmethod
 	def poll( cls, context ):
-		return ( context.area.type == 'IMAGE_EDITOR' and
-				context.active_object is not None and
+		return ( context.active_object is not None and
 				context.active_object.type == 'MESH' and
 				context.object.data.is_editmode )
 
@@ -335,6 +334,18 @@ class MESH_OT_normalizetexels( bpy.types.Operator ):
 			islands = faces.island( uvlayer )
 			for island in islands:
 
+				#get the world space size of the material on the first poly of this island
+				material_size = [ 2.0, 2.0 ]
+				try:
+					material = rmmesh.mesh.materials[island[0].material_index]
+				except IndexError:
+					pass
+				try:
+					material_size[0] = material["WorldMappingWidth"]
+					material_size[1] = material["WorldMappingHeight"]
+				except:
+					pass
+
 				#compute uv island area
 				for tri in tri_loops:
 					if tri[0].face in island:
@@ -370,9 +381,11 @@ class MESH_OT_normalizetexels( bpy.types.Operator ):
 				scale_factor = 1.0
 				if self.horizontal:
 					scale_factor = tangent.length / bitangent.length
+					scale_factor *= material_size[1] / material_size[0]
 				else:
 					axis_idx = 1
 					scale_factor = bitangent.length / tangent.length
+					scale_factor *= material_size[0] / material_size[1]
 
 				#compute island center in uv space
 				island_center = mathutils.Vector( ( 0.0, 0.0 ) )
