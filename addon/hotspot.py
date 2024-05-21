@@ -114,6 +114,8 @@ class Bounds2d():
 	def __init__( self, points, **kwargs ):
 		self.__min = mathutils.Vector( ( 0.0, 0.0 ) )
 		self.__max = mathutils.Vector( ( 1.0, 1.0 ) )
+		self.__materialaspect = 1.0
+		self.__horizontal = self.__max[0] - self.__min[0] > self.__max[1] - self.__min[1]
 		if len( points ) > 0:
 			self.__min = points[0].copy()
 			self.__max = points[0].copy()
@@ -124,13 +126,10 @@ class Bounds2d():
 				self.__min[i] = min( p[i], self.__min[i] )
 				self.__max[i] = max( p[i], self.__max[i] )
 
-		'''
 		for key, value in kwargs.items():
-			if key == 'inset':
-				self.__inset = value
-			elif key == 'properties':
-				self.__properties = value
-		'''
+			if key == 'materialaspect':
+				self.__materialaspect = value
+				self.__horizontal = ( self.__max[0] - self.__min[0] ) * self.__materialaspect > self.__max[1] - self.__min[1]
 
 	def __repr__( self ):
 		return 'min:Vec2( {}, {} )  max:Vec2( {}, {} )'.format( self.__min[0], self.__min[1], self.__max[0], self.max[1] )
@@ -145,16 +144,16 @@ class Bounds2d():
 									ctypes.c_ushort( int( self.__max[1] * MAX_SHORT ) ).value )
 
 	@classmethod
-	def from_verts( cls, verts ):
+	def from_verts( cls, verts, **kwargs ):
 		#build bounds from list of BMVerts
 		poslist = [ v.co.to_2d() for v in verts ]
-		return cls( poslist )
+		return cls( poslist, **kwargs )
 
 	@classmethod
-	def from_loops( cls, loops, uvlayer ):
+	def from_loops( cls, loops, uvlayer, **kwargs ):
 		#build bounds from list of BMVerts
 		uvlist = [ l[uvlayer].uv.copy() for l in loops ]
-		return cls( uvlist )
+		return cls( uvlist, **kwargs )
 
 	@property
 	def min( self ):
@@ -174,7 +173,11 @@ class Bounds2d():
 
 	@property
 	def aspect( self ):
-		return self.width / self.height
+		return self.width * self.__materialaspect / self.height
+	
+	@property
+	def invaspect( self ):
+		return self.height / ( self.width * self.__materialaspect )
 	
 	@property
 	def area( self ):
@@ -187,7 +190,7 @@ class Bounds2d():
 	@property
 	def horizontal( self ):
 		#returns true if self is wider than it is tall
-		return self.width > self.height
+		return self.__horizontal
 
 	@property
 	def tiling( self ):
@@ -201,6 +204,15 @@ class Bounds2d():
 	def corners( self ):
 		#return corner coords of self in (u,v) domain
 		return [ self.__min, mathutils.Vector( ( self.__max[0], self.__min[1] ) ), self.__max, mathutils.Vector( ( self.__min[0], self.__max[1] ) ) ]
+	
+	@property
+	def materialaspect( self ):
+		return self.__materialaspect
+	
+	@materialaspect.setter
+	def materialaspect( self, value ):
+		self.__materialaspect = value
+		self.__horizontal = self.width * self.__materialaspect > self.height
 
 	def clamp( self ):
 		new_bounds = Bounds2d( [ self.__min, self.__max ] )
@@ -246,7 +258,7 @@ class Bounds2d():
 		max_y = min( self.__max[1], bounds.max[1] )
 		return ( max_x - min_x ) * ( max_y - min_y )
 
-	def transform( self, other, skip_rot=False, trim=False, inset=0.0, aspect=1.0 ):
+	def transform( self, other, skip_rot=False, trim=False, inset=0.0 ):
 		#compute the 3x3 matrix that transforms bound 'other' to self
 		trans_mat = mathutils.Matrix.Identity( 3 )
 		trans_mat[0][2] = self.center[0] * -1.0
@@ -257,7 +269,7 @@ class Bounds2d():
 		trans_mat_inverse[1][2] = other.center[1]
 
 		other_inset_width = other.width - inset
-		other_inset_height = other.height - inset * aspect
+		other_inset_height = other.height - inset * self.__materialaspect
 
 		rot_mat = mathutils.Matrix.Identity( 3 )
 		scl_mat = mathutils.Matrix.Identity( 3 )
@@ -270,9 +282,9 @@ class Bounds2d():
 
 				if other.width >= 1.0:
 					scl_mat[1][1] *= other_inset_height / self.width
-					scl_mat[0][0] *= other_inset_height / self.width / aspect
+					scl_mat[0][0] *= other_inset_height / self.width / ( self.__materialaspect * self.__materialaspect )
 				else:
-					scl_mat[0][0] *= other_inset_width / self.height / aspect
+					scl_mat[0][0] *= other_inset_width / self.height / ( self.__materialaspect * self.__materialaspect )
 					scl_mat[1][1] *= other_inset_width / self.height
 			else:
 				if other.width >= 1.0:
@@ -296,7 +308,7 @@ class Bounds2d():
 		return trans_mat_inverse @ scl_mat @ rot_mat @ trans_mat
 	
 	def copy( self ):
-		return Bounds2d( [ self.__min, self.__max ] )
+		return Bounds2d( [ self.__min, self.__max ], materialaspect=self.__materialaspect )
 
 	def inset( self, f, aspect=1.0 ):
 		self.__min[0] += f * aspect
@@ -373,6 +385,10 @@ class Hotspot():
 	@property
 	def name( self ):
 		return self.__name
+	
+	@property
+	def materialaspect( self ):
+		return self.__data[0].materialaspect
 
 	def save_bmesh( self, rmmesh ):
 		with rmmesh as rmmesh:
@@ -392,31 +408,33 @@ class Hotspot():
 
 	def match( self, source_bounds, tollerance=0.01, random_orient=True ):
 		#find the bound in this hotspot that best matches source
-		sb_aspect = min( source_bounds.aspect, 1.0 / source_bounds.aspect )
+		sb_aspect = min( source_bounds.aspect, source_bounds.invaspect )
 		source_coord = mathutils.Vector( ( math.sqrt( source_bounds.area ), sb_aspect ) )
 
 		min_dist = 9999999.9
 		best_bounds = self.__data[0]
 		for tb in self.__data:
-			aspect = min( tb.aspect, 1.0 / tb.aspect )
+			if not random_orient and tb.horizontal != best_bounds.horizontal:
+				continue
+			aspect = min( tb.aspect, tb.invaspect )
 			target_coord = mathutils.Vector( ( math.sqrt( tb.area ), aspect ) )
 			dist = ( target_coord - source_coord ).length
 			if dist < min_dist:
 				min_dist = dist
 				best_bounds = tb
-		best_aspect = min( best_bounds.aspect, 1.0 / best_bounds.aspect )
+		best_aspect = min( best_bounds.aspect, best_bounds.invaspect )
 		best_coord = mathutils.Vector( ( math.sqrt( best_bounds.area ), best_aspect ) )
 
 		target_list = []
 		for tb in self.__data:
-			aspect = min( tb.aspect, 1.0 / tb.aspect )
+			aspect = min( tb.aspect, tb.invaspect )
 			target_coord = mathutils.Vector( ( math.sqrt( tb.area ), aspect ) )
-			if ( target_coord - best_coord ).length <= tollerance:
-				if not random_orient and tb.horizontal == best_bounds.hotizontal:
+			if ( target_coord - best_coord ).length <= tollerance:			
+				if not random_orient and tb.horizontal == best_bounds.horizontal:
 						target_list.append( tb )
 				else:
 					target_list.append( tb )
-					
+
 		return random.choice( target_list )
 
 	def nearest( self, u, v ):
@@ -439,6 +457,7 @@ class Hotspot():
 			if min_dist < nearest_rect_dist:
 				nearest_rect_dist = min_dist
 				nearest_rect = b
+
 		return nearest_rect
 
 	def overlapping( self, bounds2d ):
@@ -454,6 +473,10 @@ class Hotspot():
 					max_overlap_area = overlap_area
 					overlap_bounds = b
 		return overlap_bounds
+	
+	def applymaterialaspect( self, material_aspect ):
+		for b in self.__data:
+			b.materialaspect = material_aspect
 
 
 def write_default_file( file ):
@@ -573,7 +596,7 @@ def get_hotfile_path():
 	return filepath
 
 
-def load_hotspot_from_repo( material_name ):
+def load_hotspot_from_repo( material_name, material_aspect ):
 	#load hotspot repo file
 	hotfile = get_hotfile_path()
 	existing_materials, existing_hotspots = read_hot_file( hotfile )
@@ -585,30 +608,50 @@ def load_hotspot_from_repo( material_name ):
 			break
 	if hotspot_idx < 0:
 		return None
+	
+	existing_hotspots[hotspot_idx].applymaterialaspect( material_aspect )
 
 	return existing_hotspots[hotspot_idx]
 
 
-def get_hotspot( context ):
-	if context.scene.use_subrect_atlas:
-		if context.scene.subrect_atlas is None:
-			return None
-		return Hotspot.from_bmesh( rmlib.rmMesh( context.scene.subrect_atlas ) )
-	
+def material_aspect_from_selection( context ):
 	rmmesh = rmlib.rmMesh.GetActive( context )
 	if rmmesh is None:
-		return None
+		return None, 1.0
 
 	with rmmesh as rmmesh:
 		rmmesh.readonly = True
 		faces = rmlib.rmPolygonSet.from_selection( rmmesh )
 		if len( faces ) <= 0:
-			return None
+			return None, 1.0
 		try:
-			material_name = rmmesh.mesh.materials[ faces[0].material_index ].name
+			material = rmmesh.mesh.materials[ faces[0].material_index ]
 		except IndexError:
+			return None, 1.0
+		
+		material_aspect = 1.0
+		try:
+			material_aspect = material["WorldMappingWidth"] / material["WorldMappingHeight"]
+		except:
+			pass
+
+		return material, material_aspect
+
+
+def get_hotspot( context ):
+	material, material_aspect = material_aspect_from_selection( context )
+
+	if context.scene.use_subrect_atlas:
+		if context.scene.subrect_atlas is None:
 			return None
-		return load_hotspot_from_repo( material_name )
+		hotspot = Hotspot.from_bmesh( rmlib.rmMesh( context.scene.subrect_atlas ) )
+		hotspot.applymaterialaspect( material_aspect )
+		return hotspot
+	
+	if material is None:
+		return None
+	
+	return load_hotspot_from_repo( material.name, material_aspect )
 
 
 class OBJECT_OT_savehotspot( bpy.types.Operator ):
@@ -893,24 +936,13 @@ class MESH_OT_moshotspot( bpy.types.Operator ):
 				return { 'CANCELLED' }
 
 			for island in faces.island( uvlayer ):
-				#get the material aspect ratio on the first poly of this island
-				material_aspect = 1.0
-				try:
-					material = rmmesh.mesh.materials[island[0].material_index]
-				except IndexError:
-					pass
-				try:
-					material_aspect = material["WorldMappingWidth"] / material["WorldMappingHeight"]
-				except:
-					pass
-
 				loops = set()
 				for f in island:
 					for l in f.loops:
 						loops.add( l )
-				source_bounds = Bounds2d.from_loops( loops, uvlayer )
+				source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect=hotspot.materialaspect )
 
-				mat = source_bounds.transform( target_bounds, skip_rot=True, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0, aspect=material_aspect )
+				mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0 )
 				for l in loops:
 					uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 					uv[2] = 1.0
@@ -956,25 +988,13 @@ class MESH_OT_nrsthotspot( bpy.types.Operator ):
 				return { 'CANCELLED' }
 
 			for island in faces.island( uvlayer ):
-				#get the material aspect ratio on the first poly of this island
-				material_aspect = 1.0
-				try:
-					material = rmmesh.mesh.materials[island[0].material_index]
-				except IndexError:
-					pass
-				try:
-					material_aspect = material["WorldMappingWidth"] / material["WorldMappingHeight"]
-				except:
-					pass
-
 				loops = set()
 				for f in island:
 					for l in f.loops:
 						loops.add( l )
-				source_bounds = Bounds2d.from_loops( loops, uvlayer )
-				#target_bounds = hotspot.overlapping( source_bounds ).copy()
+				source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect=hotspot.materialaspect )
 				target_bounds = hotspot.nearest( source_bounds.center.x, source_bounds.center.y ).copy()
-				mat = source_bounds.transform( target_bounds, skip_rot=True, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0, aspect=material_aspect )
+				mat = source_bounds.transform( target_bounds, skip_rot=True, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0 )
 				for l in loops:
 					uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 					uv[2] = 1.0
@@ -1043,7 +1063,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 						bpy.ops.uv.unwrap( 'INVOKE_DEFAULT', method='CONFORMAL' )
 						bpy.ops.mesh.rm_uvunrotate() #unrotate uv by longest edge in island
 						#bpy.ops.mesh.rm_uvrectangularize() #rectangularize
-					#bpy.ops.mesh.rm_normalizetexels() #account for non-square materials
+					bpy.ops.mesh.rm_normalizetexels() #account for non-square materials
 					bpy.ops.mesh.rm_scaletomaterialsize() #scale to mat size
 
 		elif context.area.type == 'IMAGE_EDITOR': #iv in uvvp, scale to mat sizecomplete_failure
@@ -1075,26 +1095,14 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 				for pidx_list in islands_as_indexes:
 					island = [ rmmesh.bmesh.faces[pidx] for pidx in pidx_list ]
 
-					#get the material aspect ratio on the first poly of this island
-					material_aspect = 1.0
-					try:
-						material = rmmesh.mesh.materials[island[0].material_index]
-					except IndexError:
-						pass
-					try:
-						material_aspect = material["WorldMappingWidth"] / material["WorldMappingHeight"]
-					except:
-						pass
-
 					initial_selection += set( island )
 					loops = set()
 					for f in island:
 						for l in f.loops:
 							loops.add( l )
-					source_bounds = Bounds2d.from_loops( loops, uvlayer )
+					source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect=hotspot.materialaspect )
 					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance ).copy()
-
-					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0, aspect=material_aspect )
+					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0 )
 					for l in loops:
 						uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 						uv[2] = 1.0
@@ -1109,26 +1117,15 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 				for pidx_list in islands_as_indexes:					
 					island = [ rmmesh.bmesh.faces[pidx] for pidx in pidx_list ]
 
-					#get the material aspect ratio on the first poly of this island
-					material_aspect = 1.0
-					try:
-						material = rmmesh.mesh.materials[island[0].material_index]
-					except IndexError:
-						pass
-					try:
-						material_aspect = material["WorldMappingWidth"] / material["WorldMappingHeight"]
-					except:
-						pass
-
 					initial_selection += set( island )
 					loops = set()
 					for f in island:
 						for l in f.loops:
 							loops.add( l )
-					source_bounds = Bounds2d.from_loops( loops, uvlayer )
+					source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect = hotspot.materialaspect )
 					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance ).copy()
 
-					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0, aspect=material_aspect )		
+					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0 )		
 					for l in loops:
 						uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 						uv[2] = 1.0
@@ -1208,7 +1205,7 @@ class MESH_OT_uvaspectscale( bpy.types.Operator ):
 			for f in island:
 				for l in f.loops:
 					loops.add( l )
-			source_bounds = Bounds2d.from_loops( loops, uvlayer )
+			source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect=material_aspect )
 
 			new_min = source_bounds.min.copy()
 			new_min[0] += offset
@@ -1219,8 +1216,9 @@ class MESH_OT_uvaspectscale( bpy.types.Operator ):
 			new_max[1] -= offset
 
 			target_bounds = Bounds2d( [ new_min, new_max ] )
+			target_bounds.materialaspect = source_bounds.materialaspect
 
-			mat = source_bounds.transform( target_bounds, skip_rot=True, trim=False, inset=0.0, aspect=material_aspect )		
+			mat = source_bounds.transform( target_bounds, skip_rot=True, trim=False, inset=0.0 )		
 			for l in loops:
 				uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
 				uv[2] = 1.0
