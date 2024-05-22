@@ -444,6 +444,9 @@ class Hotspot():
 				else:
 					target_list.append( tb )
 
+		if len( target_list ) == 0:
+			return None
+
 		return random.choice( target_list )
 
 	def nearest( self, u, v ):
@@ -1111,6 +1114,9 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 							loops.add( l )
 					source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect=hotspot.materialaspect )
 					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance, trim_filter=context.scene.recttype_filter ).copy()
+					if target_bounds is None:
+						self.report( { 'WARNING' }, 'Could not find a hotspot match for a uvisland!!!' )
+						continue
 					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0 )
 					for l in loops:
 						uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
@@ -1133,7 +1139,9 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 							loops.add( l )
 					source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect = hotspot.materialaspect )
 					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance, trim_filter=context.scene.recttype_filter ).copy()
-
+					if target_bounds is None:
+						self.report( { 'WARNING' }, 'Could not find a hotspot match for a uvisland!!!' )
+						continue
 					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0 )		
 					for l in loops:
 						uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
