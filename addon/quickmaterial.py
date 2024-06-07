@@ -15,9 +15,12 @@ class MESH_OT_quickmaterial( bpy.types.Operator ):
 	def poll( cls, context ):
 		return context.area.type == 'VIEW_3D'
 		
-	def execute( self, context ):		
-		material = bpy.context.scene.quickmatprops['prop_mat']
-		
+	def execute( self, context ):
+		sel_mode = context.tool_settings.mesh_select_mode[:]
+		if not sel_mode[2]:
+			return { 'CANCELLED' }
+
+		material = bpy.context.scene.quickmatprops['prop_mat']		
 		if material is None:
 			if self.new_name.strip() == '':
 				return { 'CANCELLED' }
@@ -46,26 +49,26 @@ class MESH_OT_quickmaterial( bpy.types.Operator ):
 		if context.object is None or context.object.type != 'MESH':
 			return { 'FINISHED' }
 
-		sel_mode = context.tool_settings.mesh_select_mode[:]
-		if sel_mode[2]:
-			rmmesh = rmlib.rmMesh.GetActive( context )
-			if rmmesh is None:
-				return { 'FINISHED' }
-			with rmmesh as rmmesh:
-				match_found = False
-				for i, mat in enumerate( rmmesh.mesh.materials ):
-					if mat is not None  and mat.name_full == material.name_full:
-						match_found = True
-						break
-				if match_found:
-					selected_polys = rmlib.rmPolygonSet.from_selection( rmmesh )
-					for p in selected_polys:
-						p.material_index = i
-				else:
-					rmmesh.mesh.materials.append( material )
-					selected_polys = rmlib.rmPolygonSet.from_selection( rmmesh )
-					for p in selected_polys:
-						p.material_index = len( rmmesh.mesh.materials ) - 1
+		for rmmesh in rmlib.iter_edit_meshes( context, mode_filter=True ):			
+			bm = bmesh.from_edit_mesh( rmmesh.mesh )
+			rmmesh.bmesh = bm
+			
+			match_found = False
+			for i, mat in enumerate( rmmesh.mesh.materials ):
+				if mat is not None  and mat.name_full == material.name_full:
+					match_found = True
+					break
+			if match_found:
+				selected_polys = rmlib.rmPolygonSet.from_selection( rmmesh )
+				for p in selected_polys:
+					p.material_index = i
+			else:
+				rmmesh.mesh.materials.append( material )
+				selected_polys = rmlib.rmPolygonSet.from_selection( rmmesh )
+				for p in selected_polys:
+					p.material_index = len( rmmesh.mesh.materials ) - 1
+
+			bmesh.update_edit_mesh( rmmesh.mesh, loop_triangles=False, destructive=False )	
 
 		return { 'FINISHED' }
 

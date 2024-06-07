@@ -24,10 +24,10 @@ class MESH_OT_grabapplymat( bpy.types.Operator ):
 
 	def GrabApplyEdgeWeight( self, context ):
 		mouse_pos = mathutils.Vector( ( float( self.m_x ), float( self.m_y ) ) )
-
-		target_rmmesh = rmlib.rmMesh.GetActive( context )
-		if target_rmmesh is None:
-			return { 'CANCELLED' }
+		
+		target_rmmesh_list = []
+		for rmmesh in rmlib.iter_edit_meshes( context, mode_filter=True ):
+			target_rmmesh_list.append( rmmesh )
 
 		mos_rmmesh = rmlib.rmMesh.from_mos( context, mouse_pos ) #used to get mat data. using eval mat data causes crash
 		if mos_rmmesh is None:
@@ -72,7 +72,10 @@ class MESH_OT_grabapplymat( bpy.types.Operator ):
 
 		blyr = None
 		clyr = None
-		with target_rmmesh as rmmesh:
+		for rmmesh in target_rmmesh_list:
+			bm = bmesh.from_edit_mesh( rmmesh.mesh )
+			rmmesh.bmesh = bm
+			
 			if bpy.app.version < (4,0,0):
 				if bevel_weight is not None:
 					b_layers = rmmesh.bmesh.edges.layers.bevel_weight
@@ -101,16 +104,17 @@ class MESH_OT_grabapplymat( bpy.types.Operator ):
 				if clyr is not None and crease_weight is not None:
 					e[clyr] = crease_weight
 
+			bmesh.update_edit_mesh( rmmesh.mesh, loop_triangles=False, destructive=False )	
+
 		return { 'FINISHED' }
 
 	def GrabApplyMat( self, context ):
 		mouse_pos = mathutils.Vector( ( float( self.m_x ), float( self.m_y ) ) )
 
-		target_rmmesh = rmlib.rmMesh.GetActive( context )
-		if target_rmmesh is None:
-			return { 'CANCELLED' }
+		for rmmesh in rmlib.iter_edit_meshes( context, mode_filter=True ):			
+			bm = bmesh.from_edit_mesh( rmmesh.mesh )
+			rmmesh.bmesh = bm
 
-		with target_rmmesh as rmmesh:
 			faces = rmlib.rmPolygonSet.from_selection( rmmesh )
 			if len( faces ) < 1:
 				return { 'CANCELLED' }
@@ -156,7 +160,9 @@ class MESH_OT_grabapplymat( bpy.types.Operator ):
 			if not match_found:
 				rmmesh.object.data.materials.append( mos_rmmesh.mesh.materials[source_mat_idx] )
 				for f in faces:
-					f.material_index = len( rmmesh.object.data.materials ) - 1
+					f.material_index = len( rmmesh.object.data.materials ) - 1		
+
+			bmesh.update_edit_mesh( rmmesh.mesh, loop_triangles=False, destructive=False )			
 
 			ResetSubdivModLevels( subdiv_mods )
 
