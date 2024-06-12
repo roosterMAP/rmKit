@@ -1,7 +1,7 @@
 import bpy, mathutils
 from bpy.app.handlers import persistent
 from .. import rmlib
-import math, os
+import math, os, random
 
 ANCHOR_PROP_LIST = ( 'uv_anchor_nw', 'uv_anchor_n', 'uv_anchor_ne',
 			'uv_anchor_w', 'uv_anchor_c', 'uv_anchor_e',
@@ -632,7 +632,7 @@ class MESH_OT_uvfit( bpy.types.Operator ):
 			uvlayer = rmmesh.active_uv
 			
 			#get loop groups	
-			groups = GetLoopGroups( context, rmmesh, uvlayer, 'l' in self.dir )			
+			groups = GetLoopGroups( context, rmmesh, uvlayer, 'l' in self.dir )
 			for g in groups:
 				#compute the anchor pos
 				bbmin, bbmax = GetUVBounds( g, uvlayer )
@@ -684,6 +684,106 @@ class MESH_OT_uvfit( bpy.types.Operator ):
 					l[uvlayer].uv = uv.to_2d()
 					
 		return { 'FINISHED' }
+
+
+class MESH_OT_uvrandom( bpy.types.Operator ):
+	'''Randomize UV Selection'''
+	bl_idname = 'mesh.rm_uvrandom'
+	bl_label = 'Randomize Island Transforms'
+	bl_options = { 'UNDO' }
+
+	flip_axis: bpy.props.EnumProperty(
+		name='Flip Axis',
+		default=2,
+		items=[
+			( 'u', 'U', 'U Axis', 0 ),
+			( 'v', 'V', 'V Axis', 1 ),
+			( 'uv', 'UV', 'Both', 2 ),
+			( 'none', 'None', 'None', 3 )
+		]
+	)
+
+	rot_step: bpy.props.FloatProperty(
+		name='Rotate Range',
+		default=math.pi,
+		subtype='ANGLE',
+		unit='ROTATION'
+	)
+
+	@classmethod
+	def poll( cls, context ):
+		return ( context.area.type == 'IMAGE_EDITOR' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
+				context.object.data.is_editmode )
+
+	def execute( self, context ):
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		if rmmesh is None:
+			return { 'CANCELLED' }
+
+		with rmmesh as rmmesh:
+			uvlayer = rmmesh.active_uv
+			
+			#get loop groups	
+			groups = GetLoopGroups( context, rmmesh, uvlayer, True )
+			for g in groups:
+				#compute the anchor pos
+				bbmin, bbmax = GetUVBounds( g, uvlayer )
+				bbcenter = ( bbmin + bbmax ) * 0.5
+				bbwidth = bbmax[0] - bbmin[0]
+				bbheight = bbmax[1] - bbmin[1]
+
+				trans_mat = mathutils.Matrix.Identity( 3 )
+				trans_mat[0][2] = bbcenter[0] * -1.0
+				trans_mat[1][2] = bbcenter[1] * -1.0
+				
+				trans_mat_inverse = mathutils.Matrix.Identity( 3 )
+				trans_mat_inverse[0][2] = bbcenter[0]
+				trans_mat_inverse[1][2] = bbcenter[1]
+				
+				u_sign = 1.0
+				if self.flip_axis == 'u' or self.flip_axis == 'uv':
+					u_sign = 1 if random.random() < 0.5 else -1
+
+				v_sign = 1.0
+				if self.flip_axis == 'v' or self.flip_axis == 'uv':
+					v_sign = 1 if random.random() < 0.5 else -1
+
+				scl_mat = mathutils.Matrix.Identity( 3 )
+				scl_mat[0][0] = u_sign
+				scl_mat[1][1] = v_sign			
+
+				rot_mat = mathutils.Matrix.Identity( 3 )
+				if self.rot_step != 0.0:
+					theta = self.rot_step * math.floor( random.random() * 100.0 )
+					rot_mat[0][0] = math.cos( theta )
+					rot_mat[1][0] = math.sin( theta ) * -1.0
+					rot_mat[0][1] = math.sin( theta )
+					rot_mat[1][1] = math.cos( theta )
+
+				mat = trans_mat_inverse @ scl_mat @ rot_mat @ trans_mat
+
+				#include continuous elems in transformation
+				g = g.group_vertices( element=True )[0]
+				g.add_overlapping_loops( True )
+
+				#transform loops
+				for l in g:
+					uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
+					uv[2] = 1.0
+					uv = mat @ uv
+					l[uvlayer].uv = uv.to_2d()
+					
+		return { 'FINISHED' }
+
+	def draw( self, context ):
+		layout= self.layout
+		layout.prop( self, 'flip_axis' )
+		layout.prop( self, 'rot_step' )
+
+	def invoke( self, context, event ):			
+		return context.window_manager.invoke_props_dialog( self, width=230 )
 
 
 class UV_PT_UVTransformTools( bpy.types.Panel ):
@@ -887,6 +987,9 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 
 		layout.prop( context.scene, 'uv_fit_movecontinuous' )
 
+		layout.separator( factor=0.2 )
+		layout.operator( MESH_OT_uvrandom.bl_idname )
+
 
 def anchor_update( prop, context ):
 	prev_value = context.scene.anchor_val_prev
@@ -1031,6 +1134,7 @@ def register():
 	print( 'register :: {}'.format( MESH_OT_uvscale.bl_idname ) )
 	print( 'register :: {}'.format( MESH_OT_uvflip.bl_idname ) )
 	print( 'register :: {}'.format( MESH_OT_uvfit.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_uvrandom.bl_idname ) )
 	bpy.utils.register_class( UV_PT_UVTransformTools )
 	bpy.utils.register_class( MESH_OT_uvmove )
 	bpy.utils.register_class( MESH_OT_uvslam )
@@ -1039,6 +1143,7 @@ def register():
 	bpy.utils.register_class( MESH_OT_uvflip )
 	bpy.utils.register_class( MESH_OT_uvfit )
 	bpy.utils.register_class( MESH_OT_uvfitsample )
+	bpy.utils.register_class( MESH_OT_uvrandom )
 	bpy.types.Scene.uv_uvmove_offset = bpy.props.FloatProperty( name='Offset', default=1.0 )
 	bpy.types.Scene.uv_uvrotation_offset = bpy.props.FloatProperty( name='RotationOffset', default=45.0, min=0.0, max=180.0 )
 	bpy.types.Scene.uv_uvscale_factor = bpy.props.FloatProperty( name='Offset', default=2.0 )
@@ -1067,6 +1172,7 @@ def unregister():
 	print( 'unregister :: {}'.format( MESH_OT_uvscale.bl_idname ) )
 	print( 'unregister :: {}'.format( MESH_OT_uvflip.bl_idname ) )
 	print( 'unregister :: {}'.format( MESH_OT_uvfit.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_uvrandom.bl_idname ) )
 	bpy.utils.unregister_class( UV_PT_UVTransformTools )
 	bpy.utils.unregister_class( MESH_OT_uvmove )
 	bpy.utils.unregister_class( MESH_OT_uvslam )
@@ -1075,6 +1181,7 @@ def unregister():
 	bpy.utils.unregister_class( MESH_OT_uvflip )
 	bpy.utils.unregister_class( MESH_OT_uvfit )
 	bpy.utils.unregister_class( MESH_OT_uvfitsample )
+	bpy.utils.unregister_class( MESH_OT_uvrandom )
 	del bpy.types.Scene.uv_uvmove_offset
 	del bpy.types.Scene.uv_uvrotation_offset
 	del bpy.types.Scene.uv_uvscale_factor
