@@ -137,6 +137,7 @@ class VIEW3D_PT_MESHEDIT( bpy.types.Panel ):
 		c1.operator( 'wm.call_menu', text='Knife Screen' ).name = 'OBJECT_MT_rm_knifescreen'
 		c1.operator( 'wm.call_menu_pie', text='Move To Furthest' ).name = 'VIEW3D_MT_PIE_movetofurthest'
 		c1.operator( 'wm.call_menu_pie', text='Screen Reflect' ).name = 'OBJECT_MT_rm_screenreflect'
+		c1.operator( 'mesh.rm_falloff', text='Falloff Transform' )
 
 		r2 = layout.row()
 		r2.operator( 'mesh.rm_contextbevel', text='Bevel' )

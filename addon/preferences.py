@@ -130,6 +130,13 @@ def register_keyboard_keymap():
 		RM_GUI_NAMES.add( 'OBJECT_MT_rm_knifescreen' )
 		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
 
+		kmi = km_mesh.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
+		kmi.properties.name = 'VIEW3D_MT_PIE_quicklineardeform'
+		RM_GUI_NAMES.add( 'VIEW3D_MT_PIE_quicklineardeform' )
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_falloff', 'NONE', 'PRESS' ) ) )
+
 		kmi = km_mesh.keymap_items.new( 'wm.call_menu', 'NONE', 'PRESS' )
 		kmi.properties.name = 'VIEW3D_MT_quickbool'
 		RM_GUI_NAMES.add( 'VIEW3D_MT_quickbool' )

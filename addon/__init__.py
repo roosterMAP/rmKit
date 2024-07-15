@@ -82,6 +82,7 @@ from . import uvgrowshrink
 from . import preferences
 from . import quickboolean
 from . import naming
+from . import linear_deformer
 
 def register():
 	bpy.utils.register_class( rmKitPannel_parent )
@@ -101,6 +102,7 @@ def register():
 	copypaste.register()
 	cursor.register()
 	workplane.register()
+	linear_deformer.register()
 	screenreflect.register()
 	selectionmode.register()
 	radial_align.register()
@@ -143,6 +145,7 @@ def unregister():
 	copypaste.unregister()
 	cursor.unregister()
 	workplane.unregister()
+	linear_deformer.unregister()
 	screenreflect.unregister()
 	selectionmode.unregister()
 	radial_align.unregister()
