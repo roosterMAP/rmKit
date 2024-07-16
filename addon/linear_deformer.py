@@ -516,7 +516,11 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 				if self.s_tool:
 					# pick linear widget point
 					picked_point_id = self.s_tool.PickEndpointHandle( context, self.s_mouse.m_mouse_current_2d )
-					if picked_point_id != POINT_HANDLE_INVALID:
+					if picked_point_id == POINT_HANDLE_INVALID:
+						context.workspace.status_text_set( text=None )
+						self.s_draw.UnregisterDrawCallbacks()
+						return { 'FINISHED' }
+					else:
 						self.active_lw_point_id = picked_point_id
 						self.tool_mode = 'MOVE_POINT'
 				else:
@@ -754,14 +758,7 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 			bmesh.update_edit_mesh( active_obj.data )
 			context.workspace.status_text_set( text=None )
 			self.s_draw.UnregisterDrawCallbacks()
-			return { 'CANCELLED' }
-
-		if self.tool_mode == 'IDLE' and event.value == 'PRESS' and keys_pass is False:
-			if event.type in { 'LEFTMOUSE', 'SELECTMOUSE' }:
-				if self.s_tool and not self.s_tool.PickEndpointHandle( context, self.s_mouse.m_mouse_current_2d ):
-					context.workspace.status_text_set( text=None )
-					self.s_draw.UnregisterDrawCallbacks()
-					return { 'FINISHED' }						
+			return { 'CANCELLED' }					
 
 		self.s_draw.UpdateFromToolState( self.s_tool )
 		return { 'RUNNING_MODAL' }
