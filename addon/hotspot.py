@@ -414,6 +414,7 @@ class Hotspot():
 		min_dist = 9999999.9
 		best_bounds = self.__data[0]
 		for tb in self.__data:
+			print( tb.height )
 			if trim_filter == 'onlytrim':
 				if tb.width < 1.0 or tb.height < 1.0:
 					continue
@@ -666,12 +667,45 @@ def get_hotspot( context ):
 	return load_hotspot_from_repo( material.name, material_aspect )
 
 
+def image_from_hotspot( hotspot ):
+	size = 64
+	raw_data = [ 0.1 ] * 4 * size * size
+	for b in hotspot:
+		if b.width >= 1.0 or b.height >= 1.0:
+			color = rmlib.util.HSV_to_RGB( random.random() * 0.01 , random.random() * 0.5 + 0.5, random.random() * 0.5 + 0.5 )
+		else:
+			color = rmlib.util.HSV_to_RGB( max( 0.4, random.random() ), random.random() * 0.5, random.random() * 0.5 + 0.5 )
+		w = int( b.width * size )
+		h = int( b.height * size )
+		min_x = int( b.min[0] * size )
+		min_y = int( b.min[1] * size )
+		for m in range( h ):					
+			y = min_y + m
+			for n in range( w ):
+				x = min_x + n
+				idx = ( y * size + x ) * 4
+				raw_data[ idx ] = color[0]
+				raw_data[ idx + 1 ] = color[1]
+				raw_data[ idx + 2 ] = color[2]
+				raw_data[ idx + 3 ] = 1.0
+	return raw_data
+
+
 class OBJECT_OT_savehotspot( bpy.types.Operator ):
 	bl_idname = 'mesh.savehotspot'
 	bl_label = 'Create Hotspot'
 	bl_options = { 'UNDO' }
 
 	matname: bpy.props.StringProperty( name='Name' )
+
+	def __init__( self ):
+		self.__save_thumb = []
+		self.__trim_count = 0
+		self.__pcol = bpy.utils.previews.new()
+		self.__pcol.new( 'save_hotspot_thumb' )
+
+	def __del__( self ):
+		bpy.utils.previews.remove( self.__pcol )
 
 	@classmethod
 	def poll( cls, context ):
@@ -682,6 +716,14 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 	
 	def draw( self, context ):
 		self.layout.label( text='Save hotspot entry: \"{}\"?'.format( self.matname ) )
+
+		thumb = self.__pcol[ 'save_hotspot_thumb' ]
+		thumb.image_size = [ 64, 64 ]
+		thumb.image_pixels_float = self.__save_thumb
+		thumb.is_icon_custom = True	
+		self.layout.template_icon( thumb.icon_id, scale=8.0 )
+		self.layout.label( text='{} Trim rects found in hotspot atlas.'.format( self.__trim_count ) )
+		self.layout.label( text='note: trim rects will have a very red hue in the thumbnail.' )
 
 	def invoke(self, context, event):
 		rmmesh = rmlib.rmMesh.GetActive( context )
@@ -698,7 +740,9 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 				self.report( { 'WARNING' }, 'No faces selected!!!' )
 				return { 'CANCELLED' }
 
-			bounds = []
+			self.__save_thumb.clear()
+			self.__trim_count = 0
+			hotspot = []
 			for f in polys:
 				uvlist = [ mathutils.Vector( l[uvlayer].uv.copy() ) for l in f.loops ]
 				pmin = mathutils.Vector( uvlist[0] )
@@ -707,7 +751,11 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 					for i in range( 2 ):
 						pmin[i] = min( pmin[i], p[i] )
 						pmax[i] = max( pmax[i], p[i] )
-				bounds.append( Bounds2d( [ pmin, pmax ] ).clamp() )
+				b = Bounds2d( [ pmin, pmax ] ).clamp()
+				if b.width >= 1.0 or b.height >= 1.0:
+					self.__trim_count += 1
+				hotspot.append( b )
+			self.__save_thumb = image_from_hotspot( hotspot )
 
 			try:
 				self.matname = rmmesh.mesh.materials[ polys[0].material_index ].name
@@ -1286,44 +1334,26 @@ class MESH_OT_uvaspectscale( bpy.types.Operator ):
 				
 		context.window_manager.modal_handler_add( self )
 		return { 'RUNNING_MODAL' }
-	
+		
 
-def enum_previews_from_directory_items(self, context):
+def enum_previews_from_directory_items( self, context ):
 	enum_items = []
 
 	if context is None:
-		return enum_items
-	
+		return enum_items	
 
 	hotfile = get_hotfile_path()
 	existing_materials, existing_hotspots = read_hot_file( hotfile )
 	
+	size = 64
 	pcoll = preview_collections["main"]
 	for i in range( len( existing_hotspots ) ):
 		name = str( i )
 		icon = pcoll.get( name )
 		if not icon:
-			size = 64
 			thumb = pcoll.new( name )
 			thumb.image_size = [ size, size ]
-			raw_data = [ 0.1 ] * 4 * size * size
-
-			hotspot = existing_hotspots[i]
-			for b in hotspot.data:
-				color = rmlib.util.HSV_to_RGB( random.random(), random.random(), random.random() * 0.5 + 0.5 )
-				w = int( b.width * size )
-				h = int( b.height * size )
-				min_x = int( b.min[0] * size )
-				min_y = int( b.min[1] * size )
-				for m in range( h ):					
-					y = min_y + m
-					for n in range( w ):
-						x = min_x + n
-						idx = ( y * size + x ) * 4
-						raw_data[ idx ] = color[0]
-						raw_data[ idx + 1 ] = color[1]
-						raw_data[ idx + 2 ] = color[2]
-			thumb.image_pixels_float = raw_data
+			thumb.image_pixels_float = image_from_hotspot( existing_hotspots[i].data )
 			thumb.is_icon_custom = True			
 		else:
 			thumb = pcoll[name]
