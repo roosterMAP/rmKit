@@ -54,55 +54,58 @@ class MESH_OT_reduce( bpy.types.Operator ):
 		if context.object is None or context.mode == 'OBJECT':
 			return { 'CANCELLED' }
 
-		rmmesh = rmlib.rmMesh.GetActive( context )
-		if rmmesh is None:
-			return { 'CANCELLED' }
-
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 
-		
-		if sel_mode[0]: #vert mode
-			with rmmesh as rmmesh:
-				rmmesh.readonly = True
-				sel_verts = rmlib.rmVertexSet.from_selection( rmmesh )
-				if len( sel_verts ) > 0:
-					if self.reduce_mode == 'DEL':
-						bpy.ops.mesh.delete( type='VERT' )
-					elif self.reduce_mode == 'COL':
-						rmmesh.readonly = False
-						verts = rmlib.rmVertexSet.from_selection( rmmesh )
-						collapse_verts( verts )
-						bmesh.ops.remove_doubles( rmmesh.bmesh, verts=verts, dist=0.00001 )
-					else:
-						bpy.ops.mesh.dissolve_verts()
+		for rmmesh in rmlib.item.iter_edit_meshes( context ):
+			
+			if sel_mode[0]: #vert mode
+				with rmmesh as rmmesh:
+					rmmesh.readonly = True
+					sel_verts = rmlib.rmVertexSet.from_selection( rmmesh )
+					if len( sel_verts ) > 0:
+						if self.reduce_mode == 'DEL':
+							bpy.ops.mesh.delete( type='VERT' )
+						elif self.reduce_mode == 'COL':
+							rmmesh.readonly = False
+							verts = rmlib.rmVertexSet.from_selection( rmmesh )
+							collapse_verts( verts )
+							bmesh.ops.remove_doubles( rmmesh.bmesh, verts=verts, dist=0.00001 )
+						else:
+							bpy.ops.mesh.dissolve_verts()
 
-		if sel_mode[1]: #edge mode
-			with rmmesh as rmmesh:
-				rmmesh.readonly = True
-				sel_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
-				if len( sel_edges ) > 0:
-					if self.reduce_mode == 'DEL':
-						rmmesh.readonly = False
-						lone_edges = [ e for e in sel_edges if len( e.link_faces ) == 0 ]
-						bmesh.ops.delete( rmmesh.bmesh, geom=sel_edges.polygons , context='FACES' )
-						bmesh.ops.delete( rmmesh.bmesh, geom=lone_edges , context='EDGES' )
+			if sel_mode[1]: #edge mode
+				with rmmesh as rmmesh:
+					sel_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
+					if len( sel_edges ) > 0:
+						if self.reduce_mode == 'DEL':
+							lone_edges = [ e for e in sel_edges if len( e.link_faces ) == 0 ]
+							bmesh.ops.delete( rmmesh.bmesh, geom=sel_edges.polygons , context='FACES' )
+							bmesh.ops.delete( rmmesh.bmesh, geom=lone_edges , context='EDGES' )
 
-					elif self.reduce_mode == 'COL':
-						bpy.ops.mesh.edge_collapse()
-					elif self.reduce_mode == 'DIS':
-						bpy.ops.mesh.dissolve_edges( use_verts=False, use_face_split=False )
-					else:
-						bpy.ops.mesh.dissolve_edges( use_verts=True, use_face_split=False )
+						elif self.reduce_mode == 'COL':
+							bpy.ops.mesh.edge_collapse()
+						elif self.reduce_mode == 'DIS':
+							bpy.ops.mesh.dissolve_edges( use_verts=False, use_face_split=False )
+						else: #'POP'
+							delete_faces = rmlib.rmPolygonSet()
+							for face in sel_edges.polygons:
+								for edge in face.edges:
+									if not edge.select and edge.is_boundary:
+										v1, v2 = edge.verts
+										v3 = rmmesh.bmesh.verts.new( ( 0.0, 0.0, 0.0 ) )
+										delete_faces.append( rmmesh.bmesh.faces.new( ( v1, v2, v3 ) ) )											
+							bmesh.ops.dissolve_edges( rmmesh.bmesh, edges=sel_edges, use_verts=True, use_face_split=False )						
+							bmesh.ops.delete( rmmesh.bmesh, geom=delete_faces, context='FACES' )
 
-		if sel_mode[2]: #poly mode
-			with rmmesh as rmmesh:
-				rmmesh.readonly = True
-				sel_polys = rmlib.rmPolygonSet.from_selection( rmmesh )
-				if len( sel_polys ) > 0:
-					if self.reduce_mode == 'COL':
-						bpy.ops.mesh.edge_collapse()
-					else:
-						bpy.ops.mesh.delete( type='FACE' )
+			if sel_mode[2]: #poly mode
+				with rmmesh as rmmesh:
+					rmmesh.readonly = True
+					sel_polys = rmlib.rmPolygonSet.from_selection( rmmesh )
+					if len( sel_polys ) > 0:
+						if self.reduce_mode == 'COL':
+							bpy.ops.mesh.edge_collapse()
+						else:
+							bpy.ops.mesh.delete( type='FACE' )
 
 		return { 'FINISHED' }
 	
