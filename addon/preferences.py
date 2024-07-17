@@ -159,6 +159,7 @@ def register_keyboard_keymap():
 		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_normalizetexels', 'NONE', 'PRESS' ) ) )
 		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvboundstransform', 'NONE', 'PRESS' ) ) )
 		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvaspectscale', 'NONE', 'PRESS' ) ) )
+		RM_UV_KEYMAP.append( ( km_uv, km_uv.keymap_items.new( 'mesh.rm_uvfalloff', 'NONE', 'PRESS' ) ) )
 
 		kmi = km_uv.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
 		kmi.properties.name = 'IMAGE_EDITOR_MT_PIE_uvmovetofurthest'
@@ -171,6 +172,11 @@ def register_keyboard_keymap():
 
 		kmi = km_uv.keymap_items.new( 'mesh.rm_uvgrowshrink', 'NONE', 'PRESS' )
 		kmi.properties.mode = 'SHRINK'
+		RM_UV_KEYMAP.append( ( km_uv, kmi ) )
+
+		kmi = km_uv.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
+		kmi.properties.name = 'VIEW3D_MT_PIE_uvquicklineardeform'
+		RM_GUI_NAMES.add( 'VIEW3D_MT_PIE_uvquicklineardeform' )
 		RM_UV_KEYMAP.append( ( km_uv, kmi ) )
 
 		'''

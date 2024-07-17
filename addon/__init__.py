@@ -83,6 +83,7 @@ from . import preferences
 from . import quickboolean
 from . import naming
 from . import linear_deformer
+from . import linear_deformer_uv
 
 def register():
 	bpy.utils.register_class( rmKitPannel_parent )
@@ -103,6 +104,7 @@ def register():
 	cursor.register()
 	workplane.register()
 	linear_deformer.register()
+	linear_deformer_uv.register()
 	screenreflect.register()
 	selectionmode.register()
 	radial_align.register()
@@ -146,6 +148,7 @@ def unregister():
 	cursor.unregister()
 	workplane.unregister()
 	linear_deformer.unregister()
+	linear_deformer_uv.unregister()
 	screenreflect.unregister()
 	selectionmode.unregister()
 	radial_align.unregister()
