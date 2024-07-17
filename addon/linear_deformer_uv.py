@@ -1,6 +1,6 @@
 import bpy, bmesh, mathutils, bpy_extras, gpu
 from gpu_extras.batch import batch_for_shader
-import rmKit.rmlib as rmlib
+from .. import rmlib
 import math
 
 pass_keys = { 'NUMPAD_0', 'NUMPAD_1', 'NUMPAD_3', 'NUMPAD_4', 
