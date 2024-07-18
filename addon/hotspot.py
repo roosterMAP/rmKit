@@ -667,8 +667,7 @@ def get_hotspot( context ):
 	return load_hotspot_from_repo( material.name, material_aspect )
 
 
-def image_from_hotspot( hotspot ):
-	size = 64
+def image_from_hotspot( hotspot, size=64 ):
 	raw_data = [ 0.1 ] * 4 * size * size
 	for b in hotspot:
 		if b.width >= 1.0 or b.height >= 1.0:
@@ -718,11 +717,10 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 		self.layout.label( text='Save hotspot entry: \"{}\"?'.format( self.matname ) )
 
 		thumb = self.__pcol[ 'save_hotspot_thumb' ]
-		thumb.image_size = [ 64, 64 ]
+		thumb.image_size = [ 128, 128 ]
 		thumb.image_pixels_float = self.__save_thumb
 		thumb.is_icon_custom = True	
 		self.layout.template_icon( thumb.icon_id, scale=8.0 )
-		self.layout.label( text='{} Trim rects found in hotspot atlas.'.format( self.__trim_count ) )
 		self.layout.label( text='note: trim rects will have a very red hue in the thumbnail.' )
 
 	def invoke(self, context, event):
@@ -755,7 +753,7 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 				if b.width >= 1.0 or b.height >= 1.0:
 					self.__trim_count += 1
 				hotspot.append( b )
-			self.__save_thumb = image_from_hotspot( hotspot )
+			self.__save_thumb = image_from_hotspot( hotspot, size=128 )
 
 			try:
 				self.matname = rmmesh.mesh.materials[ polys[0].material_index ].name
