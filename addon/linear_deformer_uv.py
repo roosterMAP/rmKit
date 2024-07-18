@@ -111,6 +111,22 @@ class ToolState():
 			self.middle_point = self.start_point.copy()
 			self.end_point = self.start_point.copy()
 
+	def CycleEasing( self ):
+		self.quadratic_easing = ( self.quadratic_easing + 1 ) % QUADRATIC_EASING_COUNT
+
+	def ApplyEasing( self, weight ):
+		if self.quadratic_easing == QUADRATIC_EASING_IN:
+			return rmlib.util.EaseInCircular( weight )
+		elif self.quadratic_easing == QUADRATIC_EASING_OUT:
+			return rmlib.util.EaseOutCircular( weight )
+		else:
+			return weight
+
+	def Invert( self ):
+		temp = self.start_point
+		self.start_point = self.end_point
+		self.end_point = temp
+
 	def ComputeTransformOrigin( self, context, tool_verts ):
 		#set transform_origin
 		self.transform_origin = self.start_point #backup
@@ -493,7 +509,7 @@ class MESH_OT_Linear_Deformer_UV( bpy.types.Operator ):
 
 		MESH_OT_Linear_Deformer_UV.s_mouse.UpdateCurrentMouse( context, event )
 
-		tooltip_text = 'I:Invert, V:Invert, S:Scale, G:Move, R:Rotate, C:NextEasingMode, Ctrl+Z:Undo, Ctrl+Shift+Z:Redo'
+		tooltip_text = 'I:Invert, S:Scale, G:Move, R:Rotate, C:NextEasingMode, Ctrl+Z:Undo, Ctrl+Shift+Z:Redo'
 		context.workspace.status_text_set( text=tooltip_text )
 		
 		if MESH_OT_Linear_Deformer_UV.s_mode == 'IDLE' and not MESH_OT_Linear_Deformer_UV.s_mouse.CurrentlyWithinRegion():
@@ -521,7 +537,6 @@ class MESH_OT_Linear_Deformer_UV( bpy.types.Operator ):
 			if MESH_OT_Linear_Deformer_UV.s_mode == 'IDLE':
 				if event.value == 'PRESS':
 					if MESH_OT_Linear_Deformer_UV.s_tool is None:
-						print( '******' )
 						MESH_OT_Linear_Deformer_UV.s_tool = ToolState( context, event )
 						MESH_OT_Linear_Deformer_UV.s_mode = 'MOVE_POINT'
 					else:
@@ -571,6 +586,14 @@ class MESH_OT_Linear_Deformer_UV( bpy.types.Operator ):
 				else:
 					self.s_history.UndoHistory( rmmesh, uv_layer, loops )
 
+			elif event.type == 'C':
+				MESH_OT_Linear_Deformer_UV.s_tool.CycleEasing()
+				MESH_OT_Linear_Deformer_UV.s_draw.UpdateFromToolState( MESH_OT_Linear_Deformer_UV.s_tool )
+
+			elif event.type == 'V':
+				MESH_OT_Linear_Deformer_UV.s_tool.Invert()
+				MESH_OT_Linear_Deformer_UV.s_draw.UpdateFromToolState( MESH_OT_Linear_Deformer_UV.s_tool )
+
 		else:
 			if MESH_OT_Linear_Deformer_UV.s_mode == 'MOVE_POINT':
 				MESH_OT_Linear_Deformer_UV.s_tool.SetActiveHandlePosition( MESH_OT_Linear_Deformer_UV.s_mouse.GetCurrentViewPosition() )
@@ -591,7 +614,7 @@ class MESH_OT_Linear_Deformer_UV( bpy.types.Operator ):
 						
 					for i, l in enumerate( loops ):
 						d = self.m_work_loop_data[i]
-						l[uv_layer].uv = d[APPLY_VERT_POSITION] + delta * d[APPLY_VERT_WEIGHT]
+						l[uv_layer].uv = d[APPLY_VERT_POSITION] + delta * MESH_OT_Linear_Deformer_UV.s_tool.ApplyEasing( d[APPLY_VERT_WEIGHT] )
 					bmesh.update_edit_mesh( rmmesh.mesh )
 					MESH_OT_Linear_Deformer_UV.s_draw.UpdateFromToolState( MESH_OT_Linear_Deformer_UV.s_tool )
 
@@ -606,7 +629,7 @@ class MESH_OT_Linear_Deformer_UV( bpy.types.Operator ):
 					scale_amt = MESH_OT_Linear_Deformer_UV.s_mouse.GetScaleAmount( MESH_OT_Linear_Deformer_UV.s_tool.GetAxisConstraint(), MESH_OT_Linear_Deformer_UV.s_tool )
 					for i, l in enumerate( loops ):
 						d = self.m_work_loop_data[i]
-						lerp_scale = ( scale_amt - 1.0 ) * d[APPLY_VERT_WEIGHT] + 1.0
+						lerp_scale = ( scale_amt - 1.0 ) * MESH_OT_Linear_Deformer_UV.s_tool.ApplyEasing( d[APPLY_VERT_WEIGHT] ) + 1.0
 						sclMat = mathutils.Matrix.Scale( lerp_scale, 2 )
 						if MESH_OT_Linear_Deformer_UV.s_tool.GetAxisConstraint() == CONSTRAIN_AXIS_HORIZONTAL:
 							sclMat[1][1] = 1.0
@@ -631,7 +654,7 @@ class MESH_OT_Linear_Deformer_UV( bpy.types.Operator ):
 					rotate_amt = MESH_OT_Linear_Deformer_UV.s_mouse.GetRotateAmount( MESH_OT_Linear_Deformer_UV.s_tool )
 					for i, l in enumerate( loops ):
 						d = self.m_work_loop_data[i]
-						lerp_rot = rotate_amt * d[APPLY_VERT_WEIGHT]
+						lerp_rot = rotate_amt * MESH_OT_Linear_Deformer_UV.s_tool.ApplyEasing( d[APPLY_VERT_WEIGHT] )
 						r1 = [ math.cos( lerp_rot ), -math.sin( lerp_rot ) ]
 						r2 = [ math.sin( lerp_rot ), math.cos( lerp_rot ) ]
 						rot_mat = mathutils.Matrix( [ r1, r2 ] )
