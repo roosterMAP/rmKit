@@ -708,8 +708,7 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 
 	@classmethod
 	def poll( cls, context ):
-		return ( context.area.type == 'IMAGE_EDITOR' and
-				context.active_object is not None and
+		return ( context.active_object is not None and
 				context.mode == 'OBJECT' and
 				context.active_object.type == 'MESH' )
 	
@@ -1370,10 +1369,9 @@ class MESH_OT_refhostpot( bpy.types.Operator ):
 
 	@classmethod
 	def poll( cls, context ):
-		return ( ( context.area.type == 'VIEW_3D' or context.area.type == 'IMAGE_EDITOR' ) and
-				context.active_object is not None and
-				context.active_object.type == 'MESH' and
-				context.object.data.is_editmode )
+		return ( context.active_object is not None and
+				context.mode == 'OBJECT' and
+				context.active_object.type == 'MESH' )
 
 	def execute( self, context ):		
 		img_name = self.my_previews
