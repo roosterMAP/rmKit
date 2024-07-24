@@ -175,11 +175,22 @@ def GetWorldSpaceBounds( rmmesh, bounds ):
 	return ( min_p, max_p )
 
 
+BACKGROUND_LAYERNAME = 'rm_background'
+
+def GetSelsetPolygons( bm, layername ):
+	intlayers = bm.faces.layers.int
+	selset = intlayers.get( layername, None )
+	if selset is None:
+		return rmlib.rmPolygonSet()
+	return rmlib.rmPolygonSet( [ f for f in bm.faces if bool( f[selset] ) ] )
+
+
 def GetBoundingBox( context ):		
 		bounding_box = None
 		
 		if context.mode == 'EDIT_MESH':
 			sel_mode = context.tool_settings.mesh_select_mode[:]
+
 			rmmesh = rmlib.rmMesh.GetActive( context )
 			if rmmesh is None:
 				return bounding_box
@@ -198,15 +209,17 @@ def GetBoundingBox( context ):
 					if len( edges ) == 0:
 						return bounding_box
 					verts = edges.vertices
-				elif sel_mode[2]:
-					faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+
+				if sel_mode[2] or context.scene.dimensions_use_background_face_selection:
+					if sel_mode[2]:
+						faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+					else:
+						faces = GetSelsetPolygons( rmmesh.bmesh, BACKGROUND_LAYERNAME )
 					if len( faces ) == 0:
 						faces = rmlib.rmPolygonSet.from_mesh( rmmesh )
 					if len( faces ) == 0:
 						return bounding_box
 					verts = faces.vertices
-				else:
-					return bounding_box
 				
 				min_p = mathutils.Vector( verts[0].co.copy() )
 				max_p = mathutils.Vector( verts[0].co.copy() )
@@ -266,6 +279,11 @@ class MESH_OT_dimensions( bpy.types.Operator ):
 	def modal( self, context, event ):
 		if not MESH_OT_dimensions.DIMENSIONS_RENDER.active:
 			return { 'FINISHED' }
+
+		if event.type == 'X':
+			if event.value == 'PRESS':
+				context.scene.dimensions_use_background_face_selection = not context.scene.dimensions_use_background_face_selection
+			return { 'RUNNING_MODAL' }
 			
 		if event.type == 'TIMER':
 			bounding_box = GetBoundingBox( context )
@@ -296,9 +314,11 @@ class MESH_OT_dimensions( bpy.types.Operator ):
 
 def register():
 	print( 'register :: {}'.format( MESH_OT_dimensions.bl_idname ) )
+	bpy.types.Scene.dimensions_use_background_face_selection = bpy.props.BoolProperty( name='Use Background Face Sel' )
 	bpy.utils.register_class( MESH_OT_dimensions )
 	
 
 def unregister():
 	print( 'unregister :: {}'.format( MESH_OT_dimensions.bl_idname ) )
+	del bpy.types.Scene.dimensions_use_background_face_selection
 	bpy.utils.unregister_class( MESH_OT_dimensions )
