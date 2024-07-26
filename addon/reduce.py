@@ -1,6 +1,105 @@
 import bpy, bmesh, mathutils
 from .. import rmlib
 
+import bpy, bmesh, mathutils
+import rmKit.rmlib as rmlib
+
+def FindStartLoop( faces ):
+	for f in faces:		
+		for l in f.loops:
+			if ( l.edge.is_boundary and not l.edge.select ) or not l.edge.select:
+				return l
+	return None
+
+
+def UnselectedEdgeCount( loop ):
+	unselected_edges = 0
+	for e in loop.vert.link_edges:
+		if not e.select:
+			unselected_edges += 1
+	return unselected_edges
+		
+			
+def GetNewPolygonLoopList( loop_list, loop ):
+	loop.face.tag = True
+	
+	if len( loop_list ) > 0 and loop_list[0].vert == loop.vert:
+		return loop_list
+		
+	if not loop.vert.tag:
+		loop_list.append( loop )
+		
+		if not loop.edge.is_boundary and loop.link_loop_next.vert.tag:
+			if UnselectedEdgeCount( loop.link_loop_next ) == 1:
+				loop = loop.link_loop_radial_next.link_loop_next		
+		
+		return GetNewPolygonLoopList( loop_list, loop.link_loop_next )
+	
+	else:
+		if loop.edge.select:
+			if not loop.vert.is_boundary and UnselectedEdgeCount( loop ) > 2:
+				loop_list.append( loop )				
+			
+			while( loop.edge.select ):
+				loop = loop.link_loop_radial_next
+				loop = loop.link_loop_next		
+		
+	return GetNewPolygonLoopList( loop_list, loop.link_loop_next )
+	
+
+def pop_edges( rmmesh, sel_edges ):
+	sel_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
+	for v in sel_edges.vertices:
+		v.tag = True
+	
+	active_faces = sel_edges.polygons
+	
+	next_active_faces = active_faces.copy()
+	while( len( next_active_faces ) > 0 ):
+		start_loop = FindStartLoop( next_active_faces )
+		if start_loop is None:
+			break
+		
+		loop_list = GetNewPolygonLoopList( [], start_loop )
+		
+		if len( loop_list ) > 2 and len( loop_list ) == len( set( loop_list ) ):
+			new_face = rmmesh.bmesh.faces.new( [l.vert for l in loop_list], start_loop.face )
+
+			#copy over uv data
+			if rmmesh.bmesh.loops.layers.uv is not None:
+				for uvlayer in rmmesh.bmesh.loops.layers.uv.values():
+					for i, new_face_loop in enumerate( new_face.loops ):
+						new_face_loop[uvlayer].uv = loop_list[i][uvlayer].uv
+
+			#edge data processing
+			clyr = rmmesh.bmesh.edges.layers.float.get( 'crease_edge', None )
+			if clyr is None:
+				clyr = rmmesh.bmesh.edges.layers.float.get( 'crease_edge' )
+
+			blyr = rmmesh.bmesh.edges.layers.float.get( 'bevel_weight_edge', None )
+			if blyr is None:
+				blyr = rmmesh.bmesh.edges.layers.float.get( 'bevel_weight_edge' )
+			
+			for i, new_face_loop in enumerate( new_face.loops ):
+				if clyr is not None:
+					new_face_loop.edge[clyr] = loop_list[i].edge[clyr]
+				if blyr is not None:
+					new_face_loop.edge[blyr] = loop_list[i].edge[blyr]
+				new_face_loop.edge.smooth = loop_list[i].edge.smooth
+				new_face_loop.edge.seam = loop_list[i].edge.seam
+			
+		next_active_faces.clear()
+		for f in active_faces:
+			if not f.tag:
+				next_active_faces.append( f )
+		
+	bmesh.ops.delete( rmmesh.bmesh, geom=active_faces, context='FACES' )
+	
+	for v in rmmesh.bmesh.verts:
+		v.tag = False
+	for f in rmmesh.bmesh.faces:
+		f.tag = False
+
 def has_open_vert_member( verts ):
 	for v in verts:
 		for e in v.link_edges:
@@ -87,15 +186,7 @@ class MESH_OT_reduce( bpy.types.Operator ):
 						elif self.reduce_mode == 'DIS':
 							bpy.ops.mesh.dissolve_edges( use_verts=False, use_face_split=False )
 						else: #'POP'
-							delete_faces = rmlib.rmPolygonSet()
-							for face in sel_edges.polygons:
-								for edge in face.edges:
-									if not edge.select and edge.is_boundary:
-										v1, v2 = edge.verts
-										v3 = rmmesh.bmesh.verts.new( ( 0.0, 0.0, 0.0 ) )
-										delete_faces.append( rmmesh.bmesh.faces.new( ( v1, v2, v3 ) ) )											
-							bmesh.ops.dissolve_edges( rmmesh.bmesh, edges=sel_edges, use_verts=True, use_face_split=False )						
-							bmesh.ops.delete( rmmesh.bmesh, geom=delete_faces, context='FACES' )
+							pop_edges( rmmesh, sel_edges )
 
 			if sel_mode[2]: #poly mode
 				with rmmesh as rmmesh:
