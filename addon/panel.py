@@ -24,7 +24,13 @@ class VIEW3D_PT_UTILS( bpy.types.Panel ):
 		r2.operator( 'view3d.rm_workplane', text='Toggle Workplane' )		
 
 		layout.operator( 'wm.call_menu_pie', text='3D Cursor Pie' ).name = 'VIEW3D_MT_PIE_cursor'
+
+		layout.separator()
+		
 		layout.operator( 'view3d.rm_dimensions', text='Toggle Dimensions' )
+		layout.prop( context.scene, 'dimensions_use_background_face_selection' )
+
+		layout.separator()
 
 		layout.operator( 'mesh.rm_itemnametomeshname' )
 

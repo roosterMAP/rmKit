@@ -89,6 +89,22 @@ def pop_edges( rmmesh, sel_edges ):
 		v.tag = True
 	
 	active_faces = sel_edges.polygons
+
+	cap_faces = rmlib.rmPolygonSet()
+	for f in sel_edges.vertices.polygons:
+		sel_edge_count = 0		
+		for e in f.edges:
+			if e.select:
+				sel_edge_count += 1
+
+		tag_vert_count = 0
+		for v in f.verts:
+			if v.tag:
+				tag_vert_count += 1
+				
+		if sel_edge_count == 0 and tag_vert_count > 0:
+			cap_faces.append( f )
+
 	next_active_faces = active_faces.copy()
 	while( len( next_active_faces ) > 0 ):
 		start_loop = FindStartLoop( next_active_faces )
@@ -103,6 +119,17 @@ def pop_edges( rmmesh, sel_edges ):
 		for f in active_faces:
 			if not f.tag:
 				next_active_faces.append( f )
+
+	for f in cap_faces:
+		loop_list = []
+		for l in f.loops:
+			if l.vert.tag:
+				if UnselectedEdgeCount( l ) > 2:
+					loop_list.append( l )
+			else:
+				loop_list.append( l )
+		CreateFace( rmmesh, loop_list, f )
+		active_faces.append( f )
 		
 	bmesh.ops.delete( rmmesh.bmesh, geom=active_faces, context='FACES' )
 	
