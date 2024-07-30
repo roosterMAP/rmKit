@@ -128,8 +128,9 @@ def pop_edges( rmmesh, sel_edges ):
 					loop_list.append( l )
 			else:
 				loop_list.append( l )
-		CreateFace( rmmesh, loop_list, f )
-		active_faces.append( f )
+		if len( loop_list ) < len( f.loops ):
+			CreateFace( rmmesh, loop_list, f )
+			active_faces.append( f )
 		
 	bmesh.ops.delete( rmmesh.bmesh, geom=active_faces, context='FACES' )
 	
