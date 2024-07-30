@@ -631,7 +631,7 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 						xfrm = active_obj.matrix_world
 						xfrm_inv = xfrm.inverted()
 						for vert_data in self.apply_tool_verts:
-							lerp_scale = ( apply_value - 1.0 ) * vert_data[ 1 ] + 1.0
+							lerp_scale = ( apply_value - 1.0 ) * vert_data[ APPLY_VERT_WEIGHT ] + 1.0
 							sclMat = mathutils.Matrix.Scale( lerp_scale, 4 )
 							if self.s_tool.constrain_axis_idx >= 0:
 								if self.mmb_plane_axis:
@@ -645,7 +645,7 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 							offsetMat = mathutils.Matrix.Translation( self.s_tool.transform_origin )
 							offsetMat_inv = mathutils.Matrix.Translation( self.s_tool.transform_origin * -1.0 )
 
-							bm.verts[ vert_data[ 0 ] ].co = ( xfrm_inv @ offsetMat @ sclMat @ offsetMat_inv @ xfrm ) @ vert_data[ 2 ]
+							bm.verts[ vert_data[ APPLY_VERT_ID ] ].co = ( xfrm_inv @ offsetMat @ sclMat @ offsetMat_inv @ xfrm ) @ vert_data[ APPLY_VERT_POSITION ]
 
 						bm.normal_update()
 						bmesh.update_edit_mesh( active_obj.data )
@@ -668,21 +668,21 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 				self.tool_mode = 'IDLE'
 
 			elif self.do_update:
-				mouse_pos_3d = active_obj.matrix_world.inverted() @ self.s_mouse.m_mouse_current_3d
-				start_pos = active_obj.matrix_world.inverted() @ self.s_tool.start_point
-				orig_pos = active_obj.matrix_world.inverted() @ self.s_mouse.m_mouse_move_start_3d
+				mouse_pos_3d = self.s_mouse.m_mouse_current_3d
+				start_pos = self.s_tool.start_point
+				orig_pos = self.s_mouse.m_mouse_move_start_3d
 				orig_vec = orig_pos - start_pos
 				move_vec = ( mouse_pos_3d - start_pos ) - orig_vec
 
 				for vert_data in self.apply_tool_verts:
-					move_value = vert_data[ 1 ]
+					move_value = vert_data[ APPLY_VERT_WEIGHT ]
 					new_vec = ( move_vec * move_value )
 					if self.s_tool.constrain_axis_idx >= 0:
 						if self.mmb_plane_axis:
-							new_vec = new_vec - rmlib.util.ProjectVector( new_vec, active_obj.matrix_world.inverted() @ mathutils.Matrix.Identity( 3 )[ self.s_tool.constrain_axis_idx ] )
+							new_vec = new_vec - rmlib.util.ProjectVector( new_vec, mathutils.Matrix.Identity( 3 )[ self.s_tool.constrain_axis_idx ] )
 						else:
-							new_vec = rmlib.util.ProjectVector( new_vec, active_obj.matrix_world.inverted() @ mathutils.Matrix.Identity( 3 )[ self.s_tool.constrain_axis_idx ] )
-					bm.verts[ vert_data[ 0 ] ].co = vert_data[ 2 ] + new_vec
+							new_vec = rmlib.util.ProjectVector( new_vec, mathutils.Matrix.Identity( 3 )[ self.s_tool.constrain_axis_idx ] )
+					bm.verts[ vert_data[ APPLY_VERT_ID ] ].co = vert_data[ APPLY_VERT_POSITION ] + new_vec
 
 				bm.normal_update()
 				bmesh.update_edit_mesh( active_obj.data )
@@ -720,7 +720,7 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 						xfrm = active_obj.matrix_world
 						xfrm_inv = xfrm.inverted()
 						for vert_data in self.apply_tool_verts:
-							lerp_rot = rot_angle * vert_data[ 1 ]
+							lerp_rot = rot_angle * vert_data[ APPLY_VERT_WEIGHT ]
 							look_dir = ( rv3d.view_rotation @ mathutils.Vector( ( 0.0, 0.0, -1.0 ) ) ).normalized()
 							rotMat = mathutils.Matrix.Rotation( lerp_rot, 4, look_dir )
 							if self.s_tool.constrain_axis_idx >= 0:
@@ -730,7 +730,7 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 							offsetMat = mathutils.Matrix.Translation( self.s_tool.transform_origin )
 							offsetMat_inv = mathutils.Matrix.Translation( self.s_tool.transform_origin * -1.0 )
 
-							bm.verts[ vert_data[ 0 ] ].co = ( xfrm_inv @ offsetMat @ rotMat @ offsetMat_inv @ xfrm ) @ vert_data[ 2 ]
+							bm.verts[ vert_data[ APPLY_VERT_ID ] ].co = ( xfrm_inv @ offsetMat @ rotMat @ offsetMat_inv @ xfrm ) @ vert_data[ APPLY_VERT_POSITION ]
 
 						bm.normal_update()
 						bmesh.update_edit_mesh( active_obj.data )
