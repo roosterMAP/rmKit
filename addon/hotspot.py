@@ -1370,7 +1370,7 @@ class MESH_OT_refhostpot( bpy.types.Operator ):
 	@classmethod
 	def poll( cls, context ):
 		return ( context.active_object is not None and
-				context.mode == 'OBJECT' and
+				context.mode in ['OBJECT', 'EDIT_MESH' ] and
 				context.active_object.type == 'MESH' )
 
 	def execute( self, context ):		
@@ -1381,13 +1381,24 @@ class MESH_OT_refhostpot( bpy.types.Operator ):
 		with rmmesh as rmmesh:
 			rmmesh.readonly = True
 			
-			polys = rmlib.rmPolygonSet.from_selection( rmmesh )
-			if len( polys ) == 0:
-				return { 'CANCELLED' }
-			try:
-				mat_name = rmmesh.mesh.materials[ polys[0].material_index ].name
-			except KeyError:
-				return { 'CANCELLED' }
+			mat_name = ''
+			if context.mode == 'EDIT_MESH':
+				polys = rmlib.rmPolygonSet.from_selection( rmmesh )
+				if len( polys ) == 0:
+					self.report( { 'ERROR' }, 'Must have at least one face selected!!!' )
+					return { 'CANCELLED' }
+				try:
+					mat_name = rmmesh.mesh.materials[ polys[0].material_index ].name
+				except KeyError:
+					self.report( { 'ERROR' }, 'Material index on face out of bounds!!!' )
+					return { 'CANCELLED' }
+			elif context.mode == 'OBJECT':
+				try:
+					mat_name = rmmesh.mesh.materials[ rmmesh.bmesh.faces[0].material_index ].name
+				except KeyError:
+					self.report( { 'ERROR' }, 'Material index on face out of bounds!!!' )
+					return { 'CANCELLED' }
+				
 
 		#load hotspot repo file
 		hotfile = get_hotfile_path()
@@ -1414,10 +1425,6 @@ class MESH_OT_refhostpot( bpy.types.Operator ):
 		layout.template_icon_view( self, "my_previews" )
 
 	def invoke( self, context, event ):
-		sel_mode = context.tool_settings.mesh_select_mode[:]
-		if not sel_mode[2]:
-			return { 'CANCELLED' }
-
 		random.seed( 0 )
 		return context.window_manager.invoke_props_dialog( self, width=128 )
 
