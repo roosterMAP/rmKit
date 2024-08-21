@@ -1,7 +1,17 @@
 import bpy, bmesh, mathutils, bpy_extras
+import string
 from .. import rmlib
 
 MAT_PROP_UPDATED = False
+
+def validate_material_name( mat_name ):
+	if mat_name == '':
+		return False
+	valid_chars = "-_(){}{}\\".format( string.ascii_letters, string.digits )
+	for c in mat_name:
+		if c not in valid_chars:
+			return False
+	return True
 
 class MESH_OT_quickmaterial( bpy.types.Operator ):
 	'''Utility for quickly sampling, modifying, and creating materials for 3d viewport.'''
@@ -22,9 +32,11 @@ class MESH_OT_quickmaterial( bpy.types.Operator ):
 
 		material = bpy.context.scene.quickmatprops['prop_mat']		
 		if material is None:
-			if self.new_name.strip() == '':
+			mat_name = self.new_name.strip().replace( '/', '\\' )
+			if not validate_material_name( mat_name ):
+				self.report({'ERROR'}, 'Material name contains invalid characters.' )
 				return { 'CANCELLED' }
-			material = bpy.data.materials.new( name=self.new_name.strip() )
+			material = bpy.data.materials.new( name=mat_name )
 			material.use_nodes = True
 		
 		global MAT_PROP_UPDATED

@@ -1,9 +1,6 @@
 import bpy, bmesh, mathutils
 from .. import rmlib
 
-import bpy, bmesh, mathutils
-import rmKit.rmlib as rmlib
-
 def FindStartLoop( faces ):
 	for f in faces:		
 		for l in f.loops:

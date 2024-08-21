@@ -84,6 +84,7 @@ from . import quickboolean
 from . import naming
 from . import linear_deformer
 from . import linear_deformer_uv
+from . import exportmanager
 
 def register():
 	bpy.utils.register_class( rmKitPannel_parent )
@@ -125,8 +126,9 @@ def register():
 	uvboundstransform.register()
 	dimensions.register()
 	quickboolean.register()
-	uvgrowshrink.register()
+	uvgrowshrink.register()	
 	preferences.register()
+	exportmanager.register()
 	naming.register()
 
 def unregister():
@@ -170,5 +172,7 @@ def unregister():
 	dimensions.unregister()
 	quickboolean.unregister()
 	uvgrowshrink.unregister()
+	uvgrowshrink.register()
 	preferences.unregister()
+	exportmanager.unregister()
 	naming.unregister()
