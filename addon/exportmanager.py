@@ -145,10 +145,9 @@ class EXPORTMANAGER_UL_item_list( bpy.types.UIList ):
 		column_name.scale_x = 100
 
 		column_export = layout.column()
-		column_export.operator("object.em_export_object", text="Export").item_index = index
+		column_export.operator("object.em_export_object", text='', icon='EXPORT').item_index = index
 		if index < len( context.scene.em_core.export_items ):
 			column_export.enabled = context.scene.em_core.export_items[index].enabled
-			column_export.scale_x = 20
 
 
 class UIListPanelExportManager(bpy.types.Panel):
