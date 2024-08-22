@@ -279,11 +279,6 @@ class MESH_OT_dimensions( bpy.types.Operator ):
 	def modal( self, context, event ):
 		if not MESH_OT_dimensions.DIMENSIONS_RENDER.active:
 			return { 'FINISHED' }
-
-		if event.type == 'X':
-			if event.value == 'PRESS':
-				context.scene.dimensions_use_background_face_selection = not context.scene.dimensions_use_background_face_selection
-			return { 'RUNNING_MODAL' }
 			
 		if event.type == 'TIMER':
 			bounding_box = GetBoundingBox( context )
