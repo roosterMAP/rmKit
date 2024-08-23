@@ -1,15 +1,13 @@
-import bpy
+import bpy, mathutils
 import random, os, string
+from bpy.app.handlers import persistent
 
 HASH_KEY = 'itemexporthash'
 EXPORT_OBJECT_NAMES = {}
 ENABLE_NAMING_COLLISION = False
 ENABLE_INDEX_UPDATE = True
 ENABLE_BASEPATH_UPDATE = True
-
-
-bpy.app.handlers.depsgraph_update_post.clear()
-
+ENABLE_HANDLER = True
 
 def get_export_object_names( scene ):
 	export_object_names = {}
@@ -55,8 +53,11 @@ def sync_scene_with_export_manager( scene ):
 		export_item.enabled = tuple_data[2]
 		
 		
-def sync_active_selection_with_export_manager( scene ):
-	hash = bpy.context.active_object.get( HASH_KEY )
+def sync_active_selection_with_export_manager( scene, depsgraph ):
+	obj = depsgraph.view_layer.objects.active
+	if obj is None:
+		return
+	hash = obj.get( HASH_KEY )
 	if hash:	
 		for i, export_item in enumerate( scene.em_propertygroup.export_items ):
 			if export_item.hash == hash:
@@ -65,16 +66,18 @@ def sync_active_selection_with_export_manager( scene ):
 		
 	scene.em_propertygroup.active_item_index = -1
 
-
+@persistent
 def on_depsgraph_update( scene, depsgraph ):
-	global EXPORT_OBJECT_NAMES  
+	global ENABLE_HANDLER
+	if not ENABLE_HANDLER:
+		return  
 
 	for update in depsgraph.updates:
 		o = update.id
 		if type(o) is bpy.types.Object:
 			sync_scene_with_export_manager( scene )
 		elif type(o) is bpy.types.Scene:	
-			sync_active_selection_with_export_manager( scene )
+			sync_active_selection_with_export_manager( scene, depsgraph )
 		break
 
 
@@ -117,9 +120,6 @@ def index_update( self, context ):
 		obj_name = self['export_items'][active_item_index]["name"]
 		obj = context.scene.objects[obj_name]
 		view_layer = context.view_layer
-		for o in view_layer.objects:
-			o.select_set( False )
-		obj.select_set(True)
 		view_layer.objects.active = obj
 		
 	
@@ -259,7 +259,8 @@ EXPORT_ERROR_CODE  = {
 	
 
 def export_path( context, object ):
-	basePath = bpy.context.preferences.addons[__name__].preferences.export_manager_basepath
+	packagename = __package__[:__package__.index( '.' )]
+	basePath = bpy.context.preferences.addons[packagename].preferences.export_manager_basepath
 	
 	filepath = bpy.data.filepath
 	filename = os.path.basename( filepath )
@@ -291,21 +292,41 @@ def export_path( context, object ):
 	return ( 0, exportpath.replace( '/', '\\' ) + '.fbx' )
 	
 
-def export_object( context, export_object, exportpath ):
-	selected_objects = bpy.context.selected_objects
+def export_object( context, root_export_object, exportpath ):
+	#store initial selection and active object
+	initial_active_object = context.view_layer.objects.active
+	initial_selection = list( context.selected_objects )
 
-	for obj in selected_objects:
-		obj.select_set( False )
-
-	for obj in export_object.children_recursive:
+	#select object and children
+	source_export_objects = [ root_export_object ]
+	root_export_object.select_set( True )
+	for obj in root_export_object.children_recursive:
 		obj.select_set( True )
+		source_export_objects.append( obj )
 
+	#duplicate and identify parent
+	bpy.ops.object.duplicate( linked=False, mode='TRANSLATION' )
+	export_objects = list( context.selected_objects )
+	parent_obj = None
+	for obj in export_objects:
+		if obj.parent is None or obj not in export_objects:
+			parent_obj = obj
+			break
+
+	#reset position and rotation of parent
+	parent_obj.location = ( 0.0, 0.0, 0.0 )
+	parent_obj.rotation_euler = mathutils.Euler( ( 0.0, 0.0, 0.0 ), 'XYZ' )
+
+	#export
 	bpy.ops.export_scene.fbx( filepath=exportpath, use_selection=True )
 
-	for obj in bpy.context.selected_objects:
-		obj.select_set( False )
-	for obj in selected_objects:
+	#delete
+	bpy.ops.object.delete()
+
+	#restore initial selection and initial active object
+	for obj in initial_selection:
 		obj.select_set( True )
+	context.view_layer.objects.active = initial_active_object
 
 
 class OBJECT_OT_ExportObject(bpy.types.Operator):
@@ -320,6 +341,8 @@ class OBJECT_OT_ExportObject(bpy.types.Operator):
 		return True
 
 	def execute(self, context):
+		global ENABLE_HANDLER
+
 		export_items = context.scene.em_propertygroup.export_items
 		target_hash = export_items[self.item_index].hash
 		for object in context.scene.objects:
@@ -331,7 +354,13 @@ class OBJECT_OT_ExportObject(bpy.types.Operator):
 				if error_code > 0:
 					self.report({'ERROR'},  EXPORT_ERROR_CODE[error_code] )
 					break
-				export_object( context, object, exportpath )					
+
+				ENABLE_HANDLER = False
+				export_object( context, object, exportpath )
+				ENABLE_HANDLER = True	
+								
+				self.report({'INFO'},  'Successfully exported {}'.format( exportpath ) )
+
 				return {'FINISHED'}
 				
 		return {'FINISHED'}
@@ -347,10 +376,22 @@ class OBJECT_OT_ExportEnabledObject(bpy.types.Operator):
 		return True
 
 	def execute(self, context):
+		global ENABLE_HANDLER
+
+		export_count = 0
+
+		ENABLE_HANDLER = False
 		for i, export_item in enumerate( context.scene.em_propertygroup.export_items ):
 			if not export_item.enabled:
-				continue
+				continue			
 			bpy.ops.object.em_export_object( item_index=i )
+			export_count += 1
+		ENABLE_HANDLER = True	
+
+		if export_count == 0:
+			self.report({'WARNING'}, 'No items exported!!!' )
+		else:
+			self.report({'INFO'}, 'Successfully exported {} items'.format( export_count ) )
 
 		return {'FINISHED'}
 	
