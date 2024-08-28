@@ -252,3 +252,13 @@ def EaseOutCircular( t ):
 
 def EaseInCircular( t ):
 	return 1.0 - math.sqrt( 1.0 - math.pow( t, 2.0 ) )
+
+def TriangleArea( a, b, c ):
+	u = b - a
+	v = c - a
+
+	i = u.y * v.z - u.z * v.y
+	j = u.z * v.x - u.x * v.z
+	k = u.x * v.y - u.y * v.x
+
+	return math.sqrt( i * i + j * j + k * k ) * 0.5

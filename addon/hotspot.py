@@ -414,7 +414,6 @@ class Hotspot():
 		min_dist = 9999999.9
 		best_bounds = self.__data[0]
 		for tb in self.__data:
-			print( tb.height )
 			if trim_filter == 'onlytrim':
 				if tb.width < 1.0 or tb.height < 1.0:
 					continue
@@ -1091,24 +1090,33 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 
 		use_trim = context.scene.recttype_filter != 'notrim'
 
+		uvlayers = []
+
 		#preprocess uvs
 		islands_as_indexes = []
 		if context.area.type == 'VIEW_3D': #if in 3dvp, scale to mat size then rectangularize/gridify uv islands
-			uv1_mode = context.scene.hotspot_uv1
-			uv2_mode = context.scene.hotspot.uv2
-			if uv1_mode == 'none' and uv2_mode == 'none':
-				self.repo( {'ERROR'}, 'Could not hotspot match because both uv enums set to None!!!' )
-				return { 'CANCELLED' }
+			uv_modes = ( context.scene.hotspot_uv1, context.scene.hotspot_uv2 )
+			if context.scene.use_multiUV:
+				if uv_modes[0] == 'none' and uv_modes[1] == 'none':
+					self.repo( {'ERROR'}, 'Could not hotspot multiUV match because both uv enums set to None!!!' )
+					return { 'CANCELLED' }
 			
 			rmmesh = rmlib.rmMesh.GetActive( context )
 			with rmmesh as rmmesh:
 				rmmesh.readonly = True
 				if len( rmmesh.bmesh.loops.layers.uv.values() ) == 0:
 					self.report( { 'WARNING' }, 'No uv data found!!!' )
-					return { 'CANCELLED' }
+					return { 'CANCELLED' }				
 
-				uv1 = rmmesh.bmesh.loops.layers.uv.get()
-				uvlayer = rmmesh.active_uv
+				if context.scene.use_multiUV:
+					for i, uvmode in enumerate( uv_modes ):
+						if uvmode != 'none':
+							try:
+								uvlayers.append( rmmesh.bmesh.loops.layers.uv.values()[i] )
+							except IndexError:
+								uvlayers.append( rmmesh.bmesh.loops.layers.uv.new( 'UVMap' ) )
+				else:
+					uvlayers.append( rmmesh.active_uv )
 
 				faces = rmlib.rmPolygonSet.from_selection( rmmesh )
 				if len( faces ) < 1:
@@ -1122,13 +1130,20 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 				for island in faces.group( element=False, use_seam=True, use_material=True, use_sharp=True, use_angle=auto_smooth_angle ):
 					islands_as_indexes.append( [ f.index for f in island ] )					
 					island.select( replace=True )
-					result = bpy.ops.mesh.rm_uvgridify() #gridify
-					if result == { 'CANCELLED' }:
-						bpy.ops.uv.unwrap( 'INVOKE_DEFAULT', method='CONFORMAL' )
-						bpy.ops.mesh.rm_uvunrotate() #unrotate uv by longest edge in island
-						#bpy.ops.mesh.rm_uvrectangularize() #rectangularize
-					bpy.ops.mesh.rm_normalizetexels() #account for non-square materials
-					bpy.ops.mesh.rm_scaletomaterialsize() #scale to mat size
+					for i, uvlayer in enumerate( uvlayers ):
+						if not context.scene.use_multiUV or uv_modes[i] == 'hotspot':
+							result = bpy.ops.mesh.rm_uvgridify() #gridify
+							if result == { 'CANCELLED' }:
+								current_active_layer = rmmesh.bmesh.loops.layers.uv.active
+								uvlayer.active = True
+								bpy.ops.uv.unwrap( 'INVOKE_DEFAULT', method='CONFORMAL' )
+								bpy.ops.mesh.rm_uvunrotate() #unrotate uv by longest edge in island
+								current_active_layer.active = True
+								#bpy.ops.mesh.rm_uvrectangularize() #rectangularize
+							bpy.ops.mesh.rm_normalizetexels( uv_map_name=uvlayer.name ) #account for non-square materials
+							bpy.ops.mesh.rm_scaletomaterialsize( uv_map_name=uvlayer.name ) #scale to mat size
+						elif uv_modes[i] == 'worldspace':
+							bpy.ops.mesh.rm_worldspaceproject( uv_map_name=uvlayer.name )
 
 		elif context.area.type == 'IMAGE_EDITOR': #iv in uvvp, scale to mat sizecomplete_failure
 			rmmesh = rmlib.rmMesh.GetActive( context )
@@ -1138,13 +1153,13 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 					self.report( { 'WARNING' }, 'No uv data found!!!' )
 					return { 'CANCELLED' }
 
-				uvlayer = rmmesh.active_uv
+				uvlayers.append( rmmesh.active_uv )
 
 				faces = GetFaceSelection( context, rmmesh )
 				if len( faces ) < 1:
 					self.report( { 'WARNING' }, 'No uv faces selected!!!' )
 					return { 'CANCELLED' }
-				for island in faces.island( uvlayer, use_seam=True ):
+				for island in faces.island( uvlayers[0], use_seam=True ):
 					islands_as_indexes.append( [ f.index for f in island ] )
 					#island.select( replace=True )
 					#bpy.ops.mesh.rm_scaletomaterialsize() #scale to mat size
@@ -1152,8 +1167,6 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 		#hotspot
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		with rmmesh as rmmesh:
-			uvlayer = rmmesh.active_uv
-
 			if context.area.type == 'VIEW_3D':
 				initial_selection = []
 				for pidx_list in islands_as_indexes:
@@ -1164,22 +1177,25 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 					for f in island:
 						for l in f.loops:
 							loops.add( l )
-					source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect=hotspot.materialaspect )
-					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance, trim_filter=context.scene.recttype_filter ).copy()
-					if target_bounds is None:
-						self.report( { 'WARNING' }, 'Could not find a hotspot match for a uvisland!!!' )
-						continue
-					mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0 )
-					for l in loops:
-						uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
-						uv[2] = 1.0
-						uv = mat @ uv
-						l[uvlayer].uv = uv.to_2d()
+					for i, uvlayer in enumerate( uvlayers ):
+						if not context.scene.use_multiUV or uv_modes[i] == 'hotspot':
+							source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect=hotspot.materialaspect )
+							target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance, trim_filter=context.scene.recttype_filter ).copy()
+							if target_bounds is None:
+								self.report( { 'WARNING' }, 'Could not find a hotspot match for a uvisland!!!' )
+								continue
+							mat = source_bounds.transform( target_bounds, skip_rot=False, trim=use_trim, inset=context.scene.hotspot_inset / 1024.0 )
+							for l in loops:
+								uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
+								uv[2] = 1.0
+								uv = mat @ uv
+								l[uvlayer].uv = uv.to_2d()
 
 				for f in initial_selection:
 					f.select = True
 
 			elif context.area.type == 'IMAGE_EDITOR':
+				uvlayer = uvlayers[0]
 				initial_selection = []
 				for pidx_list in islands_as_indexes:					
 					island = [ rmmesh.bmesh.faces[pidx] for pidx in pidx_list ]

@@ -63,6 +63,7 @@ class UV_PT_UVTOOLS( bpy.types.Panel ):
 		layout.operator( 'mesh.rm_stitch', text='Stitch' )
 		layout.operator( 'mesh.rm_uvunrotate', text='Unrotate' )
 		layout.operator( 'mesh.rm_relativeislands' )
+		layout.operator( 'mesh.rm_worldspaceproject' )
 		layout.operator( 'mesh.rm_scaletomaterialsize' )
 		r3 = layout.row()
 		r3.operator( 'mesh.rm_uvgrowshrink', text='UV Grow' ).mode = 'GROW'
@@ -187,6 +188,7 @@ class VIEW3D_PT_VIEW3D_UV( bpy.types.Panel ):
 	def draw( self, context ):
 		layout = self.layout
 
+		layout.operator( 'mesh.rm_worldspaceproject' )
 		layout.operator( 'mesh.rm_uvgridify', text='UV Gridify' )
 		layout.operator( 'mesh.rm_uvrectangularize', text='UV Rectangularize' )
 		layout.separator()

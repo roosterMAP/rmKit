@@ -153,6 +153,8 @@ class MESH_OT_scaletomaterialsize( bpy.types.Operator ):
 	bl_label = 'Scale to Material Size'
 	bl_options = { 'UNDO' }
 
+	uv_map_name : bpy.props.StringProperty( name="UVLayer", default='' )
+
 	@classmethod
 	def poll( cls, context ):
 		return ( ( context.area.type == 'VIEW_3D' or context.area.type == 'IMAGE_EDITOR' ) and
@@ -166,7 +168,15 @@ class MESH_OT_scaletomaterialsize( bpy.types.Operator ):
 			return { 'CANCELLED' }
 		
 		with rmmesh as rmmesh:
-			uvlayer = rmmesh.active_uv
+			if self.uv_map_name == '':
+				uvlayer = rmmesh.active_uv
+			else:
+				try:
+					uvlayer = rmmesh.bmesh.loops.layers.uv.get( self.uv_map_name )
+				except KeyError:
+					self.report( { 'ERROR' }, 'No UVLayer with name {} exists on mesh {}'.format( self.uv_map_name, rmmesh.object ) )
+					return { 'CANCELLED' }
+				
 			clear_tags( rmmesh )
 
 			#get face selection from uv loop selection
@@ -222,7 +232,10 @@ class MESH_OT_scaletomaterialsize( bpy.types.Operator ):
 				except:
 					pass
 
-				#compute uv island area
+				xfrm = rmmesh.world_transform.to_3x3()
+
+				#compute island 3d and uv surface area
+				island_3darea = 0.0
 				island_uvarea = 0.0
 				for tri in tri_loops:
 					if tri[0].face in island:
@@ -232,10 +245,10 @@ class MESH_OT_scaletomaterialsize( bpy.types.Operator ):
 						uvarea = mathutils.geometry.area_tri( uv1, uv2, uv3 )
 						island_uvarea += uvarea
 
-				#compute island 3d surface area
-				island_3darea = 0.0
-				for f in island:
-					island_3darea += f.calc_area()
+						co1 = xfrm @ tri[0].vert.co
+						co2 = xfrm @ tri[1].vert.co
+						co3 = xfrm @ tri[2].vert.co
+						island_3darea += rmlib.util.TriangleArea( co1, co2, co3 )
 
 				#compute island center in uv space
 				island_center = mathutils.Vector( ( 0.0, 0.0 ) )
@@ -273,10 +286,8 @@ class MESH_OT_normalizetexels( bpy.types.Operator ):
 	bl_label ='Normalize Texels'
 	bl_options = { 'UNDO' }
 
-	horizontal: bpy.props.BoolProperty(
-			name='Horizontal',
-			default=True
-	)
+	horizontal: bpy.props.BoolProperty( name='Horizontal', default=True )
+	uv_map_name : bpy.props.StringProperty( name="UVLayer", default='' )
 
 	@classmethod
 	def poll( cls, context ):
@@ -290,7 +301,15 @@ class MESH_OT_normalizetexels( bpy.types.Operator ):
 			return { 'CANCELLED' }
 		
 		with rmmesh as rmmesh:
-			uvlayer = rmmesh.active_uv
+			if self.uv_map_name == '':
+				uvlayer = rmmesh.active_uv
+			else:
+				try:
+					uvlayer = rmmesh.bmesh.loops.layers.uv.get( self.uv_map_name )
+				except KeyError:
+					self.report( { 'ERROR' }, 'No UVLayer with name {} exists on mesh {}'.format( self.uv_map_name, rmmesh.object ) )
+					return { 'CANCELLED' }
+				
 			clear_tags( rmmesh )
 
 			#get face selection from uv loop selection
@@ -408,21 +427,128 @@ class MESH_OT_normalizetexels( bpy.types.Operator ):
 			clear_tags( rmmesh )
 
 		return { 'FINISHED' }
+	
+
+class MESH_OT_worldspaceproject( bpy.types.Operator ):
+	"""Does a planar projection for all three world planes, then scales to material size."""
+	bl_idname = 'mesh.rm_worldspaceproject'
+	bl_label = 'Worldspace Project'
+	bl_options = { 'UNDO' }
+
+	uv_map_name : bpy.props.StringProperty( name="UVLayer", default='' )
+
+	@classmethod
+	def poll( cls, context ):
+		return ( ( context.area.type == 'VIEW_3D' or context.area.type == 'IMAGE_EDITOR' ) and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
+				context.object.data.is_editmode )
+
+	def execute( self, context ):
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		if rmmesh is None:
+			return { 'CANCELLED' }
+		
+		target_uvlayername = ''
+		with rmmesh as rmmesh:
+			if self.uv_map_name == '':
+				uvlayer = rmmesh.active_uv
+			else:
+				try:
+					uvlayer = rmmesh.bmesh.loops.layers.uv.get( self.uv_map_name )
+				except KeyError:
+					self.report( { 'ERROR' }, 'No UVLayer with name {} exists on mesh {}'.format( self.uv_map_name, rmmesh.object ) )
+					return { 'CANCELLED' }
+			target_uvlayername = uvlayer.name
+				
+			clear_tags( rmmesh )
+
+			#get face selection from uv loop selection
+			faces = rmlib.rmPolygonSet()
+			sel_sync = context.tool_settings.use_uv_select_sync
+			if sel_sync or context.area.type == 'VIEW_3D':
+				sel_mode = context.tool_settings.mesh_select_mode[:]
+				if sel_mode[2]:
+					faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+				else:
+					return { 'CANCELLED' }
+			else:
+				uv_sel_mode = context.tool_settings.uv_select_mode
+				if uv_sel_mode == 'FACE':
+					loops = rmlib.rmUVLoopSet.from_selection( rmmesh, uvlayer=uvlayer )
+					loop_faces = set()
+					for l in loops:
+						if not l.face.select:
+							continue
+						if not l[uvlayer].select_edge:
+							continue
+						loop_faces.add( l.face )
+						l.tag = True
+					for f in loop_faces:
+						all_loops_tagged = True
+						for l in f.loops:
+							if not l.tag:
+								all_loops_tagged = False
+							else:
+								l.tag = False
+						if all_loops_tagged:
+							faces.append( f )
+				else:
+					return { 'CANCELLED' }
+
+			if len( faces ) < 1:
+				return { 'CANCELLED' }
+			
+			for face in faces:
+				dotx = face.normal.dot( mathutils.Vector( ( 1.0, 0.0, 0.0 ) ) )
+				doty = face.normal.dot( mathutils.Vector( ( 0.0, 1.0, 0.0 ) ) )
+				dotz = face.normal.dot( mathutils.Vector( ( 0.0, 0.0, 1.0 ) ) )
+				proj_axis_idx = 0
+				proj_axis = mathutils.Vector( ( 1.0, 0.0, 0.0 ) )
+				proj_axis_sign = 1
+				if abs( dotx ) > abs( doty ) and abs( dotx ) > abs( dotz ):
+					proj_axis_sign = ( dotx > 0.0 ) * 2.0 - 1.0
+					proj_axis = mathutils.Vector( ( 1.0, 0.0, 0.0 ) )
+				elif abs( doty ) > abs( dotx ) and abs( doty ) > abs( dotz ):
+					proj_axis_idx = 1
+					proj_axis_sign = ( doty > 0.0 ) * 2.0 - 1.0
+					proj_axis = mathutils.Vector( ( 0.0, 1.0, 0.0 ) )					
+				else:
+					proj_axis_idx = 2
+					proj_axis_sign = ( dotz > 0.0 ) * 2.0 - 1.0
+					proj_axis = mathutils.Vector( ( 0.0, 0.0, 1.0 ) )
+
+				for loop in face.loops:
+					coord = loop.vert.co.copy()
+					proj_coord = list( coord - proj_axis * coord.dot( proj_axis ) )
+					proj_coord.pop( proj_axis_idx )
+					proj_coord[0] *= proj_axis_sign
+					loop[uvlayer].uv = proj_coord
+
+			clear_tags( rmmesh )
+
+		bpy.ops.mesh.rm_scaletomaterialsize( uv_map_name=target_uvlayername )
+
+		return { 'FINISHED' }
 
 
 def register():
 	print( 'register :: {}'.format( MESH_OT_scaleislandrelative.bl_idname ) )
 	print( 'register :: {}'.format( MESH_OT_scaletomaterialsize.bl_idname ) )
 	print( 'register :: {}'.format( MESH_OT_normalizetexels.bl_idname ) )
+	print( 'register :: {}'.format( MESH_OT_worldspaceproject.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_scaleislandrelative )
 	bpy.utils.register_class( MESH_OT_scaletomaterialsize )
 	bpy.utils.register_class( MESH_OT_normalizetexels )
+	bpy.utils.register_class( MESH_OT_worldspaceproject )
 	
 
 def unregister():
 	print( 'unregister :: {}'.format( MESH_OT_scaleislandrelative.bl_idname ) )
 	print( 'unregister :: {}'.format( MESH_OT_scaletomaterialsize.bl_idname ) )
 	print( 'unregister :: {}'.format( MESH_OT_normalizetexels.bl_idname ) )
+	print( 'unregister :: {}'.format( MESH_OT_worldspaceproject.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_scaleislandrelative )
 	bpy.utils.unregister_class( MESH_OT_scaletomaterialsize )
 	bpy.utils.unregister_class( MESH_OT_normalizetexels )
+	bpy.utils.unregister_class( MESH_OT_worldspaceproject )
