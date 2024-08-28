@@ -1094,6 +1094,12 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 		#preprocess uvs
 		islands_as_indexes = []
 		if context.area.type == 'VIEW_3D': #if in 3dvp, scale to mat size then rectangularize/gridify uv islands
+			uv1_mode = context.scene.hotspot_uv1
+			uv2_mode = context.scene.hotspot.uv2
+			if uv1_mode == 'none' and uv2_mode == 'none':
+				self.repo( {'ERROR'}, 'Could not hotspot match because both uv enums set to None!!!' )
+				return { 'CANCELLED' }
+			
 			rmmesh = rmlib.rmMesh.GetActive( context )
 			with rmmesh as rmmesh:
 				rmmesh.readonly = True
@@ -1101,6 +1107,7 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 					self.report( { 'WARNING' }, 'No uv data found!!!' )
 					return { 'CANCELLED' }
 
+				uv1 = rmmesh.bmesh.loops.layers.uv.get()
 				uvlayer = rmmesh.active_uv
 
 				faces = rmlib.rmPolygonSet.from_selection( rmmesh )
@@ -1466,6 +1473,21 @@ def register():
 	bpy.types.Scene.hotspot_inset = bpy.props.FloatProperty( name='Inset', default=0.0 )
 	bpy.types.Scene.subrect_atlas = bpy.props.PointerProperty( name='Atlas', type=bpy.types.Object, description='atlas object' )
 	bpy.types.Scene.recttype_filter = bpy.props.EnumProperty( name='Filter', default='none', items=[ ( 'none', 'None', "", 1 ), ( 'onlytrim', 'Only Trims', "", 2 ), ( 'notrim', 'No Trims', "", 3 ) ] )
+	bpy.types.Scene.use_multiUV = bpy.props.BoolProperty( name='Use MultiUV', default=False )
+	bpy.types.Scene.hotspot_uv1 = bpy.props.EnumProperty(
+		items=[ ( "none", "None", "", 1 ),
+		 		( "hotspot", "Hotspot", "", 2 ),
+				( "worldspace", "Worldspace", "", 3 ) ],
+		name="UV1",
+		default="hotspot"
+	)
+	bpy.types.Scene.hotspot_uv2 = bpy.props.EnumProperty(
+		items=[ ( "none", "None", "", 1 ),
+		 		( "hotspot", "Hotspot", "", 2 ),
+				( "worldspace", "Worldspace", "", 3 ) ],
+		name="UV2",
+		default="none"
+	)
 	bpy.utils.register_class( UV_PT_UVHotspotTools )
 	bpy.utils.register_class( OBJECT_OT_repotoascii )
 	bpy.utils.register_class( MESH_OT_uvaspectscale )
@@ -1487,6 +1509,9 @@ def unregister():
 	del bpy.types.Scene.subrect_atlas
 	del bpy.types.Scene.recttype_filter
 	del bpy.types.Scene.hotspot_inset
+	del bpy.types.Scene.hotspot_uv1
+	del bpy.types.Scene.hotspot_uv2
+	del bpy.types.Scene.use_multiUV
 	bpy.utils.unregister_class( UV_PT_UVHotspotTools )
 	bpy.utils.unregister_class( OBJECT_OT_repotoascii )
 	bpy.utils.unregister_class( MESH_OT_uvaspectscale )
