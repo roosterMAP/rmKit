@@ -1135,10 +1135,10 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 							result = bpy.ops.mesh.rm_uvgridify() #gridify
 							if result == { 'CANCELLED' }:
 								current_active_layer = rmmesh.bmesh.loops.layers.uv.active
-								uvlayer.active = True
+								context.object.data.uv_layers[uvlayer.name].active_render = True
 								bpy.ops.uv.unwrap( 'INVOKE_DEFAULT', method='CONFORMAL' )
 								bpy.ops.mesh.rm_uvunrotate() #unrotate uv by longest edge in island
-								current_active_layer.active = True
+								context.object.data.uv_layers[current_active_layer.name].active_render = True
 								#bpy.ops.mesh.rm_uvrectangularize() #rectangularize
 							bpy.ops.mesh.rm_normalizetexels( uv_map_name=uvlayer.name ) #account for non-square materials
 							bpy.ops.mesh.rm_scaletomaterialsize( uv_map_name=uvlayer.name ) #scale to mat size
