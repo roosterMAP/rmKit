@@ -702,9 +702,6 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 		self.__pcol = bpy.utils.previews.new()
 		self.__pcol.new( 'save_hotspot_thumb' )
 
-	def __del__( self ):
-		bpy.utils.previews.remove( self.__pcol )
-
 	@classmethod
 	def poll( cls, context ):
 		return ( context.active_object is not None and

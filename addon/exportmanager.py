@@ -454,6 +454,6 @@ def unregister():
 	bpy.utils.unregister_class(OBJECT_OT_ExportManagerSettings)
 
 	del bpy.types.Scene.em_propertygroup
-	del bpy.types.Scene.itemexporthash
+	del bpy.types.Object.itemexporthash
 
 	bpy.app.handlers.depsgraph_update_post.clear()

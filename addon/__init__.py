@@ -172,7 +172,6 @@ def unregister():
 	dimensions.unregister()
 	quickboolean.unregister()
 	uvgrowshrink.unregister()
-	uvgrowshrink.register()
 	preferences.unregister()
 	exportmanager.unregister()
 	naming.unregister()
