@@ -30,6 +30,12 @@ def CreateFace( rmmesh, loop_list, proto ):
 				for i, new_face_loop in enumerate( new_face.loops ):
 					new_face_loop[uvlayer].uv = loop_list[i][uvlayer].uv
 
+		#copy over vcolor data
+		if rmmesh.bmesh.loops.layers.color is not None:
+			for colorlayer in rmmesh.bmesh.loops.layers.color:
+				for i, new_face_loop in enumerate( new_face.loops ):
+					new_face_loop[colorlayer] = loop_list[i][colorlayer]
+
 			#edge data processing
 		clyr = rmmesh.bmesh.edges.layers.float.get( 'crease_edge', None )
 		if clyr is None:

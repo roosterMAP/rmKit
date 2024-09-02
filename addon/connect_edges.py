@@ -285,6 +285,10 @@ class CEPoly( object ):
 				if CEPoly.BMesh.loops.layers.uv is not None:
 					for uvlayer in CEPoly.BMesh.loops.layers.uv.values():
 						subvert_loop[uvlayer].uv = loop[uvlayer].uv.copy()
+
+				if CEPoly.BMesh.loops.layers.color is not None:
+					for colorlayer in CEPoly.BMesh.loops.layers.color:
+						subvert_loop[colorlayer] = loop[colorlayer]
 						
 			else:
 				#if vert is a subvert, then coompute interpolated uvcoord				
@@ -311,7 +315,17 @@ class CEPoly( object ):
 						end_uv = end_loop[uvlayer].uv
 						vec_uv = end_uv - start_uv
 						interp_uv = start_uv + ( vec_uv * weight )
-					subvert_loop[uvlayer].uv = interp_uv
+						subvert_loop[uvlayer].uv = interp_uv
+
+				#asigne color data
+				if CEPoly.BMesh.loops.layers.color is not None:
+					#generate interpolated color coord
+					for colorlayer in CEPoly.BMesh.loops.layers.color:
+						start_color = loop[colorlayer]
+						end_color = end_loop[colorlayer]
+						vec_color = end_color - start_color
+						interp_color = start_color + ( vec_color * weight )
+						subvert_loop[colorlayer] = interp_color
 			
 			#assign edge layer data
 			if subvert_loop.edge.tag:
