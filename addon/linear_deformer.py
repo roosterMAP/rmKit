@@ -79,7 +79,7 @@ class ToolState():
 					bbmax[ 1 ] = min( vert_data[ 2 ][ 1 ], bbmax[ 1 ] )
 					bbmin[ 2 ] = min( vert_data[ 2 ][ 2 ], bbmin[ 2 ] )
 					bbmax[ 2 ] = min( vert_data[ 2 ][ 2 ], bbmax[ 2 ] )
-				xfrm_inv = active_obj.matrix_world.inverted()
+				xfrm_inv = context.active_object.matrix_world.inverted()
 				self.transform_origin = xfrm_inv @ ( ( bbmax + bbmin ) * 0.5 )
 		elif transform_pivot == 'CURSOR':
 			self.transform_origin = context.scene.cursor.location
@@ -89,7 +89,7 @@ class ToolState():
 			self.transform_origin = self.start_point
 		elif transform_pivot == 'ACTIVE_ELEMENT':
 			active_elem = bm.select_history.active
-			xfrm_inv = active_obj.matrix_world.inverted()
+			xfrm_inv = context.active_object.matrix_world.inverted()
 			if active_elem is not None and isinstance( active_elem, bmesh.types.BMVert ):
 				self.transform_origin = xfrm_inv @ active_elem.co
 			elif active_elem is not None and isinstance( active_elem, bmesh.types.BMEdge ):

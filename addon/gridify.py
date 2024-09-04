@@ -57,6 +57,8 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 	bl_label = 'Gridify'
 	bl_options = { 'UNDO' }
 
+	uv_map_name : bpy.props.StringProperty( name="UVLayer", default='' )
+
 	@classmethod
 	def poll( cls, context ):
 		return ( ( context.area.type == 'VIEW_3D' or context.area.type == 'IMAGE_EDITOR' ) and
@@ -70,7 +72,15 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 			return { 'CANCELLED' }
 		
 		with rmmesh as rmmesh:
-			uvlayer = rmmesh.active_uv
+			if self.uv_map_name == '':
+				uvlayer = rmmesh.active_uv
+			else:
+				try:
+					uvlayer = rmmesh.bmesh.loops.layers.uv.get( self.uv_map_name )
+				except KeyError:
+					self.report( { 'ERROR' }, 'No UVLayer with name {} exists on mesh {}'.format( self.uv_map_name, rmmesh.object ) )
+					return { 'CANCELLED' }
+
 			clear_tags( rmmesh )			
 
 			#get selection of faces
