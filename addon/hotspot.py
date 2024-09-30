@@ -1124,23 +1124,24 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 				if bpy.app.version < (4,0,0) and rmmesh.mesh.use_auto_smooth:
 					auto_smooth_angle = rmmesh.mesh.auto_smooth_angle
 
+				current_active_layer_index = rmmesh.mesh.uv_layers.active_index
 				for island in faces.group( element=False, use_seam=True, use_material=True, use_sharp=True, use_angle=auto_smooth_angle ):
 					islands_as_indexes.append( [ f.index for f in island ] )					
 					island.select( replace=True )
 					for i, uvlayer in enumerate( uvlayers ):
+						print( 'uvlayer :: {}'.format( uvlayer.name ) )
 						if not context.scene.use_multiUV or uv_modes[i] == 'hotspot':
-							result = bpy.ops.mesh.rm_uvgridify() #gridify
+							result = bpy.ops.mesh.rm_uvgridify( uv_map_name=uvlayer.name ) #gridify
 							if result == { 'CANCELLED' }:
-								current_active_layer = rmmesh.bmesh.loops.layers.uv.active
-								context.object.data.uv_layers[uvlayer.name].active_render = True
+								rmmesh.mesh.uv_layers.active_index = i
 								bpy.ops.uv.unwrap( 'INVOKE_DEFAULT', method='CONFORMAL' )
 								bpy.ops.mesh.rm_uvunrotate() #unrotate uv by longest edge in island
-								context.object.data.uv_layers[current_active_layer.name].active_render = True
 								#bpy.ops.mesh.rm_uvrectangularize() #rectangularize
 							bpy.ops.mesh.rm_normalizetexels( uv_map_name=uvlayer.name ) #account for non-square materials
 							bpy.ops.mesh.rm_scaletomaterialsize( uv_map_name=uvlayer.name ) #scale to mat size
 						elif uv_modes[i] == 'worldspace':
 							bpy.ops.mesh.rm_worldspaceproject( uv_map_name=uvlayer.name )
+				rmmesh.mesh.uv_layers.active_index = current_active_layer_index
 
 		elif context.area.type == 'IMAGE_EDITOR': #iv in uvvp, scale to mat sizecomplete_failure
 			rmmesh = rmlib.rmMesh.GetActive( context )
@@ -1177,6 +1178,8 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 					for i, uvlayer in enumerate( uvlayers ):
 						if not context.scene.use_multiUV or uv_modes[i] == 'hotspot':
 							source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect=hotspot.materialaspect )
+							if source_bounds.area <= 0.00001:
+								continue
 							target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance, trim_filter=context.scene.recttype_filter ).copy()
 							if target_bounds is None:
 								self.report( { 'WARNING' }, 'Could not find a hotspot match for a uvisland!!!' )
