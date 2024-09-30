@@ -292,7 +292,44 @@ def export_path( context, object ):
 	return ( 0, exportpath.replace( '/', '\\' ) + '.fbx' )
 	
 
+def TestIdStudio( exportpath ):
+	idx = exportpath.find( '\\base\\art\\' )
+	if idx >= 0:
+		return os.path.isfile( exportpath[:idx] + '\\modinfo.dev.json' )
+	return False
+
+
+def CreateModelAssetDecl( exportpath ):
+	directory = os.path.dirname( exportpath )
+	
+	if not os.path.exists(directory):
+		os.makedirs(directory)
+	if not os.path.isdir(directory):
+		raise OSError( 'Dir {} failed to be created!!! Aborting CreateModelAssetDecl!'.format( directory ) )
+
+	idx = exportpath.find( '\\base\\art\\' )
+	relativeexportpath = exportpath[idx+6:]
+	lines = [ 'declType( modelAsset ) {',
+	'	edit = {',
+	'		type = "idRenderModelStatic";',
+	'		model = "{}";'.format( relativeexportpath.replace( '\\', '/' ) ),
+	'		collisionSetup = {',
+	'			type = "NONE";',
+	'		}',
+	'	}',
+	'}' ]
+
+	declpath = exportpath.replace( '\\base\\', '\\base\\decltree\\modelAsset\\' )
+	declpath = declpath[:-3] + 'decl'
+	f = open( declpath, 'w' )
+	f.write( '\n'.join( lines ) )
+	f.close()
+	
+
 def export_object( context, root_export_object, exportpath ):
+	if TestIdStudio( exportpath ):
+		CreateModelAssetDecl( exportpath )
+
 	#store initial selection and active object
 	initial_active_object = context.view_layer.objects.active
 	initial_selection = list( context.selected_objects )
@@ -318,7 +355,13 @@ def export_object( context, root_export_object, exportpath ):
 	parent_obj.rotation_euler = mathutils.Euler( ( 0.0, 0.0, 0.0 ), 'XYZ' )
 
 	#export
-	bpy.ops.export_scene.fbx( filepath=exportpath, use_selection=True )
+	bpy.ops.export_scene.fbx(
+		filepath=exportpath, check_existing=False, use_selection=True,
+		global_scale=1.0, apply_unit_scale=False, apply_scale_options='FBX_SCALE_UNITS',
+		use_space_transform=True, bake_space_transform=True, object_types={ 'EMPTY', 'MESH' },
+		use_mesh_modifiers=True, use_triangles=True, use_custom_props=True,
+		bake_anim=False, mesh_smooth_type='OFF', axis_up='Z', axis_forward='Y'
+		)
 
 	#delete
 	bpy.ops.object.delete()
@@ -338,10 +381,14 @@ class OBJECT_OT_ExportObject(bpy.types.Operator):
 
 	@classmethod
 	def poll(cls, context):
-		return True
+		return context.mode == 'EDIT_MESH' or context.mode == 'OBJECT'
 
 	def execute(self, context):
 		global ENABLE_HANDLER
+
+		isEdit = context.mode == 'EDIT_MESH'
+		if isEdit:
+			bpy.ops.object.mode_set( mode='OBJECT', toggle=False )
 
 		export_items = context.scene.em_propertygroup.export_items
 		target_hash = export_items[self.item_index].hash
@@ -361,7 +408,10 @@ class OBJECT_OT_ExportObject(bpy.types.Operator):
 								
 				self.report({'INFO'},  'Successfully exported {}'.format( exportpath ) )
 
-				return {'FINISHED'}
+				break
+			
+		if isEdit:
+			bpy.ops.object.mode_set( mode='EDIT', toggle=False )
 				
 		return {'FINISHED'}
 	
@@ -373,7 +423,7 @@ class OBJECT_OT_ExportEnabledObject(bpy.types.Operator):
 
 	@classmethod
 	def poll(cls, context):
-		return True
+		return context.mode == 'EDIT_MESH' or context.mode == 'OBJECT'
 
 	def execute(self, context):
 		global ENABLE_HANDLER
