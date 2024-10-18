@@ -144,6 +144,96 @@ def sort_loop_chain( loops ):
 	return rmlib.rmUVLoopSet( sorted_loops, uvlayer=loops.uvlayer )
 
 
+def BBoxFromPoints( points ):
+	bbmin = mathutils.Vector( ( 99999.0, 99999.0 ) )
+	bbmax = mathutils.Vector( ( -99999.0, -99999.0 ) )
+	for i in range( len( points ) ):
+		bbmin[0] = min( bbmin[0], points[i][0] )
+		bbmin[1] = min( bbmin[1], points[i][1] )
+		bbmax[0] = max( bbmax[0], points[i][0] )
+		bbmax[1] = max( bbmax[1], points[i][1] )
+	return bbmin, bbmax
+
+
+def FitToBBox( faces, initial_bbmin, initial_bbmax, uvlayer ):
+	final_uvcoords = []
+	for f in faces:
+		for l in f.loops:
+			final_uvcoords.append( l[uvlayer].uv.copy() )
+	final_bbmin, final_bbmax = BBoxFromPoints( final_uvcoords )
+
+	trans_mat = mathutils.Matrix.Identity( 3 )
+	trans_mat[0][2] = ( initial_bbmin[0] + initial_bbmax[0] ) * 0.5
+	trans_mat[1][2] = ( initial_bbmin[1] + initial_bbmax[1] ) * 0.5
+
+	trans_mat_inv = mathutils.Matrix.Identity( 3 )
+	trans_mat_inv[0][2] = ( final_bbmin[0] + final_bbmax[0] ) * -0.5
+	trans_mat_inv[1][2] = ( final_bbmin[1] + final_bbmax[1] ) * -0.5
+
+	scl_mat = mathutils.Matrix.Identity( 3 )
+	initial_width = initial_bbmax[0] - initial_bbmin[0]
+	initial_height = initial_bbmax[1] - initial_bbmin[1]
+	target_bounds_width = initial_bbmax[0] - initial_bbmin[0]
+	target_bounds_height = target_bounds_width * ( initial_height / initial_width )
+	scl_mat[0][0] = target_bounds_width / initial_width
+	scl_mat[1][1] = target_bounds_height / initial_height
+
+	mat = trans_mat @ scl_mat @ trans_mat_inv				
+	for f in faces:
+		for l in f.loops:
+			uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
+			uv[2] = 1.0
+			uv = mat @ uv
+			l[uvlayer].uv = uv.to_2d()
+
+
+def GetPinCornersByAngle( sorted_boundary_loops, uvlayer ):
+	sorted_tuples = []
+	lcount = len( sorted_boundary_loops )
+	for i, l in enumerate( sorted_boundary_loops ):
+		prev_l = sorted_boundary_loops[i-1]
+		next_l = sorted_boundary_loops[(i+1)%lcount]
+		v1 = ( mathutils.Vector( prev_l[uvlayer].uv ) - mathutils.Vector( l[uvlayer].uv ) ).normalized()
+		v2 = ( mathutils.Vector( next_l[uvlayer].uv ) - mathutils.Vector( l[uvlayer].uv ) ).normalized()
+		sorted_tuples.append( ( abs( v1.dot( v2 ) ), l ) )
+	sorted_tuples = sorted( sorted_tuples, key=lambda x: x[0] )
+	return [ p[1] for p in sorted_tuples ][:4]
+
+
+def GetPinCornersByOBB( loops, uvlayer ):
+	points = []
+	for l in loops:
+		points.append( l[uvlayer].uv.copy() )
+	
+	theta = mathutils.geometry.box_fit_2d( points )
+	r1 = [ math.cos( theta ), -math.sin( theta ) ]
+	r2 = [ math.sin( theta ), math.cos( theta ) ]
+	rot_mat = mathutils.Matrix( [ r1, r2 ] )
+	for i in range( len( points ) ):
+		points[i] = rot_mat @ points[i]
+	
+	bbmin, bbmax = BBoxFromPoints( points )
+		
+	bbcorners = []
+	bbcorners.append( mathutils.Vector( ( bbmin[0], bbmin[1] ) ) )
+	bbcorners.append( mathutils.Vector( ( bbmax[0], bbmin[1] ) ) )
+	bbcorners.append( mathutils.Vector( ( bbmax[0], bbmax[1] ) ) )
+	bbcorners.append( mathutils.Vector( ( bbmin[0], bbmax[1] ) ) )
+	
+	corner_loops = loops[:4]		
+	for n, bbcorner in enumerate( bbcorners ):
+		min_dist = 99999.0
+		min_idx = -1
+		for i, p in enumerate( points ):
+			d = ( bbcorner - p ).length
+			if d < min_dist:
+				min_dist = d
+				min_idx = i
+		corner_loops[n] = loops[min_idx]
+			
+	return corner_loops
+
+
 def clear_tags( rmmesh ):
 	for v in rmmesh.bmesh.verts:
 		v.tag = False
@@ -403,6 +493,8 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 	bl_label = 'Rectangularize'
 	bl_options = { 'UNDO' }
 
+	corner_mode : bpy.props.BoolProperty( name='Corner Mode', default=False )
+
 	@classmethod
 	def poll( cls, context ):
 		return ( ( context.area.type == 'VIEW_3D' or context.area.type == 'IMAGE_EDITOR' ) and
@@ -421,11 +513,16 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 
 			#get selection of faces
 			faces = rmlib.rmPolygonSet()
+			groups = []
 			sel_sync = context.tool_settings.use_uv_select_sync
 			sel_mode = context.tool_settings.mesh_select_mode[:]
 			if sel_sync or context.area.type == 'VIEW_3D':				
 				if sel_mode[2]:
 					faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+					groups = faces.group( use_seam=True )
+				else:
+					self.report( { 'ERROR' }, 'Must be in face mode.' )
+					return { 'CANCELLED' }
 			else:
 				uv_sel_mode = context.tool_settings.uv_select_mode
 				if uv_sel_mode == 'FACE':
@@ -434,10 +531,16 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 					for l in loop_selection:
 						if l.face in visible_faces and l.face not in faces:
 							faces.append( l.face )
+					groups = faces.group( use_seam=True )
+				else:
+					self.report( { 'ERROR' }, 'Must be in uvface mode.' )
+					return { 'CANCELLED' }
+
 			if len( faces ) < 1:
+				self.report({'ERROR'}, 'Could not find more than one face to operate on!!!' )
 				return { 'CANCELLED' }
 
-			for group in faces.group( use_seam=True ):
+			for group in groups:
 				clear_tags( rmmesh )
 
 				#tag faces in group
@@ -448,6 +551,14 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 				bounary_loops = GetBoundaryLoops( group )
 				if len( bounary_loops ) < 4:
 						continue
+				
+				#unpin boundary loops so they dont interfere and store initial bbox
+				initial_uvcoords = []
+				for f in group:
+					for l in f.loops:
+						l[uvlayer].pin_uv = False
+						initial_uvcoords.append( l[uvlayer].uv.copy() )
+				initial_bbmin, initial_bbmax = BBoxFromPoints( initial_uvcoords )
 
 				#if there are exactly two boundary_loop_groups then we assume the shape a cylinder and
 				#we need to add seam edges to map it to a plane.
@@ -489,19 +600,14 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 				for f in group:
 					f.tag = True
 
-				#identify the four corners
-				sorted_tuples = []
-				lcount = len( sorted_boundary_loops )
-				for i, l in enumerate( sorted_boundary_loops ):
-					prev_l = sorted_boundary_loops[i-1]
-					next_l = sorted_boundary_loops[(i+1)%lcount]
-					v1 = ( mathutils.Vector( prev_l[uvlayer].uv ) - mathutils.Vector( l[uvlayer].uv ) ).normalized()
-					v2 = ( mathutils.Vector( next_l[uvlayer].uv ) - mathutils.Vector( l[uvlayer].uv ) ).normalized()
-					sorted_tuples.append( ( abs( v1.dot( v2 ) ), l ) )
-				sorted_tuples = sorted( sorted_tuples, key=lambda x: x[0] )
-				corner_loops = [ p[1] for p in sorted_tuples ][:4]
+				corner_loops = []
+				if self.corner_mode:
+					corner_loops = GetPinCornersByAngle( sorted_boundary_loops, uvlayer )
+				else:
+					corner_loops = GetPinCornersByOBB( sorted_boundary_loops, uvlayer )
 
 				#compute the distance between the corners
+				lcount = len( sorted_boundary_loops )
 				distance_between_corners = []
 				edge_distances = [ 0.0 ] * lcount
 				starting_idx = sorted_boundary_loops.index( corner_loops[0] )
@@ -552,7 +658,9 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 				clear_tags( rmmesh )
 				lscm( faces, uvlayer )
 				clear_tags( rmmesh )
-				
+
+				FitToBBox( faces, initial_bbmin, initial_bbmax, uvlayer )
+	
 				#clear pins
 				for l in pinned_loops:
 					l[uvlayer].pin_uv = False

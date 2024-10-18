@@ -65,22 +65,21 @@ class ToolState():
 		self.contrain_axis_2d = CONSTRAIN_AXIS_HORIZONTAL
 		self.transform_origin = None
 
-	def ComputeTransformOrigin( self, context, bm ):
+	def ComputeTransformOrigin( self, context, bm, apply_tool_verts ):
 		#set transform_origin
 		transform_pivot = context.scene.tool_settings.transform_pivot_point
 		if transform_pivot == 'BOUNDING_BOX_CENTER':
-			if len( self.apply_tool_verts ) > 0:
-				bbmin = self.apply_tool_verts[ 0 ][ 2 ].copy()
-				bbmax = self.apply_tool_verts[ 0 ][ 2 ].copy()
-				for vert_data in self.apply_tool_verts:
+			if len( apply_tool_verts ) > 0:
+				bbmin = apply_tool_verts[ 0 ][ 2 ].copy()
+				bbmax = apply_tool_verts[ 0 ][ 2 ].copy()
+				for vert_data in apply_tool_verts:
 					bbmin[ 0 ] = min( vert_data[ 2 ][ 0 ], bbmin[ 0 ] )
-					bbmax[ 0 ] = min( vert_data[ 2 ][ 0 ], bbmax[ 0 ] )
+					bbmax[ 0 ] = max( vert_data[ 2 ][ 0 ], bbmax[ 0 ] )
 					bbmin[ 1 ] = min( vert_data[ 2 ][ 1 ], bbmin[ 1 ] )
-					bbmax[ 1 ] = min( vert_data[ 2 ][ 1 ], bbmax[ 1 ] )
+					bbmax[ 1 ] = max( vert_data[ 2 ][ 1 ], bbmax[ 1 ] )
 					bbmin[ 2 ] = min( vert_data[ 2 ][ 2 ], bbmin[ 2 ] )
-					bbmax[ 2 ] = min( vert_data[ 2 ][ 2 ], bbmax[ 2 ] )
-				xfrm_inv = context.active_object.matrix_world.inverted()
-				self.transform_origin = xfrm_inv @ ( ( bbmax + bbmin ) * 0.5 )
+					bbmax[ 2 ] = max( vert_data[ 2 ][ 2 ], bbmax[ 2 ] )
+				self.transform_origin = context.active_object.matrix_world @ ( ( bbmax + bbmin ) * 0.5 )
 		elif transform_pivot == 'CURSOR':
 			self.transform_origin = context.scene.cursor.location
 		elif transform_pivot == 'INDIVIDUAL_ORIGINS':
@@ -89,20 +88,19 @@ class ToolState():
 			self.transform_origin = self.start_point
 		elif transform_pivot == 'ACTIVE_ELEMENT':
 			active_elem = bm.select_history.active
-			xfrm_inv = context.active_object.matrix_world.inverted()
 			if active_elem is not None and isinstance( active_elem, bmesh.types.BMVert ):
-				self.transform_origin = xfrm_inv @ active_elem.co
+				self.transform_origin = context.active_object.matrix_world @ active_elem.co
 			elif active_elem is not None and isinstance( active_elem, bmesh.types.BMEdge ):
 				active_verts = list( active_elem.verts )
 				self.transform_origin = ( active_verts[ 0 ].co + active_verts[ 1 ].co ) * 0.5
-				self.transform_origin = xfrm_inv @ self.transform_origin
+				self.transform_origin = context.active_object.matrix_world @ self.transform_origin
 			elif active_elem is not None and isinstance( active_elem, bmesh.types.BMFace ):
 				active_verts = list( active_elem.verts )
 				self.transform_origin = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
 				for v in active_verts:
 					self.transform_origin += v.co
 				self.transform_origin *= 1.0 / len( active_verts )
-				self.transform_origin = xfrm_inv @ self.transform_origin
+				self.transform_origin = context.active_object.matrix_world @ self.transform_origin
 
 	def Invert( self ):
 		temp = self.start_point
@@ -543,7 +541,7 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 				# get tool verts
 				self.apply_tool_verts = self.__get_tool_verts( self.work_verts, bm, active_obj )
 
-				self.s_tool.ComputeTransformOrigin( context, bm )
+				self.s_tool.ComputeTransformOrigin( context, bm, self.apply_tool_verts )
 
 				# set tool type
 				if event.type == 'S':

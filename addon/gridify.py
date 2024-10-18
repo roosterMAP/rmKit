@@ -21,6 +21,49 @@ def is_boundary( l ):
 	return False
 
 
+def BBoxFromPoints( points ):
+	bbmin = mathutils.Vector( ( 99999.0, 99999.0 ) )
+	bbmax = mathutils.Vector( ( -99999.0, -99999.0 ) )
+	for i in range( len( points ) ):
+		bbmin[0] = min( bbmin[0], points[i][0] )
+		bbmin[1] = min( bbmin[1], points[i][1] )
+		bbmax[0] = max( bbmax[0], points[i][0] )
+		bbmax[1] = max( bbmax[1], points[i][1] )
+	return bbmin, bbmax
+
+
+def FitToBBox( faces, initial_bbmin, initial_bbmax, uvlayer ):
+	final_uvcoords = []
+	for f in faces:
+		for l in f.loops:
+			final_uvcoords.append( l[uvlayer].uv.copy() )
+	final_bbmin, final_bbmax = BBoxFromPoints( final_uvcoords )
+
+	trans_mat = mathutils.Matrix.Identity( 3 )
+	trans_mat[0][2] = ( initial_bbmin[0] + initial_bbmax[0] ) * 0.5
+	trans_mat[1][2] = ( initial_bbmin[1] + initial_bbmax[1] ) * 0.5
+
+	trans_mat_inv = mathutils.Matrix.Identity( 3 )
+	trans_mat_inv[0][2] = ( final_bbmin[0] + final_bbmax[0] ) * -0.5
+	trans_mat_inv[1][2] = ( final_bbmin[1] + final_bbmax[1] ) * -0.5
+
+	scl_mat = mathutils.Matrix.Identity( 3 )
+	initial_width = initial_bbmax[0] - initial_bbmin[0]
+	initial_height = initial_bbmax[1] - initial_bbmin[1]
+	target_bounds_width = initial_bbmax[0] - initial_bbmin[0]
+	target_bounds_height = target_bounds_width * ( initial_height / initial_width )
+	scl_mat[0][0] = target_bounds_width / initial_width
+	scl_mat[1][1] = target_bounds_height / initial_height
+
+	mat = trans_mat @ scl_mat @ trans_mat_inv				
+	for f in faces:
+		for l in f.loops:
+			uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
+			uv[2] = 1.0
+			uv = mat @ uv
+			l[uvlayer].uv = uv.to_2d()
+
+
 def GetUnsyncUVVisibleFaces( rmmesh, sel_mode ):
 	visible_faces = rmlib.rmPolygonSet()
 	if sel_mode[0]:		
@@ -90,6 +133,9 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 			if sel_sync or context.area.type == 'VIEW_3D':				
 				if sel_mode[2]:
 					faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+				else:
+					self.report( { 'ERROR' }, 'Must be in face mode.' )
+					return { 'CANCELLED' }
 			else:
 				uv_sel_mode = context.tool_settings.uv_select_mode
 				if uv_sel_mode == 'FACE':
@@ -98,6 +144,9 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 					for l in loop_selection:
 						if l.face in visible_faces and l.face not in faces:
 							faces.append( l.face )
+				else:
+					self.report( { 'ERROR' }, 'Must be in uvface mode.' )
+					return { 'CANCELLED' }
 			if len( faces ) < 1:
 				return { 'CANCELLED' }
 
@@ -126,6 +175,13 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 					for f in group:
 						f.tag = False
 					continue
+
+				#store initial bbox
+				initial_uvcoords = []
+				for f in group:
+					for l in f.loops:
+						initial_uvcoords.append( l[uvlayer].uv.copy() )
+				initial_bbmin, initial_bbmax = BBoxFromPoints( initial_uvcoords )
 
 				#initialize start_loop
 				start_loop = None
@@ -272,6 +328,8 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 					ring_offset += ring_steps[i]
 								
 				clear_tags( rmmesh )
+
+				FitToBBox( group, initial_bbmin, initial_bbmax, uvlayer )
 
 				complete_failure = False
 

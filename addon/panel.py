@@ -59,7 +59,9 @@ class UV_PT_UVTOOLS( bpy.types.Panel ):
 		layout.operator( 'mesh.rm_uvfalloff', text='Falloff UV Transform' )
 		layout.operator( 'mesh.rm_uvaspectscale', text='Inset Scale UVs' )
 		layout.operator( 'mesh.rm_uvgridify', text='Gridify' )
-		layout.operator( 'mesh.rm_uvrectangularize', text='Rectangularize' )
+		r = layout.row()
+		r.operator( 'mesh.rm_uvrectangularize', text='Boxify (OBB)' ).corner_mode = False
+		r.operator( 'mesh.rm_uvrectangularize', text='Boxify (Angle)' ).corner_mode = True
 		layout.operator( 'mesh.rm_stitch', text='Stitch' )
 		layout.operator( 'mesh.rm_uvunrotate', text='Unrotate' )
 		layout.operator( 'mesh.rm_relativeislands' )
