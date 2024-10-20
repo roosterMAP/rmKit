@@ -134,6 +134,14 @@ class rmPolygonSet( list ):
 				if e not in edges:
 					edges.add( e )
 		return rmEdgeSet( edges )
+	
+	@property
+	def loops( self ):
+		loops = set()
+		for p in self:
+			for l in p.loops:
+				loops.add( l )
+		return loops
 
 	def tag( self, b ):
 		"""
@@ -567,7 +575,7 @@ class rmVertexSet( list ):
 		return rmPolygonSet( polys )
 
 	@property
-	def loops( self ):
+	def loops( self, uvlayer ):
 		loops = set()
 		for v in self:
 			for l in v.link_loops:

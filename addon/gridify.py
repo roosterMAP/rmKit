@@ -50,12 +50,20 @@ def FitToBBox( faces, initial_bbmin, initial_bbmax, uvlayer ):
 	scl_mat = mathutils.Matrix.Identity( 3 )
 	initial_width = initial_bbmax[0] - initial_bbmin[0]
 	initial_height = initial_bbmax[1] - initial_bbmin[1]
+	initial_aspect = initial_height / initial_width
 	target_bounds_width = initial_bbmax[0] - initial_bbmin[0]
-	target_bounds_height = target_bounds_width * ( initial_height / initial_width )
-	scl_mat[0][0] = target_bounds_width / initial_width
-	scl_mat[1][1] = target_bounds_height / initial_height
+	target_bounds_height = target_bounds_width * initial_aspect
+	final_width = final_bbmax[0] - final_bbmin[0]
+	final_height = final_bbmax[1] - final_bbmin[1]
+	final_aspect = final_height / final_width
+	if  ( final_aspect <= 1.0 and initial_aspect > 1.0 ) or ( final_aspect > 1.0 and initial_aspect <= 1.0 ):
+		temp = final_width
+		final_width = final_height
+		final_height = temp
+	scl_mat[0][0] = target_bounds_width / final_width
+	scl_mat[1][1] = target_bounds_height / final_height
 
-	mat = trans_mat @ scl_mat @ trans_mat_inv				
+	mat = trans_mat @ scl_mat @ trans_mat_inv
 	for f in faces:
 		for l in f.loops:
 			uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()

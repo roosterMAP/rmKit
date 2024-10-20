@@ -1,7 +1,6 @@
 import bpy, mathutils
 from .. import rmlib
-import sys
-import math
+import math, random, sys
 import numpy as np
 
 def shortest_path( source, end_verts, verts ):
@@ -173,12 +172,22 @@ def FitToBBox( faces, initial_bbmin, initial_bbmax, uvlayer ):
 	scl_mat = mathutils.Matrix.Identity( 3 )
 	initial_width = initial_bbmax[0] - initial_bbmin[0]
 	initial_height = initial_bbmax[1] - initial_bbmin[1]
+	initial_aspect = initial_height / initial_width
 	target_bounds_width = initial_bbmax[0] - initial_bbmin[0]
-	target_bounds_height = target_bounds_width * ( initial_height / initial_width )
-	scl_mat[0][0] = target_bounds_width / initial_width
-	scl_mat[1][1] = target_bounds_height / initial_height
+	target_bounds_height = target_bounds_width * initial_aspect
+	final_width = final_bbmax[0] - final_bbmin[0]
+	final_height = final_bbmax[1] - final_bbmin[1]
+	'''
+	final_aspect = final_height / final_width
+	if  ( final_aspect <= 1.0 and initial_aspect > 1.0 ) or ( final_aspect > 1.0 and initial_aspect <= 1.0 ):
+		temp = final_width
+		final_width = final_height
+		final_height = temp
+	'''
+	scl_mat[0][0] = target_bounds_width / final_width
+	scl_mat[1][1] = target_bounds_height / final_height
 
-	mat = trans_mat @ scl_mat @ trans_mat_inv				
+	mat = trans_mat @ scl_mat @ trans_mat_inv
 	for f in faces:
 		for l in f.loops:
 			uv = mathutils.Vector( l[uvlayer].uv.copy() ).to_3d()
@@ -261,7 +270,7 @@ def GetBoundaryLoops( faces ):
 				bounary_loops.add( l )
 	return bounary_loops
 
-
+'''
 class RelaxVertex():
 	all_verts = []
 
@@ -455,7 +464,7 @@ def lscm( faces, uvlayer ):
 			for l in verts[vidx].link_loops:
 				if l.face in RelaxVertex.all_verts[vidx]._polygons:
 					l[uvlayer].uv = mathutils.Vector( ( x[vidx-count], x[(vidx-count+vcount)] ) )
-
+'''
 
 def GetUnsyncUVVisibleFaces( rmmesh, sel_mode ):
 	visible_faces = rmlib.rmPolygonSet()
@@ -514,6 +523,7 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 			#get selection of faces
 			faces = rmlib.rmPolygonSet()
 			groups = []
+			override_corners = []
 			sel_sync = context.tool_settings.use_uv_select_sync
 			sel_mode = context.tool_settings.mesh_select_mode[:]
 			if sel_sync or context.area.type == 'VIEW_3D':				
@@ -525,7 +535,22 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 					return { 'CANCELLED' }
 			else:
 				uv_sel_mode = context.tool_settings.uv_select_mode
-				if uv_sel_mode == 'FACE':
+				if uv_sel_mode == 'VERTEX':
+					loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+					override_corners = loop_selection.border_loops()
+					if len( override_corners ) != 4:
+						self.report( { 'ERROR' }, 'Must have exactly 4 uvverts selected. All must be on the boundary of the same uvisland.' )
+						return { 'CANCELLED' }
+					vertgroups = loop_selection.group_vertices( element=True )
+					if len( vertgroups ) != 1:
+						self.report( { 'ERROR' }, 'Corner uvverts must all be members of the same uvisland.' )
+						return { 'CANCELLED' }
+					visible_faces = GetUnsyncUVVisibleFaces( rmmesh, sel_mode )
+					for l in vertgroups[0]:
+						if l.face in visible_faces and l.face not in faces:
+							faces.append( l.face )
+					groups = [faces]
+				elif uv_sel_mode == 'FACE':
 					visible_faces = GetUnsyncUVVisibleFaces( rmmesh, sel_mode )
 					loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
 					for l in loop_selection:
@@ -533,19 +558,37 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 							faces.append( l.face )
 					groups = faces.group( use_seam=True )
 				else:
-					self.report( { 'ERROR' }, 'Must be in uvface mode.' )
+					self.report( { 'ERROR' }, 'Must be in uvvert or uvface mode.' )
 					return { 'CANCELLED' }
 
 			if len( faces ) < 1:
 				self.report({'ERROR'}, 'Could not find more than one face to operate on!!!' )
 				return { 'CANCELLED' }
+			
+			#clear loop selection
+			if sel_sync or context.area.type == 'VIEW_3D':
+				for f in faces:
+					f.select = False
+			else:
+				for f in rmmesh.bmesh.faces:
+					for l in f.loops:
+						l[uvlayer].select = False
+						l[uvlayer].select_edge = False
 
 			for group in groups:
 				clear_tags( rmmesh )
 
 				#tag faces in group
-				for f in group:
-					f.tag = True
+				if sel_sync or context.area.type == 'VIEW_3D':
+					for f in group:
+						f.tag = True
+						f.select = True
+				else:
+					for f in group:
+						f.tag = True
+						for l in f.loops:
+							l[uvlayer].select = True
+							l[uvlayer].select_edge = True
 					
 				#get list of boundary loops
 				bounary_loops = GetBoundaryLoops( group )
@@ -565,7 +608,8 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 				boundary_edge_groups = rmlib.rmEdgeSet( [ l.edge for l in bounary_loops ] ).chain()
 				if ( len( boundary_edge_groups ) == 2 and
 				boundary_edge_groups[0][0][0] == boundary_edge_groups[0][-1][-1] and
-				boundary_edge_groups[-1][0][0] == boundary_edge_groups[-1][-1][-1] ):
+				boundary_edge_groups[-1][0][0] == boundary_edge_groups[-1][-1][-1] and
+				len( override_corners ) != 4 ):
 					starting_vert = boundary_edge_groups[0][0][0]
 					end_verts = [ pair[0] for pair in boundary_edge_groups[-1] ]
 					all_verts = group.vertices
@@ -576,10 +620,16 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 					bounary_loops = GetBoundaryLoops( group )
 					if len( bounary_loops ) < 4:
 							continue
+				elif len( override_corners ) == 4:
+					for l in rmlib.rmUVLoopSet( faces.loops, uvlayer=uvlayer ).border_loops():
+						l.edge.seam = True
+					bounary_loops = GetBoundaryLoops( group )
+					if len( bounary_loops ) < 4:
+							continue
 				sorted_boundary_loops = sort_loop_chain( rmlib.rmUVLoopSet( bounary_loops, uvlayer=uvlayer ) )
-					
+				
 				#lscm - initial conformal map to find four corners
-				clear_tags( rmmesh )
+				#clear_tags( rmmesh )
 				pinned_loops = set()
 				for l in sorted_boundary_loops[0].vert.link_loops:
 					l[uvlayer].pin_uv = True
@@ -589,8 +639,9 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 					l[uvlayer].pin_uv = True
 					pinned_loops.add( l )			
 				sorted_boundary_loops[middle_idx][uvlayer].pin_uv = True
-				lscm( faces, uvlayer )
-				clear_tags( rmmesh )
+				bpy.ops.uv.unwrap(method="CONFORMAL")
+				#lscm( faces, uvlayer )
+				#clear_tags( rmmesh )
 				for l in pinned_loops:
 					l[uvlayer].pin_uv = False
 				sorted_boundary_loops[0][uvlayer].pin_uv = False
@@ -601,10 +652,13 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 					f.tag = True
 
 				corner_loops = []
-				if self.corner_mode:
-					corner_loops = GetPinCornersByAngle( sorted_boundary_loops, uvlayer )
+				if len( override_corners ) == 4:
+					corner_loops = override_corners
 				else:
-					corner_loops = GetPinCornersByOBB( sorted_boundary_loops, uvlayer )
+					if self.corner_mode:
+						corner_loops = GetPinCornersByAngle( sorted_boundary_loops, uvlayer )
+					else:
+						corner_loops = GetPinCornersByOBB( sorted_boundary_loops, uvlayer )
 
 				#compute the distance between the corners
 				lcount = len( sorted_boundary_loops )
@@ -655,8 +709,9 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 						pinned_loops.add( nl )
 					
 				#lscm
-				clear_tags( rmmesh )
-				lscm( faces, uvlayer )
+				#clear_tags( rmmesh )
+				#lscm( faces, uvlayer )
+				bpy.ops.uv.unwrap(method="CONFORMAL")
 				clear_tags( rmmesh )
 
 				FitToBBox( faces, initial_bbmin, initial_bbmax, uvlayer )
@@ -664,6 +719,25 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 				#clear pins
 				for l in pinned_loops:
 					l[uvlayer].pin_uv = False
+
+				#clear loop selection
+				if sel_sync or context.area.type == 'VIEW_3D':
+					for f in group:
+						f.select = False
+				else:
+					for f in group:
+						for l in f.loops:
+							l[uvlayer].select = False
+							l[uvlayer].select_edge = False
+
+			#restore initial loop selection
+			if sel_sync or context.area.type == 'VIEW_3D':
+				faces.select()
+			else:
+				for l in loop_selection:
+					l[uvlayer].select = True
+					if len( override_corners ) != 4:
+						l[uvlayer].select_edge = True
 
 		return { 'FINISHED' }
 
