@@ -202,45 +202,24 @@ def GetPinCornersByAngle( sorted_boundary_loops, uvlayer ):
 	for i, l in enumerate( sorted_boundary_loops ):
 		prev_l = sorted_boundary_loops[i-1]
 		next_l = sorted_boundary_loops[(i+1)%lcount]
+
+		#compute angle between prev_l and next_l
 		v1 = ( mathutils.Vector( prev_l[uvlayer].uv ) - mathutils.Vector( l[uvlayer].uv ) ).normalized()
 		v2 = ( mathutils.Vector( next_l[uvlayer].uv ) - mathutils.Vector( l[uvlayer].uv ) ).normalized()
-		sorted_tuples.append( ( abs( v1.dot( v2 ) ), l ) )
+		theta = math.atan2( v1.x*v2.y - v1.y*v2.x, v1.dot( v2 ) ) + math.pi
+		v1_rotated = mathutils.Vector( ( -v1.y, v1.x ) )
+		v3 = ( mathutils.Vector( next_l[uvlayer].uv ) + mathutils.Vector( prev_l[uvlayer].uv ) ) * 0.5
+		v3 = ( v3 - mathutils.Vector( l[uvlayer].uv ) ).normalized()
+		if v1_rotated.dot( v3 ) < 0.0:
+			theta = math.pi * 2.0 - theta
+
+		#bias if no loops between prev_l and next_l
+		if prev_l.link_loop_next == l:
+			theta *= 0.8
+
+		sorted_tuples.append( ( theta, l ) )
 	sorted_tuples = sorted( sorted_tuples, key=lambda x: x[0] )
 	return [ p[1] for p in sorted_tuples ][:4]
-
-
-def GetPinCornersByOBB( loops, uvlayer ):
-	points = []
-	for l in loops:
-		points.append( l[uvlayer].uv.copy() )
-	
-	theta = mathutils.geometry.box_fit_2d( points )
-	r1 = [ math.cos( theta ), -math.sin( theta ) ]
-	r2 = [ math.sin( theta ), math.cos( theta ) ]
-	rot_mat = mathutils.Matrix( [ r1, r2 ] )
-	for i in range( len( points ) ):
-		points[i] = rot_mat @ points[i]
-	
-	bbmin, bbmax = BBoxFromPoints( points )
-		
-	bbcorners = []
-	bbcorners.append( mathutils.Vector( ( bbmin[0], bbmin[1] ) ) )
-	bbcorners.append( mathutils.Vector( ( bbmax[0], bbmin[1] ) ) )
-	bbcorners.append( mathutils.Vector( ( bbmax[0], bbmax[1] ) ) )
-	bbcorners.append( mathutils.Vector( ( bbmin[0], bbmax[1] ) ) )
-	
-	corner_loops = loops[:4]		
-	for n, bbcorner in enumerate( bbcorners ):
-		min_dist = 99999.0
-		min_idx = -1
-		for i, p in enumerate( points ):
-			d = ( bbcorner - p ).length
-			if d < min_dist:
-				min_dist = d
-				min_idx = i
-		corner_loops[n] = loops[min_idx]
-			
-	return corner_loops
 
 
 def clear_tags( rmmesh ):
@@ -502,8 +481,6 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 	bl_label = 'Rectangularize'
 	bl_options = { 'UNDO' }
 
-	corner_mode : bpy.props.BoolProperty( name='Corner Mode', default=False )
-
 	@classmethod
 	def poll( cls, context ):
 		return ( ( context.area.type == 'VIEW_3D' or context.area.type == 'IMAGE_EDITOR' ) and
@@ -526,6 +503,7 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 			override_corners = []
 			sel_sync = context.tool_settings.use_uv_select_sync
 			sel_mode = context.tool_settings.mesh_select_mode[:]
+			uv_sel_mode = context.tool_settings.uv_select_mode
 			if sel_sync or context.area.type == 'VIEW_3D':				
 				if sel_mode[2]:
 					faces = rmlib.rmPolygonSet.from_selection( rmmesh )
@@ -534,7 +512,6 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 					self.report( { 'ERROR' }, 'Must be in face mode.' )
 					return { 'CANCELLED' }
 			else:
-				uv_sel_mode = context.tool_settings.uv_select_mode
 				if uv_sel_mode == 'VERTEX':
 					loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
 					override_corners = loop_selection.border_loops()
@@ -655,10 +632,7 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 				if len( override_corners ) == 4:
 					corner_loops = override_corners
 				else:
-					if self.corner_mode:
-						corner_loops = GetPinCornersByAngle( sorted_boundary_loops, uvlayer )
-					else:
-						corner_loops = GetPinCornersByOBB( sorted_boundary_loops, uvlayer )
+					corner_loops = GetPinCornersByAngle( sorted_boundary_loops, uvlayer )
 
 				#compute the distance between the corners
 				lcount = len( sorted_boundary_loops )
@@ -711,7 +685,7 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 				#lscm
 				#clear_tags( rmmesh )
 				#lscm( faces, uvlayer )
-				bpy.ops.uv.unwrap(method="CONFORMAL")
+				bpy.ops.uv.unwrap( method='CONFORMAL' )
 				clear_tags( rmmesh )
 
 				FitToBBox( faces, initial_bbmin, initial_bbmax, uvlayer )
@@ -719,6 +693,17 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 				#clear pins
 				for l in pinned_loops:
 					l[uvlayer].pin_uv = False
+
+				#unscale island horizontally
+				if sel_sync and sel_mode[0]:
+					context.tool_settings.mesh_select_mode = ( False, False, True )
+				elif not sel_sync and uv_sel_mode == 'VERTEX':
+					context.tool_settings.uv_select_mode = 'FACE'
+				bpy.ops.mesh.rm_normalizetexels( uv_map_name=uvlayer.name, horizontal=True )
+				if sel_sync and sel_mode[0]:
+					context.tool_settings.mesh_select_mode = ( sel_mode[0], False, False )
+				elif not sel_sync and uv_sel_mode == 'VERTEX':
+					context.tool_settings.uv_select_mode = 'VERTEX'
 
 				#clear loop selection
 				if sel_sync or context.area.type == 'VIEW_3D':

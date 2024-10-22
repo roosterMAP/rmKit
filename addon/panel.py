@@ -59,9 +59,7 @@ class UV_PT_UVTOOLS( bpy.types.Panel ):
 		layout.operator( 'mesh.rm_uvfalloff', text='Falloff UV Transform' )
 		layout.operator( 'mesh.rm_uvaspectscale', text='Inset Scale UVs' )
 		layout.operator( 'mesh.rm_uvgridify', text='Gridify' )
-		r = layout.row()
-		r.operator( 'mesh.rm_uvrectangularize', text='Boxify (OBB)' ).corner_mode = False
-		r.operator( 'mesh.rm_uvrectangularize', text='Boxify (Angle)' ).corner_mode = True
+		layout.operator( 'mesh.rm_uvrectangularize', text='Boxify' )
 		layout.operator( 'mesh.rm_stitch', text='Stitch' )
 		layout.operator( 'mesh.rm_uvunrotate', text='Unrotate' )
 		layout.operator( 'mesh.rm_relativeislands' )
@@ -192,7 +190,7 @@ class VIEW3D_PT_VIEW3D_UV( bpy.types.Panel ):
 
 		layout.operator( 'mesh.rm_worldspaceproject' )
 		layout.operator( 'mesh.rm_uvgridify', text='UV Gridify' )
-		layout.operator( 'mesh.rm_uvrectangularize', text='UV Rectangularize' )
+		layout.operator( 'mesh.rm_uvrectangularize', text='UV Boxify' )
 		layout.separator()
 		layout.operator( 'mesh.savehotspot', text='New Hotspot' )
 		layout.operator( 'mesh.refhotspot', text='Ref Hotspot' )

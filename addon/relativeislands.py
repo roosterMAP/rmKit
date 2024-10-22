@@ -368,7 +368,9 @@ class MESH_OT_normalizetexels( bpy.types.Operator ):
 				#compute uv island area
 				for tri in tri_loops:
 					if tri[0].face in island:
-						break
+						uvarea = mathutils.geometry.area_tri( tri[0][uvlayer].uv, tri[1][uvlayer].uv, tri[2][uvlayer].uv )
+						if uvarea > rmlib.util.FLOAT_EPSILON:
+							break
 
 				#compute tangent and bitangent vectors
 				v1 = mathutils.Vector( tri[0].vert.co.copy() )
@@ -391,7 +393,11 @@ class MESH_OT_normalizetexels( bpy.types.Operator ):
 				t1 = w2.y - w1.y
 				t2 = w3.y - w1.y
 
-				r = 1.0 / ( s1 * t2 - s2 * t1 )
+				denom = s1 * t2 - s2 * t1
+				if denom < rmlib.util.FLOAT_EPSILON:
+					continue
+
+				r = 1.0 / denom
 				tangent = mathutils.Vector( ( ( t2 * x1 - t1 * x2 ) * r, ( t2 * y1 - t1 * y2 ) * r, ( t2 * z1 - t1 * z2 ) * r ) )
 				bitangent = mathutils.Vector( ( ( s1 * x2 - s2 * x1 ) * r, ( s1 * y2 - s2 * y1 ) * r, ( s1 * z2 - s2 * z1 ) * r ) )
 				

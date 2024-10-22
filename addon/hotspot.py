@@ -1129,7 +1129,6 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 					islands_as_indexes.append( [ f.index for f in island ] )					
 					island.select( replace=True )
 					for i, uvlayer in enumerate( uvlayers ):
-						print( 'uvlayer :: {}'.format( uvlayer.name ) )
 						if not context.scene.use_multiUV or uv_modes[i] == 'hotspot':
 							result = bpy.ops.mesh.rm_uvgridify( uv_map_name=uvlayer.name ) #gridify
 							if result == { 'CANCELLED' }:
