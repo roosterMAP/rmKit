@@ -67,6 +67,7 @@ class ToolState():
 
 	def ComputeTransformOrigin( self, context, bm, apply_tool_verts ):
 		#set transform_origin
+		self.transform_origin = self.start_point
 		transform_pivot = context.scene.tool_settings.transform_pivot_point
 		if transform_pivot == 'BOUNDING_BOX_CENTER':
 			if len( apply_tool_verts ) > 0:
@@ -320,11 +321,11 @@ class DrawHandler():
 			self.m_shader2d.uniform_float( 'color', ( 0.0, 0.5, 0.99, 1.0 ) )
 			batch.draw( self.m_shader2d )
 
-		coords = ( ( start_2d[0], start_2d[1] ), ( middle_2d[0], middle_2d[1] ), ( end_2d[0], end_2d[1] ) )
-		batch = batch_for_shader( self.m_shader2d, 'POINTS', { 'pos': coords } )
-		self.m_shader2d.bind()
-		self.m_shader2d.uniform_float( 'color', ( 0.99, 0.8, 0.0, 1.0 ) )
-		batch.draw( self.m_shader2d )
+			coords = ( ( start_2d[0], start_2d[1] ), ( middle_2d[0], middle_2d[1] ), ( end_2d[0], end_2d[1] ) )
+			batch = batch_for_shader( self.m_shader2d, 'POINTS', { 'pos': coords } )
+			self.m_shader2d.bind()
+			self.m_shader2d.uniform_float( 'color', ( 0.99, 0.8, 0.0, 1.0 ) )
+			batch.draw( self.m_shader2d )
 
 
 class MESH_OT_Linear_Deformer( bpy.types.Operator ):
