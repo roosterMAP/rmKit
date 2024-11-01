@@ -123,19 +123,13 @@ class rmViewport():
 		region = context.region
 		rv3d = context.region_data
 
-		origin2d = view3d_utils.location_3d_to_region_2d( region, rv3d, mathutils.Vector( ( 0.0, 0.0, 0.0 ) ) )
-		x_2d = view3d_utils.location_3d_to_region_2d( region, rv3d, input_rot[ 0 ] )
-		y_2d = view3d_utils.location_3d_to_region_2d( region, rv3d, input_rot[ 1 ] )
-		z_2d = view3d_utils.location_3d_to_region_2d( region, rv3d, input_rot[ 2 ] )
-
-		x_2d = ( x_2d - origin2d ).normalized()
-		y_2d = ( y_2d - origin2d ).normalized()
-		z_2d = ( z_2d - origin2d ).normalized()
-		mouse_2d = ( mouse_end - mouse_start ).normalized()
-
-		x_dot = abs( mouse_2d.dot( x_2d ) )
-		y_dot = abs( mouse_2d.dot( y_2d ) )
-		z_dot = abs( mouse_2d.dot( z_2d ) )
+		depth_pos = self.cam_pos + self.look_dir
+		start_3d = view3d_utils.region_2d_to_location_3d( region, rv3d, mouse_start, depth_pos )
+		end_3d = view3d_utils.region_2d_to_location_3d( region, rv3d, mouse_end, depth_pos )
+		vec_3d = ( end_3d - start_3d ).normalized()
+		x_dot = abs( vec_3d.dot( input_rot[0] ) )
+		y_dot = abs( vec_3d.dot( input_rot[1] ) )
+		z_dot = abs( vec_3d.dot( input_rot[2] ) )
 
 		if x_dot > y_dot and x_dot > z_dot:
 			return 0

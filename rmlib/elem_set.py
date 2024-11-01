@@ -535,24 +535,41 @@ class rmVertexSet( list ):
 			return cls( v for v in rmmesh.bmesh.verts )
 
 	@classmethod
-	def from_mos( cls, rmmesh, context, mouse_pos, pixel_radius=8, ignore_backfacing=True ):
+	def from_mos( cls, rmmesh, context, mouse_pos, pixel_radius=8, ignore_backfacing=True, nearest=False, filter_verts=None ):
 		rm_vp = util.rmViewport( context )
 		look_idx, look_vec, axis_vec = rm_vp.get_nearest_direction_vector( 'front' )
-
+		view_pos = rm_vp.cam_pos
 		xfrm = rmmesh.world_transform
 
+		nearest_vert = None
+		nearest_dist = 9999999.9
+
 		mos_verts = cls()
-		active_vertices = cls( v for v in rmmesh.bmesh.verts if not v.hide )
+		if filter_verts is not None:
+			active_vertices = cls( filter_verts )
+		else:
+			active_vertices = cls( v for v in rmmesh.bmesh.verts if not v.hide )
+
 		for v in active_vertices:
-			vnorm = xfrm @ xfrm.to_3x3()
+			vnorm = xfrm.to_3x3() @ v.normal.copy()
 			if ignore_backfacing and vnorm.dot( look_vec ) > 0.0:
 				continue
-			pos_wld = xfrm @ v.co
+			pos_wld = xfrm @ v.co.copy()
 			sp = view3d_utils.location_3d_to_region_2d( region=context.region, rv3d=context.region_data, coord=pos_wld )
 			if sp is None:
 				continue
-			if ( sp - mouse_pos ).length <= float( pixel_radius ):
-				mos_verts.append( v )
+
+			if nearest:
+				dist = ( sp - mouse_pos ).length			
+				if dist < nearest_dist:
+					nearest_dist = dist
+					nearest_vert = v
+			else:
+				if ( sp - mouse_pos ).length <= float( pixel_radius ):
+					mos_verts.append( v )
+
+		if nearest:
+			mos_verts.append( nearest_vert )
 
 		return mos_verts
 
