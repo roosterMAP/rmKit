@@ -52,6 +52,7 @@ from . import context_bevel
 from . import loopring
 from . import move_to_furthest
 from . import knifescreen
+from . import extrudealongpath
 from . import connect_edges
 from . import arcadjust
 from . import targetweld
@@ -96,7 +97,8 @@ def register():
 	context_bevel.register()
 	loopring.register()
 	move_to_furthest.register()
-	knifescreen.register()	
+	knifescreen.register()
+	extrudealongpath.register()
 	connect_edges.register()
 	arcadjust.register()
 	targetweld.register()
@@ -142,6 +144,7 @@ def unregister():
 	loopring.unregister()
 	move_to_furthest.unregister()
 	knifescreen.unregister()
+	extrudealongpath.unregister()
 	connect_edges.unregister()
 	arcadjust.unregister()
 	targetweld.unregister()

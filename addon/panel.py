@@ -156,6 +156,7 @@ class VIEW3D_PT_MESHEDIT( bpy.types.Panel ):
 		c2.operator( 'mesh.rm_thicken', text='Thicken' )
 		c2.operator( 'mesh.rm_createtube', text='Create Tube' )
 		c2.operator( 'mesh.rm_arcadjust', text='Arc Adjust' )
+		c2.operator( 'mesh.rm_extrudealongpath', text='Extrude Along Path' )
 
 		c3 = layout.column()
 		c3.operator( 'mesh.rm_unbevel', text='Unbevel' )

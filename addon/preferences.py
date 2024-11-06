@@ -56,7 +56,6 @@ def register_keyboard_keymap():
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_createtube', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_extend', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_grabapplymat', 'NONE', 'PRESS' ) ) )
-		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_grabapplyvcolor', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_quickmaterial', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_radialalign', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.matchhotspot', 'NONE', 'PRESS' ) ) )
@@ -69,6 +68,14 @@ def register_keyboard_keymap():
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_targetweld', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_thicken', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_worldspaceproject', 'NONE', 'PRESS' ) ) )
+
+		kmi = km_mesh.keymap_items.new( 'mesh.rm_extrudealongpath', 'NONE', 'PRESS' )
+		kmi.properties.offsetonly = True
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'mesh.rm_extrudealongpath', 'NONE', 'PRESS' )
+		kmi.properties.offsetonly = False
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
 
 		kmi = km_mesh.keymap_items.new( 'mesh.rm_remove', 'NONE', 'PRESS' )
 		kmi.properties.reduce_mode = 'DIS'

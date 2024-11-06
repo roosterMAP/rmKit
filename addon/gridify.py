@@ -29,6 +29,9 @@ def BBoxFromPoints( points ):
 		bbmin[1] = min( bbmin[1], points[i][1] )
 		bbmax[0] = max( bbmax[0], points[i][0] )
 		bbmax[1] = max( bbmax[1], points[i][1] )
+	if ( bbmax[0] - bbmin[0] ) <= rmlib.util.FLOAT_EPSILON or ( bbmax[1] - bbmin[1] ) <= rmlib.util.FLOAT_EPSILON:
+		bbmin = mathutils.Vector( ( 0.0, 0.0 ) )
+		bbmax = mathutils.Vector( ( 1.0, 1.0 ) )
 	return bbmin, bbmax
 
 
@@ -337,7 +340,8 @@ class MESH_OT_uvmaptogrid( bpy.types.Operator ):
 								
 				clear_tags( rmmesh )
 
-				FitToBBox( group, initial_bbmin, initial_bbmax, uvlayer )
+				if context.area.type != 'VIEW_3D':
+					FitToBBox( group, initial_bbmin, initial_bbmax, uvlayer )
 
 				complete_failure = False
 
