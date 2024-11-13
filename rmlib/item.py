@@ -26,6 +26,23 @@ def iter_edit_meshes( context, mode_filter=True ):
 			yield rmMesh( o )
 
 
+def iter_selected_meshes( context, mode_filter=True ):
+	#when mode_filter is False, then meshes get yielded even if they're not in editmode
+	meshes = set()
+
+	#add active mesh
+	ao = context.active_object
+	if ao.type == 'MESH':
+		meshes.add( ao.data )
+		yield rmMesh( ao )
+	
+	#selected mesh objects
+	for o in context.selected_objects:
+		if o.type == 'MESH' and ( o.data.is_editmode or not mode_filter ) and o.data not in meshes:
+			meshes.add( o.data )
+			yield rmMesh( o )
+
+
 class rmMesh():
 	def __init__( self, object ):
 		self.__object = None

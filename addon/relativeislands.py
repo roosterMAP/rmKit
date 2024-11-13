@@ -159,8 +159,7 @@ class MESH_OT_scaletomaterialsize( bpy.types.Operator ):
 	def poll( cls, context ):
 		return ( ( context.area.type == 'VIEW_3D' or context.area.type == 'IMAGE_EDITOR' ) and
 				context.active_object is not None and
-				context.active_object.type == 'MESH' and
-				context.object.data.is_editmode )
+				context.active_object.type == 'MESH' )
 
 	def execute( self, context ):
 		rmmesh = rmlib.rmMesh.GetActive( context )
@@ -447,93 +446,94 @@ class MESH_OT_worldspaceproject( bpy.types.Operator ):
 	def poll( cls, context ):
 		return ( ( context.area.type == 'VIEW_3D' or context.area.type == 'IMAGE_EDITOR' ) and
 				context.active_object is not None and
-				context.active_object.type == 'MESH' and
-				context.object.data.is_editmode )
+				context.mode in [ 'OBJECT', 'EDIT_MESH' ] and
+				context.active_object.type == 'MESH' )
 
 	def execute( self, context ):
-		rmmesh = rmlib.rmMesh.GetActive( context )
-		if rmmesh is None:
-			return { 'CANCELLED' }
-		
 		target_uvlayername = ''
-		with rmmesh as rmmesh:
-			if self.uv_map_name == '':
-				uvlayer = rmmesh.active_uv
-			else:
-				try:
-					uvlayer = rmmesh.bmesh.loops.layers.uv.get( self.uv_map_name )
-				except KeyError:
-					self.report( { 'ERROR' }, 'No UVLayer with name {} exists on mesh {}'.format( self.uv_map_name, rmmesh.object ) )
+		for rmmesh in rmlib.iter_selected_meshes( context, False ):
+			with rmmesh as rmmesh:
+				if self.uv_map_name == '':
+					uvlayer = rmmesh.active_uv
+				else:
+					try:
+						uvlayer = rmmesh.bmesh.loops.layers.uv.get( self.uv_map_name )
+					except KeyError:
+						self.report( { 'ERROR' }, 'No UVLayer with name {} exists on mesh {}'.format( self.uv_map_name, rmmesh.object ) )
+						return { 'CANCELLED' }
+				target_uvlayername = uvlayer.name
+					
+				clear_tags( rmmesh )
+
+				#get face selection from uv loop selection
+				faces = rmlib.rmPolygonSet()
+				if ( context.mode == 'OBJECT' ):
+					faces = rmlib.rmPolygonSet( rmmesh.bmesh.faces )
+				else:				
+					sel_sync = context.tool_settings.use_uv_select_sync
+					if sel_sync or context.area.type == 'VIEW_3D':
+						sel_mode = context.tool_settings.mesh_select_mode[:]
+						if sel_mode[2]:
+							faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+						else:
+							return { 'CANCELLED' }
+					else:
+						uv_sel_mode = context.tool_settings.uv_select_mode
+						if uv_sel_mode == 'FACE':
+							loops = rmlib.rmUVLoopSet.from_selection( rmmesh, uvlayer=uvlayer )
+							loop_faces = set()
+							for l in loops:
+								if not l.face.select:
+									continue
+								if not l[uvlayer].select_edge:
+									continue
+								loop_faces.add( l.face )
+								l.tag = True
+							for f in loop_faces:
+								all_loops_tagged = True
+								for l in f.loops:
+									if not l.tag:
+										all_loops_tagged = False
+									else:
+										l.tag = False
+								if all_loops_tagged:
+									faces.append( f )
+						else:
+							return { 'CANCELLED' }
+
+				if len( faces ) < 1:
 					return { 'CANCELLED' }
-			target_uvlayername = uvlayer.name
 				
-			clear_tags( rmmesh )
-
-			#get face selection from uv loop selection
-			faces = rmlib.rmPolygonSet()
-			sel_sync = context.tool_settings.use_uv_select_sync
-			if sel_sync or context.area.type == 'VIEW_3D':
-				sel_mode = context.tool_settings.mesh_select_mode[:]
-				if sel_mode[2]:
-					faces = rmlib.rmPolygonSet.from_selection( rmmesh )
-				else:
-					return { 'CANCELLED' }
-			else:
-				uv_sel_mode = context.tool_settings.uv_select_mode
-				if uv_sel_mode == 'FACE':
-					loops = rmlib.rmUVLoopSet.from_selection( rmmesh, uvlayer=uvlayer )
-					loop_faces = set()
-					for l in loops:
-						if not l.face.select:
-							continue
-						if not l[uvlayer].select_edge:
-							continue
-						loop_faces.add( l.face )
-						l.tag = True
-					for f in loop_faces:
-						all_loops_tagged = True
-						for l in f.loops:
-							if not l.tag:
-								all_loops_tagged = False
-							else:
-								l.tag = False
-						if all_loops_tagged:
-							faces.append( f )
-				else:
-					return { 'CANCELLED' }
-
-			if len( faces ) < 1:
-				return { 'CANCELLED' }
-			
-			for face in faces:
-				dotx = face.normal.dot( mathutils.Vector( ( 1.0, 0.0, 0.0 ) ) )
-				doty = face.normal.dot( mathutils.Vector( ( 0.0, 1.0, 0.0 ) ) )
-				dotz = face.normal.dot( mathutils.Vector( ( 0.0, 0.0, 1.0 ) ) )
-				proj_axis_idx = 0
-				proj_axis = mathutils.Vector( ( 1.0, 0.0, 0.0 ) )
-				proj_axis_sign = 1
-				if abs( dotx ) > abs( doty ) and abs( dotx ) > abs( dotz ):
-					proj_axis_sign = ( dotx > 0.0 ) * 2.0 - 1.0
+				for face in faces:
+					dotx = face.normal.dot( mathutils.Vector( ( 1.0, 0.0, 0.0 ) ) )
+					doty = face.normal.dot( mathutils.Vector( ( 0.0, 1.0, 0.0 ) ) )
+					dotz = face.normal.dot( mathutils.Vector( ( 0.0, 0.0, 1.0 ) ) )
+					proj_axis_idx = 0
 					proj_axis = mathutils.Vector( ( 1.0, 0.0, 0.0 ) )
-				elif abs( doty ) > abs( dotx ) and abs( doty ) > abs( dotz ):
-					proj_axis_idx = 1
-					proj_axis_sign = ( doty > 0.0 ) * 2.0 - 1.0
-					proj_axis = mathutils.Vector( ( 0.0, 1.0, 0.0 ) )					
-				else:
-					proj_axis_idx = 2
-					proj_axis_sign = ( dotz > 0.0 ) * 2.0 - 1.0
-					proj_axis = mathutils.Vector( ( 0.0, 0.0, 1.0 ) )
+					proj_axis_sign = 1
+					if abs( dotx ) > abs( doty ) and abs( dotx ) > abs( dotz ):
+						proj_axis_sign = ( dotx > 0.0 ) * 2.0 - 1.0
+						proj_axis = mathutils.Vector( ( 1.0, 0.0, 0.0 ) )
+					elif abs( doty ) > abs( dotx ) and abs( doty ) > abs( dotz ):
+						proj_axis_idx = 1
+						proj_axis_sign = ( doty > 0.0 ) * 2.0 - 1.0
+						proj_axis = mathutils.Vector( ( 0.0, 1.0, 0.0 ) )					
+					else:
+						proj_axis_idx = 2
+						proj_axis_sign = ( dotz > 0.0 ) * 2.0 - 1.0
+						proj_axis = mathutils.Vector( ( 0.0, 0.0, 1.0 ) )
 
-				for loop in face.loops:
-					coord = loop.vert.co.copy()
-					proj_coord = list( coord - proj_axis * coord.dot( proj_axis ) )
-					proj_coord.pop( proj_axis_idx )
-					proj_coord[0] *= proj_axis_sign
-					loop[uvlayer].uv = proj_coord
+					for loop in face.loops:
+						coord = loop.vert.co.copy()
+						proj_coord = list( coord - proj_axis * coord.dot( proj_axis ) )
+						proj_coord.pop( proj_axis_idx )
+						proj_coord[0] *= proj_axis_sign
+						loop[uvlayer].uv = proj_coord
 
-			clear_tags( rmmesh )
+				clear_tags( rmmesh )
 
-		bpy.ops.mesh.rm_scaletomaterialsize( uv_map_name=target_uvlayername )
+			context.view_layer.objects.active = rmmesh.object
+			bpy.ops.mesh.rm_scaletomaterialsize( uv_map_name=target_uvlayername )
 
 		return { 'FINISHED' }
 
