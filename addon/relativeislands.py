@@ -147,6 +147,68 @@ class MESH_OT_scaleislandrelative( bpy.types.Operator ):
 		return { 'FINISHED' }
 
 
+def ScaleToMaterialSize( rmmesh, faces, uvlayer ):
+	#create list of uvislands and compute a density ( 3darea/uvarea ) for each
+	tri_loops = rmmesh.bmesh.calc_loop_triangles()
+	islands = faces.island( uvlayer )
+	for island in islands:
+
+		#get the world space size of the material on the first poly of this island
+		material_size = [ 2.0, 2.0 ]
+		try:
+			material = rmmesh.mesh.materials[island[0].material_index]
+		except IndexError:
+			pass
+		try:
+			material_size[0] = material["WorldMappingWidth"]
+			material_size[1] = material["WorldMappingHeight"]
+		except:
+			pass
+
+		xfrm = rmmesh.world_transform.to_3x3()
+
+		#compute island 3d and uv surface area
+		island_3darea = 0.0
+		island_uvarea = 0.0
+		for tri in tri_loops:
+			if tri[0].face in island:
+				uv1 = mathutils.Vector( tri[0][uvlayer].uv )
+				uv2 = mathutils.Vector( tri[1][uvlayer].uv )
+				uv3 = mathutils.Vector( tri[2][uvlayer].uv )
+				uvarea = mathutils.geometry.area_tri( uv1, uv2, uv3 )
+				island_uvarea += uvarea
+
+				co1 = xfrm @ tri[0].vert.co
+				co2 = xfrm @ tri[1].vert.co
+				co3 = xfrm @ tri[2].vert.co
+				island_3darea += rmlib.util.TriangleArea( co1, co2, co3 )
+
+		#compute island center in uv space
+		island_center = mathutils.Vector( ( 0.0, 0.0 ) )
+		lcount = 0
+		for f in island:
+			for l in f.loops:
+				island_center += mathutils.Vector( l[uvlayer].uv )
+				lcount += 1
+		island_center = island_center * ( 1.0 / lcount )
+		
+		target_uvarea = island_3darea / ( material_size[0] * material_size[1] )
+
+		try:
+			scale_factor = math.sqrt( target_uvarea ) / math.sqrt( island_uvarea )
+		except ZeroDivisionError:
+			scale_factor = 1.0
+
+		#scale uv islands to target texel density				
+		for f in island:
+			for l in f.loops:
+				uv = mathutils.Vector( l[uvlayer].uv )
+				uv -= island_center
+				uv *= scale_factor
+				uv += island_center
+				l[uvlayer].uv = uv
+
+
 class MESH_OT_scaletomaterialsize( bpy.types.Operator ):
 	"""Scale Selected UV Islands to the material size."""
 	bl_idname = 'mesh.rm_scaletomaterialsize'
@@ -211,70 +273,12 @@ class MESH_OT_scaletomaterialsize( bpy.types.Operator ):
 				else:
 					return { 'CANCELLED' }
 
-			if len( faces ) < 1:
+			clear_tags( rmmesh )
+
+			if len( faces ) < 1:				
 				return { 'CANCELLED' }
 
-			#create list of uvislands and compute a density ( 3darea/uvarea ) for each
-			tri_loops = rmmesh.bmesh.calc_loop_triangles()
-			islands = faces.island( uvlayer )
-			for island in islands:
-
-				#get the world space size of the material on the first poly of this island
-				material_size = [ 2.0, 2.0 ]
-				try:
-					material = rmmesh.mesh.materials[island[0].material_index]
-				except IndexError:
-					pass
-				try:
-					material_size[0] = material["WorldMappingWidth"]
-					material_size[1] = material["WorldMappingHeight"]
-				except:
-					pass
-
-				xfrm = rmmesh.world_transform.to_3x3()
-
-				#compute island 3d and uv surface area
-				island_3darea = 0.0
-				island_uvarea = 0.0
-				for tri in tri_loops:
-					if tri[0].face in island:
-						uv1 = mathutils.Vector( tri[0][uvlayer].uv )
-						uv2 = mathutils.Vector( tri[1][uvlayer].uv )
-						uv3 = mathutils.Vector( tri[2][uvlayer].uv )
-						uvarea = mathutils.geometry.area_tri( uv1, uv2, uv3 )
-						island_uvarea += uvarea
-
-						co1 = xfrm @ tri[0].vert.co
-						co2 = xfrm @ tri[1].vert.co
-						co3 = xfrm @ tri[2].vert.co
-						island_3darea += rmlib.util.TriangleArea( co1, co2, co3 )
-
-				#compute island center in uv space
-				island_center = mathutils.Vector( ( 0.0, 0.0 ) )
-				lcount = 0
-				for f in island:
-					for l in f.loops:
-						island_center += mathutils.Vector( l[uvlayer].uv )
-						lcount += 1
-				island_center = island_center * ( 1.0 / lcount )
-				
-				target_uvarea = island_3darea / ( material_size[0] * material_size[1] )
-
-				try:
-					scale_factor = math.sqrt( target_uvarea ) / math.sqrt( island_uvarea )
-				except ZeroDivisionError:
-					scale_factor = 1.0
-
-				#scale uv islands to target texel density				
-				for f in island:
-					for l in f.loops:
-						uv = mathutils.Vector( l[uvlayer].uv )
-						uv -= island_center
-						uv *= scale_factor
-						uv += island_center
-						l[uvlayer].uv = uv
-
-			clear_tags( rmmesh )
+			ScaleToMaterialSize( rmmesh, faces, uvlayer )
 
 		return { 'FINISHED' }
 
@@ -501,6 +505,8 @@ class MESH_OT_worldspaceproject( bpy.types.Operator ):
 						else:
 							return { 'CANCELLED' }
 
+				clear_tags( rmmesh )
+
 				if len( faces ) < 1:
 					return { 'CANCELLED' }
 				
@@ -530,10 +536,7 @@ class MESH_OT_worldspaceproject( bpy.types.Operator ):
 						proj_coord[0] *= proj_axis_sign
 						loop[uvlayer].uv = proj_coord
 
-				clear_tags( rmmesh )
-
-			context.view_layer.objects.active = rmmesh.object
-			bpy.ops.mesh.rm_scaletomaterialsize( uv_map_name=target_uvlayername )
+				ScaleToMaterialSize( rmmesh, faces, uvlayer )
 
 		return { 'FINISHED' }
 
