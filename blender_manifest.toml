@@ -1,0 +1,27 @@
+schema_version = "1.0.0"
+id = "rmKit"
+version = "1.0.0"
+name = "rmKit"
+tagline = "Collection of Tools"
+maintainer = "Timothee Yeramian <lead.acrysoft@gmail.com>"
+type = "add-on"
+
+website = "https://rmkit.readthedocs.io/en/latest/"
+tags = ["Modeling", "Material", "Import-Export", "UV"]
+
+blender_version_min = "4.2.0"
+
+license = [
+  "SPDX:GPL-3.0-or-later",
+]
+
+[build]
+paths_exclude_pattern = [
+  "__pycache__/",
+  ".git",
+  ".*",
+  "*.zip",
+  "*.bat",
+  "*.hot",
+  "*.md",
+]
