@@ -9,6 +9,7 @@ class DimensionsManager:
 	handle = None
 	handle_text = None
 	active = False
+	nodraw = False
 	_joint = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
 	_x_max = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
 	_y_max = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
@@ -103,6 +104,9 @@ class DimensionsManager:
 			DimensionsManager.batch.draw( DimensionsManager.shader )
 
 	def draw_text( self ):
+		if DimensionsManager._x_handle is None:
+			return
+
 		blf.color( 0, 1.0, 0.0, 0.0, 1.0 )
 		blf.position( 0, DimensionsManager._x_handle[0], DimensionsManager._x_handle[1], 0 )
 		blf.size( 0, 16 )
@@ -282,13 +286,30 @@ class MESH_OT_dimensions( bpy.types.Operator ):
 			
 		if event.type == 'TIMER':
 			bounding_box = GetBoundingBox( context )
-			if bounding_box is None:
+			if bounding_box is None or ( bounding_box[1] - bounding_box[0] ).length < rmlib.util.FLOAT_EPSILON:
 				DimensionsManager.Zero()
+				
+				if not DimensionsManager.nodraw:
+					DimensionsManager.nodraw = True
+					bpy.types.SpaceView3D.draw_handler_remove( DimensionsManager.handle, 'WINDOW' )
+					bpy.types.SpaceView3D.draw_handler_remove( DimensionsManager.handle_text, 'WINDOW' )
+					for window in context.window_manager.windows:
+						for area in window.screen.areas:
+							if area.type == 'VIEW_3D':
+								for region in area.regions:
+									if region.type == 'WINDOW':
+										region.tag_redraw()
+
 			else:
 				DimensionsManager._joint = bounding_box[0]
 				DimensionsManager._x_max = mathutils.Vector( ( bounding_box[1][0], bounding_box[0][1], bounding_box[0][2] ) )
 				DimensionsManager._y_max = mathutils.Vector( ( bounding_box[0][0], bounding_box[1][1], bounding_box[0][2] ) )
 				DimensionsManager._z_max = mathutils.Vector( ( bounding_box[0][0], bounding_box[0][1], bounding_box[1][2] ) )
+
+				if DimensionsManager.nodraw:
+					DimensionsManager.nodraw = False
+					DimensionsManager.handle = bpy.types.SpaceView3D.draw_handler_add( MESH_OT_dimensions.DIMENSIONS_RENDER.draw, (), 'WINDOW', 'POST_VIEW' )
+					DimensionsManager.handle_text = bpy.types.SpaceView3D.draw_handler_add( MESH_OT_dimensions.DIMENSIONS_RENDER.draw_text, (), 'WINDOW', 'POST_PIXEL' )
 
 			MESH_OT_dimensions.DIMENSIONS_RENDER.update( context )
 

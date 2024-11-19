@@ -592,7 +592,7 @@ class rmVertexSet( list ):
 		return rmPolygonSet( polys )
 
 	@property
-	def loops( self, uvlayer ):
+	def loops( self ):
 		loops = set()
 		for v in self:
 			for l in v.link_loops:
