@@ -181,9 +181,6 @@ class VIEW3D_MT_PIE_setedgeweight_bevel( bpy.types.Menu ):
 
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_setedgeweight.bl_idname ) )
-	print( 'register :: {}'.format( VIEW3D_MT_PIE_setedgeweight_crease.bl_idname ) )
-	print( 'register :: {}'.format( VIEW3D_MT_PIE_setedgeweight_bevel.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_setedgeweight )
 	bpy.utils.register_class( VIEW3D_MT_PIE_setedgeweight_crease )
 	bpy.utils.register_class( VIEW3D_MT_PIE_setedgeweight_bevel )
@@ -204,9 +201,6 @@ def register():
 
 
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_setedgeweight.bl_idname ) )
-	print( 'unregister :: {}'.format( VIEW3D_MT_PIE_setedgeweight_crease.bl_idname ) )
-	print( 'unregister :: {}'.format( VIEW3D_MT_PIE_setedgeweight_bevel.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_setedgeweight )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_setedgeweight_crease )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_setedgeweight_bevel )

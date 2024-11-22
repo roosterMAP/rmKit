@@ -32,9 +32,7 @@ class MESH_OT_contextbevel( bpy.types.Operator ):
 		return { 'FINISHED' }
 	
 def register():
-	print( 'register :: {}'.format( MESH_OT_contextbevel.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_contextbevel )
 	
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_contextbevel.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_contextbevel )

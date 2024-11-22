@@ -110,9 +110,7 @@ class MESH_OT_polypatch( bpy.types.Operator ):
 		return { 'FINISHED' }
 	
 def register():
-	print( 'register :: {}'.format( MESH_OT_polypatch.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_polypatch )
 	
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_polypatch.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_polypatch )

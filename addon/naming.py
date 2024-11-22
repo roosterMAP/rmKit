@@ -23,10 +23,8 @@ class MESH_OT_itemnametomeshname( bpy.types.Operator ):
 	
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_itemnametomeshname.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_itemnametomeshname )
 	
 	
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_itemnametomeshname.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_itemnametomeshname )

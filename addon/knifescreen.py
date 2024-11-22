@@ -179,13 +179,41 @@ class VIEW3D_MT_knifescreen( bpy.types.Menu ):
 			
 			op_eg = layout.operator( MESH_OT_knifescreen.bl_idname, text='Edge :: Screen' )
 			op_eg.alignment = context.object.ks_alignment_screen
+
+
+class MESH_OT_knifescreenmenu( bpy.types.Operator ):
+	"""Slice the background face selection based on the current vert/edge selection."""
+	bl_idname = 'mesh.rm_knifescreenmenu'
+	bl_label = 'KnifeScreen'
+	bl_options = { 'UNDO' }
+
+	@classmethod
+	def poll( cls, context ):
+		return ( context.area.type == 'VIEW_3D' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
+				context.object.data.is_editmode )
+		
+	def execute( self, context ):	
+		if context.object is None or context.mode == 'OBJECT':
+			return { 'CANCELLED' }
+		
+		if context.object.type != 'MESH':
+			return { 'CANCELLED' }
+		
+		sel_mode = context.tool_settings.mesh_select_mode[:]
+		if sel_mode[2]:
+			self.report( { 'ERROR' }, 'KnifeScreen only works in Vertex and Edge modes.' )
+			return { 'CANCELLED' }
+		
+		bpy.ops.wm.call_menu( name=VIEW3D_MT_knifescreen.bl_idname )
+		return { 'FINISHED' }
 			
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_knifescreen.bl_idname ) )
-	print( 'register :: {}'.format( VIEW3D_MT_knifescreen.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_knifescreen )
 	bpy.utils.register_class( VIEW3D_MT_knifescreen )
+	bpy.utils.register_class( MESH_OT_knifescreenmenu )
 	bpy.types.Object.ks_alignment_topo = bpy.props.EnumProperty(
 		items=[ ( "topology", "Topology", "", 1 ),
 				( "grid", "Grid", "", 2 ),
@@ -210,10 +238,9 @@ def register():
 	
 	
 def unregister():
-	print( 'unregister :: {}'.format( VIEW3D_MT_knifescreen.bl_idname ) )
-	print( 'unregister :: {}'.format( VIEW3D_MT_knifescreen.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_knifescreen )
 	bpy.utils.unregister_class( VIEW3D_MT_knifescreen )
+	bpy.utils.unregister_class( MESH_OT_knifescreenmenu )
 	del bpy.types.Object.ks_alignment_topo
 	del bpy.types.Object.ks_alignment_grid
 	del bpy.types.Object.ks_alignment_screen

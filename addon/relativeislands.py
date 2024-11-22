@@ -542,10 +542,6 @@ class MESH_OT_worldspaceproject( bpy.types.Operator ):
 
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_scaleislandrelative.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_scaletomaterialsize.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_normalizetexels.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_worldspaceproject.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_scaleislandrelative )
 	bpy.utils.register_class( MESH_OT_scaletomaterialsize )
 	bpy.utils.register_class( MESH_OT_normalizetexels )
@@ -553,10 +549,6 @@ def register():
 	
 
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_scaleislandrelative.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_scaletomaterialsize.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_normalizetexels.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_worldspaceproject.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_scaleislandrelative )
 	bpy.utils.unregister_class( MESH_OT_scaletomaterialsize )
 	bpy.utils.unregister_class( MESH_OT_normalizetexels )

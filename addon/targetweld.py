@@ -121,9 +121,7 @@ class MESH_OT_targetweld( bpy.types.Operator ):
 
 	
 def register():
-	print( 'register :: {}'.format( MESH_OT_targetweld.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_targetweld )
 	
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_targetweld.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_targetweld )

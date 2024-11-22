@@ -196,10 +196,8 @@ class MESH_OT_uvunrotate( bpy.types.Operator ):
 
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_uvunrotate.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_uvunrotate )
 	
 
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_uvunrotate.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_uvunrotate )

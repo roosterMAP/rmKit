@@ -193,18 +193,12 @@ class MESH_OT_rm_matcleanup( bpy.types.Operator ):
 	
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_rm_copy.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_rm_paste.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_rm_matcleanup.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_rm_copy )
 	bpy.utils.register_class( MESH_OT_rm_paste )
 	bpy.utils.register_class( MESH_OT_rm_matcleanup )
 	
 
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_rm_copy.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_rm_paste.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_rm_matcleanup.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_rm_copy )
 	bpy.utils.unregister_class( MESH_OT_rm_paste )
 	bpy.utils.unregister_class( MESH_OT_rm_matcleanup )

@@ -69,6 +69,7 @@ def register_keyboard_keymap():
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_targetweld', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_thicken', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_worldspaceproject', 'NONE', 'PRESS' ) ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_knifescreenmenu', 'NONE', 'PRESS' ) ) )
 
 		kmi = km_mesh.keymap_items.new( 'mesh.rm_extrudealongpath', 'NONE', 'PRESS' )
 		kmi.properties.offsetonly = True
@@ -133,11 +134,6 @@ def register_keyboard_keymap():
 		kmi = km_mesh.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
 		kmi.properties.name = 'VIEW3D_MT_PIE_setedgeweight_crease'
 		RM_GUI_NAMES.add( 'VIEW3D_MT_PIE_setedgeweight_crease' )
-		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'wm.call_menu', 'NONE', 'PRESS' )
-		kmi.properties.name = 'OBJECT_MT_rm_knifescreen'
-		RM_GUI_NAMES.add( 'OBJECT_MT_rm_knifescreen' )
 		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
 
 		kmi = km_mesh.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )

@@ -253,10 +253,6 @@ class VIEW3D_MT_PIE_screenreflect_noslice( bpy.types.Menu ):
 	
 	
 def register():
-	print( 'register :: {}'.format( MESH_OT_screenreflect.bl_idname ) )
-	print( 'register :: {}'.format( VIEW3D_MT_PIE_screenreflect.bl_idname ) )
-	print( 'register :: {}'.format( VIEW3D_MT_PIE_screenreflect_slice.bl_idname ) )
-	print( 'register :: {}'.format( VIEW3D_MT_PIE_screenreflect_noslice.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_screenreflect )
 	bpy.utils.register_class( VIEW3D_MT_PIE_screenreflect )
 	bpy.utils.register_class( VIEW3D_MT_PIE_screenreflect_slice )
@@ -267,10 +263,6 @@ def register():
 	
 	
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_screenreflect.bl_idname ) )
-	print( 'unregister :: {}'.format( VIEW3D_MT_PIE_screenreflect.bl_idname ) )
-	print( 'unregister :: {}'.format( VIEW3D_MT_PIE_screenreflect_slice.bl_idname ) )
-	print( 'unregister :: {}'.format( VIEW3D_MT_PIE_screenreflect_noslice.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_screenreflect )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_screenreflect )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_screenreflect_slice )

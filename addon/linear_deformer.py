@@ -329,7 +329,7 @@ class DrawHandler():
 
 
 class MESH_OT_Linear_Deformer( bpy.types.Operator ):
-	'''Modo Style Falloff Transform Tool'''
+	"""Modo Style Falloff Transform Tool"""
 	bl_idname = 'mesh.rm_falloff'
 	bl_label = 'Falloff Transform Tool'
 	bl_description = 'Modo Style Falloff Transform'
@@ -778,7 +778,7 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 				
 				
 class MESH_OT_quicklineardeform( bpy.types.Operator ):
-	'''Set the FalloffTransform Tool based on camera space direction.'''
+	"""Set the FalloffTransform Tool based on camera space direction."""
 	bl_idname = 'mesh.rm_quicklineardeform'
 	bl_label = 'Quick Falloff Transform'
 	#bl_options = { 'REGISTER', 'UNDO' }
@@ -891,7 +891,7 @@ class MESH_OT_quicklineardeform( bpy.types.Operator ):
 
 
 class VIEW3D_MT_PIE_quicklineardeform( bpy.types.Menu ):
-	'''Set the FalloffTransform Tool based on camera space direction.'''
+	"""Set the FalloffTransform Tool based on camera space direction."""
 	bl_idname = 'VIEW3D_MT_PIE_quicklineardeform'
 	bl_label = 'Quick Linear Transform Pie'
 
@@ -921,18 +921,12 @@ class VIEW3D_MT_PIE_quicklineardeform( bpy.types.Menu ):
 
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_Linear_Deformer.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_quicklineardeform.bl_idname ) )
-	print( 'register :: {}'.format( VIEW3D_MT_PIE_quicklineardeform.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_Linear_Deformer )
 	bpy.utils.register_class( MESH_OT_quicklineardeform )
 	bpy.utils.register_class( VIEW3D_MT_PIE_quicklineardeform )
 	
 
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_Linear_Deformer.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_quicklineardeform.bl_idname ) )
-	print( 'unregister :: {}'.format( VIEW3D_MT_PIE_quicklineardeform.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_Linear_Deformer )
 	bpy.utils.unregister_class( MESH_OT_quicklineardeform )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_quicklineardeform )

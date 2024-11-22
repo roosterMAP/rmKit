@@ -244,7 +244,7 @@ class MESH_OT_quickboolclear( bpy.types.Operator ):
 				context.mode == 'OBJECT' )
 		
 	def execute( self, context ):
-		#make active object a parrent
+		#make active object a parent
 		obj_active = context.active_object
 		if IsParent( obj_active ):
 			for m in list( obj_active.modifiers ):
@@ -287,10 +287,8 @@ class VIEW3D_MT_quickbool( bpy.types.Menu ):
 
 
 def register():
-	print( 'register :: {}'.format( VIEW3D_MT_quickbool.bl_idname ) )
 	bpy.utils.register_class( VIEW3D_MT_quickbool )
 	
 	
 def unregister():
-	print( 'unregister :: {}'.format( VIEW3D_MT_quickbool.bl_idname ) )
 	bpy.utils.unregister_class( VIEW3D_MT_quickbool )

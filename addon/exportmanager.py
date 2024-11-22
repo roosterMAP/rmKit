@@ -193,6 +193,7 @@ def already_exists( export_items, name ):
 		
 
 class OBJECT_OT_AddExportObject(bpy.types.Operator):
+	"""Add selected object to export manager."""
 	bl_idname = "object.em_add_export_object"
 	bl_label = "Add"
 	bl_options = set()
@@ -222,6 +223,7 @@ class OBJECT_OT_AddExportObject(bpy.types.Operator):
 	
 
 class OBJECT_OT_RemoveExportObject(bpy.types.Operator):
+	"""Remove object from export manager."""
 	bl_idname = "object.em_remove_export_object"
 	bl_label = "Remove"
 	bl_options = set()
@@ -288,14 +290,16 @@ def export_path( context, object ):
 	for c in filename.lower():
 		if c not in valid_chars:
 			return ( 3, '' )
-	
-	return ( 0, exportpath.replace( '/', '\\' ) + '.fbx' )
+		
+	dirnames = exportpath.replace( '/', '\\' ).split( '\\' )	
+
+	return ( 0, os.path.join( *dirnames ) + '.fbx' )
 	
 
-def TestIdStudio( exportpath ):
-	idx = exportpath.find( '\\base\\art\\' )
+def TestIdStudio( exportpath ):	
+	idx = exportpath.find( os.path.join( 'base', 'art' ) )
 	if idx >= 0:
-		return os.path.isfile( exportpath[:idx] + '\\modinfo.dev.json' )
+		return os.path.isfile( os.path.join( exportpath[:idx], 'modinfo.dev.json' ) )
 	return False
 
 
@@ -307,7 +311,7 @@ def CreateModelAssetDecl( exportpath ):
 	if not os.path.isdir(directory):
 		raise OSError( 'Dir {} failed to be created!!! Aborting CreateModelAssetDecl!'.format( directory ) )
 
-	idx = exportpath.find( '\\base\\art\\' )
+	idx = exportpath.find( os.path.join( 'base', 'art' ) )
 	relativeexportpath = exportpath[idx+6:]
 	lines = [ 'declType( modelAsset ) {',
 	'	edit = {',
@@ -319,7 +323,7 @@ def CreateModelAssetDecl( exportpath ):
 	'	}',
 	'}' ]
 
-	declpath = exportpath.replace( '\\base\\', '\\base\\decltree\\modelAsset\\' )
+	declpath = exportpath.replace( os.path.join( 'base', '' ), os.path.join( 'base', 'decltree', 'modelAsset' ) )
 	declpath = declpath[:-3] + 'decl'
 	f = open( declpath, 'w' )
 	f.write( '\n'.join( lines ) )
@@ -373,6 +377,7 @@ def export_object( context, root_export_object, exportpath ):
 
 
 class OBJECT_OT_ExportObject(bpy.types.Operator):
+	"""Export Object"""
 	bl_idname = "object.em_export_object"
 	bl_label = "Export"
 	bl_options = set()
@@ -417,6 +422,7 @@ class OBJECT_OT_ExportObject(bpy.types.Operator):
 	
 	
 class OBJECT_OT_ExportEnabledObject(bpy.types.Operator):
+	"""Export checked objects in the export manager."""
 	bl_idname = "object.em_export_enabled_object"
 	bl_label = "Export Checked"
 	bl_options = set()
@@ -447,6 +453,7 @@ class OBJECT_OT_ExportEnabledObject(bpy.types.Operator):
 	
 	
 class OBJECT_OT_ExportManagerSettings(bpy.types.Operator):
+	"""Export manager settings."""
 	bl_idname = "view.em_export_settings"
 	bl_label = "Export Manager Settings"
 	bl_options = { 'UNDO' }

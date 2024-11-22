@@ -602,7 +602,7 @@ def read_hot_file( file ):
 
 
 def get_hotfile_path():
-	filepath = os.path.dirname( os.path.dirname( rmlib.__file__ ) ) + '\\atlas_repo.hot'
+	filepath = os.path.join( os.path.dirname( os.path.dirname( rmlib.__file__ ) ), 'atlas_repo.hot' )
 	if not os.path.isfile( filepath ):
 		write_default_file( filepath )
 	return filepath
@@ -690,6 +690,7 @@ def image_from_hotspot( hotspot, size=64 ):
 
 
 class OBJECT_OT_savehotspot( bpy.types.Operator ):
+	"""Save the hotspot layout to the hotspot user config file."""
 	bl_idname = 'mesh.savehotspot'
 	bl_label = 'Create Hotspot'
 	bl_options = { 'UNDO' }
@@ -844,6 +845,7 @@ class OBJECT_PT_savehotspotpanel( bpy.types.Panel ):
 
 
 class OBJECT_OT_repotoascii( bpy.types.Operator ):
+	"""Convert the binary hotspot cfg file to ascii for debugging."""
 	bl_idname = 'mesh.repotoascii'
 	bl_label = 'Hotspot Repo to Ascii'
 	
@@ -885,6 +887,7 @@ class OBJECT_OT_repotoascii( bpy.types.Operator ):
 
 
 class MESH_OT_grabapplyuvbounds( bpy.types.Operator ):
+	"""Fit the selected uvfaces to the bounds of the uv island of the faces under the mouse in the 3d view."""
 	bl_idname = 'mesh.grabapplyuvbounds'
 	bl_label = 'GrabApplyUVBounds (MOS)'
 	bl_options = { 'UNDO' }
@@ -953,6 +956,7 @@ class MESH_OT_grabapplyuvbounds( bpy.types.Operator ):
 
 
 class MESH_OT_moshotspot( bpy.types.Operator ):
+	"""Map the selected uvfaces to the hotspot under the cursor in the uv view using the atlas defined by the material on the uvfaces."""
 	bl_idname = 'mesh.moshotspot'
 	bl_label = 'Hotspot (MOS)'
 	bl_options = { 'UNDO' }
@@ -1010,6 +1014,7 @@ class MESH_OT_moshotspot( bpy.types.Operator ):
 
 
 class MESH_OT_nrsthotspot( bpy.types.Operator ):
+	"""Use the hotspot nearest to the selected uv faces in the atlas defined by its material."""
 	bl_idname = 'mesh.nrsthotspot'
 	bl_label = 'Hotspot Nrst'
 	bl_options = { 'UNDO' }
@@ -1058,6 +1063,7 @@ class MESH_OT_nrsthotspot( bpy.types.Operator ):
 	
 
 class MESH_OT_matchhotspot( bpy.types.Operator ):
+	"""Map the current face selection to the best fit hotspot on the atlas defined by the material."""
 	bl_idname = 'mesh.matchhotspot'
 	bl_label = 'Hotspot Match'
 	bl_options = { 'UNDO' }
@@ -1383,6 +1389,7 @@ def enum_previews_from_directory_items( self, context ):
 
 
 class MESH_OT_refhostpot( bpy.types.Operator ):
+	"""Make the material on the current face selection use an existing hotspot layout."""
 	bl_idname = 'mesh.refhotspot'
 	bl_label = 'Ref Hotspot'
 	bl_options = { 'UNDO' }

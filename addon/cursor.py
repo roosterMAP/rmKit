@@ -276,10 +276,6 @@ class VIEW3D_MT_PIE_cursor( bpy.types.Menu ):
 
 	
 def register():
-	print( 'register :: {}'.format( MESH_OT_cursortoselection.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_origintocursor.bl_idname ) )
-	print( 'register :: {}'.format( VIEW3D_MT_PIE_cursor.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_unrotatefromcursor.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_cursortoselection )
 	bpy.utils.register_class( MESH_OT_origintocursor )
 	bpy.utils.register_class( VIEW3D_MT_PIE_cursor )
@@ -287,10 +283,6 @@ def register():
 	
 	
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_cursortoselection.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_origintocursor.bl_idname ) )
-	print( 'unregister :: {}'.format( VIEW3D_MT_PIE_cursor.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_unrotatefromcursor.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_cursortoselection )
 	bpy.utils.unregister_class( MESH_OT_origintocursor )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_cursor )

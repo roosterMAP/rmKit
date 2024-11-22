@@ -687,7 +687,7 @@ class MESH_OT_uvfit( bpy.types.Operator ):
 
 
 class MESH_OT_uvrandom( bpy.types.Operator ):
-	'''Randomize UV Selection'''
+	"""Randomize UV Selection."""
 	bl_idname = 'mesh.rm_uvrandom'
 	bl_label = 'Randomize Island Transforms'
 	bl_options = { 'UNDO' }
@@ -1126,15 +1126,7 @@ def load_icons():
 	
 def register():
 	load_icons()
-
-	print( 'register :: {}'.format( UV_PT_UVTransformTools.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_uvmove.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_uvslam.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_uvrotate.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_uvscale.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_uvflip.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_uvfit.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_uvrandom.bl_idname ) )
+	
 	bpy.utils.register_class( UV_PT_UVTransformTools )
 	bpy.utils.register_class( MESH_OT_uvmove )
 	bpy.utils.register_class( MESH_OT_uvslam )
@@ -1164,15 +1156,7 @@ def unregister():
 	for pcoll in preview_collections.values():
 		bpy.utils.previews.remove( pcoll )
 	preview_collections.clear()
-
-	print( 'unregister :: {}'.format( UV_PT_UVTransformTools.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_uvmove.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_uvslam.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_uvrotate.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_uvscale.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_uvflip.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_uvfit.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_uvrandom.bl_idname ) )
+	
 	bpy.utils.unregister_class( UV_PT_UVTransformTools )
 	bpy.utils.unregister_class( MESH_OT_uvmove )
 	bpy.utils.unregister_class( MESH_OT_uvslam )

@@ -696,9 +696,7 @@ class MESH_OT_connect_edge( bpy.types.Operator ):
 		return { 'RUNNING_MODAL' }
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_connect_edge.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_connect_edge )
 	
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_connect_edge.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_connect_edge )

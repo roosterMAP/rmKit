@@ -622,14 +622,6 @@ class IMAGE_EDITOR_MT_PIE_uvmovetofurthest_local( bpy.types.Menu ):
 
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_movetofurthest.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_uvmovetofurthest.bl_idname ) )
-	print( 'register :: {}'.format( VIEW3D_MT_PIE_movetofurthest.bl_idname ) )
-	print( 'register :: {}'.format( VIEW3D_MT_PIE_movetofurthest_local.bl_idname ) )
-	print( 'register :: {}'.format( VIEW3D_MT_PIE_movetofurthest_constrain.bl_idname ) )
-	print( 'register :: {}'.format( VIEW3D_MT_PIE_movetofurthest_both.bl_idname ) )
-	print( 'register :: {}'.format( IMAGE_EDITOR_MT_PIE_uvmovetofurthest.bl_idname ) )
-	print( 'register :: {}'.format( IMAGE_EDITOR_MT_PIE_uvmovetofurthest_local.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_movetofurthest )
 	bpy.utils.register_class( MESH_OT_uvmovetofurthest )
 	bpy.utils.register_class( VIEW3D_MT_PIE_movetofurthest )
@@ -643,14 +635,6 @@ def register():
 	
 
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_movetofurthest.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_uvmovetofurthest.bl_idname ) )
-	print( 'unregister :: {}'.format( VIEW3D_MT_PIE_movetofurthest.bl_idname ) )
-	print( 'unregister :: {}'.format( VIEW3D_MT_PIE_movetofurthest_local.bl_idname ) )
-	print( 'unregister :: {}'.format( VIEW3D_MT_PIE_movetofurthest_constrain.bl_idname ) )
-	print( 'unregister :: {}'.format( VIEW3D_MT_PIE_movetofurthest_both.bl_idname ) )
-	print( 'unregister :: {}'.format( IMAGE_EDITOR_MT_PIE_uvmovetofurthest.bl_idname ) )
-	print( 'unregister :: {}'.format( IMAGE_EDITOR_MT_PIE_uvmovetofurthest_local.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_movetofurthest )
 	bpy.utils.unregister_class( MESH_OT_uvmovetofurthest )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_movetofurthest )

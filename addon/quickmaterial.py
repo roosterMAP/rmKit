@@ -14,7 +14,7 @@ def validate_material_name( mat_name ):
 	return True
 
 class MESH_OT_quickmaterial( bpy.types.Operator ):
-	'''Utility for quickly sampling, modifying, and creating materials for 3d viewport.'''
+	"""Utility for quickly sampling, modifying, and creating materials for 3d viewport."""
 	bl_idname = 'mesh.rm_quickmaterial'
 	bl_label = 'Quick Material'
 	bl_options = { 'UNDO' }
@@ -185,13 +185,11 @@ class QuickMatProps( bpy.types.PropertyGroup ):
 
 	
 def register():
-	print( 'register :: {}'.format( MESH_OT_quickmaterial.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_quickmaterial )
 	bpy.utils.register_class( QuickMatProps )
 	bpy.types.Scene.quickmatprops = bpy.props.PointerProperty( type=QuickMatProps )
 	
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_quickmaterial.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_quickmaterial )
 	bpy.utils.unregister_class( QuickMatProps )
 	del bpy.types.Scene.quickmatprops

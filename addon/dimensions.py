@@ -261,6 +261,7 @@ def GetBoundingBox( context ):
 
 
 class MESH_OT_dimensions( bpy.types.Operator ):
+	"""Draw helpers in the viewport to visualize the dimensions of selected mesh elements."""
 	bl_idname = 'view3d.rm_dimensions'
 	bl_label = 'Dimensions'
 
@@ -329,12 +330,10 @@ class MESH_OT_dimensions( bpy.types.Operator ):
 
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_dimensions.bl_idname ) )
 	bpy.types.Scene.dimensions_use_background_face_selection = bpy.props.BoolProperty( name='Use Background Face Sel' )
 	bpy.utils.register_class( MESH_OT_dimensions )
 	
 
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_dimensions.bl_idname ) )
 	del bpy.types.Scene.dimensions_use_background_face_selection
 	bpy.utils.unregister_class( MESH_OT_dimensions )

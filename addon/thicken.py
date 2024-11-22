@@ -177,9 +177,7 @@ class MESH_OT_thicken( bpy.types.Operator ):
 
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_thicken.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_thicken )
 	
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_thicken.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_thicken )

@@ -325,6 +325,7 @@ class MESH_OT_loop( bpy.types.Operator ):
 
 
 class MESH_OT_uvloop( bpy.types.Operator ):
+	"""Extend current edge selection by loop. Utilizes 3DS Max algorithm."""
 	bl_idname = 'mesh.rm_uvloop'
 	bl_label = 'UV Loop Select'
 	bl_options = { 'UNDO' }
@@ -394,6 +395,7 @@ class MESH_OT_uvloop( bpy.types.Operator ):
 
 
 class MESH_OT_uvring( bpy.types.Operator ):
+	"""Extend current edge selection by ring. Utilizes 3DS Max algorithm."""
 	bl_idname = 'mesh.rm_uvring'
 	bl_label = 'UV Ring Select'
 	bl_options = { 'UNDO' }
@@ -521,22 +523,14 @@ class MESH_OT_uvring( bpy.types.Operator ):
 
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_loop.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_loop )
-	print( 'register :: {}'.format( MESH_OT_ring.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_ring )
-	print( 'register :: {}'.format( MESH_OT_uvloop.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_uvloop )
-	print( 'register :: {}'.format( MESH_OT_uvring.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_uvring )
 	
 	
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_loop.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_loop )
-	print( 'unregister :: {}'.format( MESH_OT_ring.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_ring )
-	print( 'unregister :: {}'.format( MESH_OT_uvloop.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_uvloop )
-	print( 'unregister :: {}'.format( MESH_OT_uvring.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_uvring )

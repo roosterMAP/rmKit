@@ -267,6 +267,7 @@ class MESH_OT_continuous( bpy.types.Operator ):
 
 
 class MESH_OT_invertcontinuous( bpy.types.Operator ):
+	"""Invert the selection on elements that are 3d continuouse with the current selection."""
 	bl_idname = 'mesh.rm_invertcontinuous'
 	bl_label = 'Invert Continuous'
 	bl_options = { 'UNDO' }
@@ -313,10 +314,6 @@ class MESH_OT_invertcontinuous( bpy.types.Operator ):
 
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_changetomode.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_convertmodeto.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_invertcontinuous.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_continuous.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_changetomode )
 	bpy.utils.register_class( MESH_OT_convertmodeto )
 	bpy.utils.register_class( MESH_OT_invertcontinuous )
@@ -324,10 +321,6 @@ def register():
 
 	
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_changetomode.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_convertmodeto.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_invertcontinuous.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_continuous.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_changetomode )
 	bpy.utils.unregister_class( MESH_OT_convertmodeto )
 	bpy.utils.unregister_class( MESH_OT_invertcontinuous )

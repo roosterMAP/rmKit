@@ -47,7 +47,7 @@ def GetPolysBySelSet( bm, selset, value ):
 	
 
 class MESH_OT_setvnormselset( bpy.types.Operator ):    
-	"""This is the tooltip for custom operator"""
+	"""Add face to selection set."""
 	bl_idname = 'mesh.rm_setvnorm'
 	bl_label = 'Set VNorm Selection Set'
 	bl_options = { 'UNDO' } #tell blender that we support the undo/redo pannel
@@ -108,7 +108,7 @@ class MESH_OT_setvnormselset( bpy.types.Operator ):
 	
 	
 class MESH_OT_removevnormselset( bpy.types.Operator ):    
-	"""This is the tooltip for custom operator"""
+	"""Remove face from selection set."""
 	bl_idname = 'mesh.rm_removevnorm'
 	bl_label = 'Remove VNorm Selection Set'
 	bl_options = { 'UNDO' } #tell blender that we support the undo/redo pannel
@@ -155,6 +155,7 @@ class MESH_OT_removevnormselset( bpy.types.Operator ):
 	
 	
 class MESH_OT_selectvnormselset( bpy.types.Operator ):
+	"""Select faces based on face membership to this selection sets."""
 	bl_idname = 'mesh.rm_selectvnormselset'
 	bl_label = 'Select VNorm Selection Set'
 	bl_options = { 'UNDO' } #tell blender that we support the undo/redo pannel
@@ -204,6 +205,7 @@ class MESH_OT_selectvnormselset( bpy.types.Operator ):
 
 
 class MESH_OT_applyall( bpy.types.Operator ):
+	"""Generated Split Normals based on face membership to all selection sets."""
 	bl_idname = 'mesh.rm_applyall'
 	bl_label = 'Apply All'
 	bl_options = { 'UNDO' } #tell blender that we support the undo/redo pannel
@@ -267,6 +269,7 @@ def GetSortedLoops( vert ):
 
 	
 class MESH_OT_applyvnorms( bpy.types.Operator ):
+	"""Generated Split Normals based on face membership to this selection set."""
 	bl_idname = 'mesh.rm_applyvnorms'
 	bl_label = 'Apply VNorms'
 	bl_options = { 'UNDO' } #tell blender that we support the undo/redo pannel
@@ -439,11 +442,6 @@ class VIEW3D_PT_VNORMS( bpy.types.Panel ):
 	
 	
 def register():
-	print( 'register :: {}'.format( MESH_OT_setvnormselset.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_removevnormselset.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_selectvnormselset.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_applyvnorms.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_applyall.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_setvnormselset )
 	bpy.utils.register_class( MESH_OT_removevnormselset )
 	bpy.utils.register_class( MESH_OT_selectvnormselset )
@@ -457,11 +455,6 @@ def register():
 	
 
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_setvnormselset.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_removevnormselset.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_selectvnormselset.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_applyvnorms.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_applyall.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_setvnormselset )
 	bpy.utils.unregister_class( MESH_OT_removevnormselset )
 	bpy.utils.unregister_class( MESH_OT_selectvnormselset )

@@ -174,10 +174,8 @@ class MESH_OT_uvgrowshrink( bpy.types.Operator ):
 
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_uvgrowshrink.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_uvgrowshrink )
 	
 
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_uvgrowshrink.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_uvgrowshrink )

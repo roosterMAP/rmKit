@@ -318,14 +318,10 @@ class MESH_OT_grabapplyvcolor( bpy.types.Operator ):
 
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_grabapplymat.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_grabapplyvcolor.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_grabapplymat )
 	bpy.utils.register_class( MESH_OT_grabapplyvcolor )
 
 	
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_grabapplymat.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_grabapplyvcolor.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_grabapplymat )
 	bpy.utils.unregister_class( MESH_OT_grabapplyvcolor )

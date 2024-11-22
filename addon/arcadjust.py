@@ -209,7 +209,7 @@ def radial_arc_adjust( bm, scale ):
 	return True
 
 class MESH_OT_arcadjust( bpy.types.Operator ):
-	
+	"""Interpert continuous selections of edges as circular arcs and scale them."""
 	bl_idname = 'mesh.rm_arcadjust'
 	bl_label = 'Arc Adjust'
 	bl_options = { 'REGISTER', 'UNDO' }
@@ -312,6 +312,7 @@ class MESH_OT_arcadjust( bpy.types.Operator ):
 
 
 class MESH_OT_unbevel( bpy.types.Operator ):
+	"""Interpret continuouse selections of edges as circular arcs and collapse them to an arc of radius 0.0."""
 	bl_idname = 'mesh.rm_unbevel'
 	bl_label = 'Unbevel'
 	bl_options = { 'UNDO' }
@@ -343,13 +344,9 @@ class MESH_OT_unbevel( bpy.types.Operator ):
 
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_arcadjust.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_unbevel.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_arcadjust )
 	bpy.utils.register_class( MESH_OT_unbevel )
 	
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_arcadjust.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_arcadjust.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_arcadjust )
 	bpy.utils.unregister_class( MESH_OT_unbevel )

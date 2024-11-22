@@ -434,7 +434,7 @@ def GetSelectedLoops( context, rmmesh ):
 
 
 class MESH_OT_Linear_Deformer_UV( bpy.types.Operator ):
-	'''Modo Style Falloff Transform Tool'''
+	"""Modo Style Falloff Transform Tool"""
 	bl_idname = 'mesh.rm_uvfalloff'
 	bl_label = 'Falloff UV Transform Tool'
 	bl_description = 'Modo Style Falloff Transform'
@@ -687,7 +687,7 @@ class MESH_OT_Linear_Deformer_UV( bpy.types.Operator ):
 
 
 class MESH_OT_quicklineardeform_UV( bpy.types.Operator ):
-	'''Set the FalloffTransform Tool based on uv space direction.'''
+	"""Set the FalloffTransform Tool based on uv space direction."""
 	bl_idname = 'mesh.rm_uvquicklineardeform'
 	bl_label = 'Quick Falloff Transform UV'
 	#bl_options = { 'REGISTER', 'UNDO' }
@@ -752,7 +752,7 @@ class MESH_OT_quicklineardeform_UV( bpy.types.Operator ):
 
 
 class VIEW3D_MT_PIE_quicklineardeform_UV( bpy.types.Menu ):
-	'''Set the FalloffTransform Tool based on camera space direction.'''
+	"""Set the FalloffTransform Tool based on camera space direction."""
 	bl_idname = 'VIEW3D_MT_PIE_uvquicklineardeform'
 	bl_label = 'Quick Linear Transform UV Pie'
 
@@ -782,18 +782,12 @@ class VIEW3D_MT_PIE_quicklineardeform_UV( bpy.types.Menu ):
 
 
 def register():
-	print( 'register :: {}'.format( MESH_OT_Linear_Deformer_UV.bl_idname ) )
-	print( 'register :: {}'.format( MESH_OT_quicklineardeform_UV.bl_idname ) )
-	print( 'register :: {}'.format( VIEW3D_MT_PIE_quicklineardeform_UV.bl_idname ) )
 	bpy.utils.register_class( MESH_OT_Linear_Deformer_UV )
 	bpy.utils.register_class( MESH_OT_quicklineardeform_UV )
 	bpy.utils.register_class( VIEW3D_MT_PIE_quicklineardeform_UV )
 	
 
 def unregister():
-	print( 'unregister :: {}'.format( MESH_OT_Linear_Deformer_UV.bl_idname ) )
-	print( 'unregister :: {}'.format( MESH_OT_quicklineardeform_UV.bl_idname ) )
-	print( 'unregister :: {}'.format( VIEW3D_MT_PIE_quicklineardeform_UV.bl_idname ) )
 	bpy.utils.unregister_class( MESH_OT_Linear_Deformer_UV )
 	bpy.utils.unregister_class( MESH_OT_quicklineardeform_UV )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_quicklineardeform_UV )
