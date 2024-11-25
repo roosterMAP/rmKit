@@ -65,6 +65,10 @@ class MESH_OT_changetomode( bpy.types.Operator ):
 				context.active_object.type == 'MESH' )
 		
 	def execute( self, context ):
+		if context.active_object.type != 'MESH':
+			bpy.ops.object.editmode_toggle()
+			return { 'FINISHED' }
+
 		if context.mode != 'OBJECT' and not context.object.data.is_editmode:
 			return { 'CANCELLED' }
 			

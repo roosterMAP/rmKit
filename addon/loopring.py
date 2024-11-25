@@ -220,6 +220,12 @@ class MESH_OT_ring( bpy.types.Operator ):
 	bl_label = 'Ring Select'
 	bl_options = { 'UNDO' }
 
+	unsel: bpy.props.BoolProperty(
+		name='Deselect',
+		description='Deselect loop edges.',
+		default=False
+	)
+
 	@classmethod
 	def poll( cls, context ):
 		return ( context.area.type == 'VIEW_3D' and len( context.editable_objects ) > 0 )
@@ -237,7 +243,11 @@ class MESH_OT_ring( bpy.types.Operator ):
 					
 
 				if sel_mode[1]:
-					selected_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
+					if self.unsel:
+						selected_edges = rmlib.rmEdgeSet( [rmmesh.bmesh.select_history.active] )
+					else:
+						selected_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
+
 				elif sel_mode[2]:
 					selected_polygons = rmlib.rmPolygonSet.from_selection( rmmesh )
 					shared_edges = set()
@@ -266,8 +276,10 @@ class MESH_OT_ring( bpy.types.Operator ):
 					except IndexError:
 						pass
 
+					#set selection state
 					if sel_mode[1]:
-						ring.select( replace=False )
+						for e in ring:
+							e.select = not self.unsel
 					else:
 						ring.polygons.select( replace=False )
 					
@@ -290,6 +302,12 @@ class MESH_OT_loop( bpy.types.Operator ):
 		description='When True, all loop edges extend along bounary edges.',
 		default=False
 	)
+
+	unsel: bpy.props.BoolProperty(
+		name='Deselect',
+		description='Deselect loop edges.',
+		default=False
+	)
 	
 	@classmethod
 	def poll( cls, context ):
@@ -307,7 +325,12 @@ class MESH_OT_loop( bpy.types.Operator ):
 					e.tag = False
 				
 				rmmesh.readonly = True
-				selected_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
+
+				if self.unsel:
+					selected_edges = rmlib.rmEdgeSet( [rmmesh.bmesh.select_history.active] )
+				else:
+					selected_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
+
 				selected_edges.tag( True )
 				for e in selected_edges:
 					if not e.tag:
@@ -315,8 +338,10 @@ class MESH_OT_loop( bpy.types.Operator ):
 					
 					loop = edge_loop( e, e.verts[0], rmlib.rmEdgeSet( [e] ), self.force_boundary )
 					loop = edge_loop( e, e.verts[1], loop, self.force_boundary )
-					
-					loop.select( False )
+
+					#set selection state
+					for e in loop:
+						e.select = not self.unsel
 					
 				for e in rmmesh.bmesh.edges:
 					e.tag = False

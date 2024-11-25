@@ -193,7 +193,7 @@ class VIEW3D_PT_VIEW3D_UV( bpy.types.Panel ):
 		layout.operator( 'mesh.rm_uvgridify', text='UV Gridify' )
 		layout.operator( 'mesh.rm_uvrectangularize', text='UV Boxify' )
 		layout.separator()
-		layout.operator( 'mesh.savehotspot', text='New Hotspot' )
+		layout.operator( 'object.savehotspot', text='New Hotspot' )
 		layout.operator( 'mesh.refhotspot', text='Ref Hotspot' )
 		layout.separator()
 		r1 = layout.row()

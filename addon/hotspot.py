@@ -691,7 +691,7 @@ def image_from_hotspot( hotspot, size=64 ):
 
 class OBJECT_OT_savehotspot( bpy.types.Operator ):
 	"""Save the hotspot layout to the hotspot user config file."""
-	bl_idname = 'mesh.savehotspot'
+	bl_idname = 'object.savehotspot'
 	bl_label = 'Create Hotspot'
 	bl_options = { 'UNDO' }
 
@@ -702,6 +702,9 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 		self.__trim_count = 0
 		self.__pcol = bpy.utils.previews.new()
 		self.__pcol.new( 'save_hotspot_thumb' )
+
+	def __del__( self ):
+		self.__pcol.remove()
 
 	@classmethod
 	def poll( cls, context ):
@@ -1479,7 +1482,7 @@ class UV_PT_UVHotspotTools( bpy.types.Panel ):
 		r2 = layout.row()
 		r2.prop( context.scene, 'recttype_filter' )
 		r2.prop( context.scene, 'hotspot_inset' )
-		layout.operator( 'mesh.savehotspot', text='New Hotspot' )
+		layout.operator( 'object.savehotspot', text='New Hotspot' )
 		layout.operator( 'mesh.refhotspot', text='Ref Hotspot' )
 		layout.operator( 'mesh.matchhotspot', text='Hotspot Match' )
 		layout.operator( 'mesh.nrsthotspot', text='Hotspot Nearest' )
