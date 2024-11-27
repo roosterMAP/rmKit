@@ -241,32 +241,106 @@ class MESH_OT_continuous( bpy.types.Operator ):
 	bl_label = 'Select Continuous'
 	bl_options = { 'UNDO' }
 
-	add: bpy.props.BoolProperty(
-			name='Add',
-			description='Add to existing selection.',
-			default=False
+	mode: bpy.props.EnumProperty(
+		name='Mode',
+		description='Set/Add/Remove to/from selection.',
+		items=[ ( "set", "Set", "", 1 ),
+				( "add", "Add", "", 2 ),
+				( "remove", "Remove", "", 3 ) ],
+		default='set'
 	)
+
+	def __init__( self ):
+		self.mos_elem = None
 
 	@classmethod
 	def poll( cls, context ):
 		return ( context.area.type == 'VIEW_3D' and len( context.editable_objects ) > 0 )
+	
+	def invoke( self, context, event ):
+		me = context.object.data
+		bm = bmesh.from_edit_mesh( me )
+		verts_sel = [ v.select for v in bm.verts ]
+		edges_sel = [ e.select for e in bm.edges ]
+		faces_sel = [ f.select for f in bm.faces ]
+		
+		loc = event.mouse_region_x, event.mouse_region_y
+		
+		try:
+			geom = bm.select_history[-1]
+		except IndexError:
+			geom = None
+			
+		ret = bpy.ops.view3d.select( extend=True, location=loc )
+		if ret == {'PASS_THROUGH'}:
+			#self.report( {'INFO'}, "no close-by geom" )
+			return {'CANCELLED'}
+		
+		try:
+			geom2 = bm.select_history[-1]
+			#print("geom2 sel 1st", geom2.select)
+		except IndexError:
+			geom2 = None
+
+		if geom is None:
+			geom = geom2
+
+		sel_mode = context.tool_settings.mesh_select_mode[:]
+
+		geom_sel = None
+		bm_geom = None
+		
+		if isinstance( geom, bmesh.types.BMVert ) and sel_mode[0]:
+			geom_sel = verts_sel
+			bm_geom = bm.verts
+		elif isinstance( geom, bmesh.types.BMEdge ) and sel_mode[1]:
+			geom_sel = edges_sel
+			bm_geom = bm.edges
+		elif isinstance( geom, bmesh.types.BMFace ) and sel_mode[2]:
+			geom_sel = faces_sel
+			bm_geom = bm.faces
+
+		if geom_sel is None or bm_geom is None:
+			return { 'CANCELLED' }
+
+		for sel, g in zip( geom_sel, bm_geom ):
+			if sel != g.select:
+				self.mos_elem = g
+				g.select_set( True )
+				bm.select_history.add( g )
+				bm.select_flush_mode()
+				break
+
+		return self.execute( context )
 
 	def execute( self, context ):
 		for rmmesh in rmlib.iter_edit_meshes( context, mode_filter=True ):
 			with rmmesh as rmmesh:
 				sel_mode = context.tool_settings.mesh_select_mode[:]
 				if sel_mode[0]:
-					selected_verts = rmlib.rmVertexSet.from_selection( rmmesh )				
-					bpy.ops.mesh.select_linked( delimit=set() )
-					if self.add:
-						selected_verts.select( False )
+					if self.mos_elem is None:
+						selected_verts = rmlib.rmVertexSet.from_selection( rmmesh )
+					else:
+						selected_verts = rmlib.rmVertexSet( [ self.mos_elem ] )
+					if self.mode == 'set':
+						for v in rmmesh.bmesh.verts:
+							v.select = False
+					for g in selected_verts.group( element=True ):
+						for v in g:
+							v.select = self.mode != 'remove'
 				elif sel_mode[1]:
-					bpy.ops.mesh.rm_loop( force_boundary=True )
+					bpy.ops.mesh.rm_loop( force_boundary=True, mode=self.mode )
 				else:
-					selected_polys = rmlib.rmPolygonSet.from_selection( rmmesh )
-					bpy.ops.mesh.select_linked( delimit=set() )
-					if self.add:
-						selected_polys.select( False )
+					if self.mos_elem is None:
+						selected_facess = rmlib.rmPolygonSet.from_selection( rmmesh )
+					else:
+						selected_facess = rmlib.rmPolygonSet( [ self.mos_elem ] )
+					if self.mode == 'set':
+						for f in rmmesh.bmesh.faces:
+							f.select = False
+					for g in selected_facess.group( element=True ):
+						for f in g:
+							f.select = self.mode != 'remove'
 		return { 'FINISHED' }
 
 

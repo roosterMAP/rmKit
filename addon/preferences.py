@@ -119,11 +119,15 @@ def register_keyboard_keymap():
 		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
 
 		kmi = km_mesh.keymap_items.new( 'mesh.rm_continuous', 'NONE', 'PRESS' )
-		kmi.properties.add = False
+		kmi.properties.mode = 'remove'
 		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
 
 		kmi = km_mesh.keymap_items.new( 'mesh.rm_continuous', 'NONE', 'PRESS' )
-		kmi.properties.add = True
+		kmi.properties.mode = 'add'
+		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+
+		kmi = km_mesh.keymap_items.new( 'mesh.rm_continuous', 'NONE', 'PRESS' )
+		kmi.properties.mode = 'set'
 		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
 
 		kmi = km_mesh.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )
@@ -231,8 +235,10 @@ def get_basepath(self):
 
 
 class RMKITPreferences( bpy.types.AddonPreferences ):
-	packagename = __package__[:__package__.index( '.' )]
+	packagename = __package__[:__package__.rfind( '.' )]
 	bl_idname = packagename
+
+	print( 'RMKITPreferences :: {}  {}'.format( __package__, bl_idname ) )
 
 	export_manager_basepath: bpy.props.StringProperty(name='BasePath', default='$SceneDir\\$SceneName_$ObjectName', get=get_basepath, set=set_basepath)
 

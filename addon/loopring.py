@@ -1,4 +1,4 @@
-import bpy, mathutils
+import bpy, bmesh, mathutils
 from .. import rmlib
 
 def edge_ring( edge, poly, ring ):
@@ -16,6 +16,33 @@ def edge_ring( edge, poly, ring ):
 			return ring
 
 	return ring
+
+
+def edge_loops( edge, force_boundary=False ):		
+	next_edges = []
+	skip_verts = rmlib.rmPolygonSet( edge.link_faces ).vertices
+	for vert in edge.verts:
+		if edge.is_boundary:
+			if not force_boundary and len( vert.link_edges ) != 3:
+				continue
+			elif len( edge.link_faces ) == 2 and len( vert.link_edges ) != 4:
+				continue
+		for e in vert.link_edges:
+			if e == edge or e.tag:
+				continue
+			if force_boundary and e.is_boundary :
+				next_edges.append( e )
+				e.tag = True
+				break
+			if e.other_vert( vert ) not in skip_verts:
+				next_edges.append( e )
+				e.tag = True
+				break
+
+	return next_edges
+
+		
+	
 
 
 def edge_loop( edge, vert, loop, force_boundary=False ):
@@ -302,13 +329,16 @@ class MESH_OT_loop( bpy.types.Operator ):
 		description='When True, all loop edges extend along bounary edges.',
 		default=False
 	)
-
-	unsel: bpy.props.BoolProperty(
-		name='Deselect',
-		description='Deselect loop edges.',
-		default=False
-	)
 	
+	mode: bpy.props.EnumProperty(
+		name='Mode',
+		description='Set/Add/Remove to/from selection.',
+		items=[ ( "set", "Set", "", 1 ),
+				( "add", "Add", "", 2 ),
+				( "remove", "Remove", "", 3 ) ],
+		default='set'
+	)
+
 	@classmethod
 	def poll( cls, context ):
 		return ( context.area.type == 'VIEW_3D' and len( context.editable_objects ) > 0 )
@@ -318,7 +348,7 @@ class MESH_OT_loop( bpy.types.Operator ):
 		if not sel_mode[1]:
 			bpy.ops.mesh.rm_ring()
 			return { 'FINISHED' }
-		
+				
 		for rmmesh in rmlib.iter_edit_meshes( context, mode_filter=True ):
 			with rmmesh as rmmesh:
 				for e in rmmesh.bmesh.edges:
@@ -326,22 +356,17 @@ class MESH_OT_loop( bpy.types.Operator ):
 				
 				rmmesh.readonly = True
 
-				if self.unsel:
+				if self.mode != 'set' and rmmesh.bmesh.select_history.active is not None and isinstance( rmmesh.bmesh.select_history.active, bmesh.types.BMEdge ):
 					selected_edges = rmlib.rmEdgeSet( [rmmesh.bmesh.select_history.active] )
 				else:
 					selected_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
 
-				selected_edges.tag( True )
-				for e in selected_edges:
-					if not e.tag:
-						continue
-					
-					loop = edge_loop( e, e.verts[0], rmlib.rmEdgeSet( [e] ), self.force_boundary )
-					loop = edge_loop( e, e.verts[1], loop, self.force_boundary )
-
-					#set selection state
-					for e in loop:
-						e.select = not self.unsel
+				#selected_edges.tag( True )
+				while( len( selected_edges ) > 0 ):
+					e = selected_edges.pop()
+					for e in edge_loops( e, self.force_boundary ):
+						e.select = self.mode != 'remove'
+						selected_edges.append( e )
 					
 				for e in rmmesh.bmesh.edges:
 					e.tag = False

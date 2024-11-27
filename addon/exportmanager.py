@@ -466,7 +466,7 @@ class OBJECT_OT_ExportManagerSettings(bpy.types.Operator):
 		return context.window_manager.invoke_popup(self, width=512)
 		
 	def draw(self, context):
-		packagename = __package__[:__package__.index( '.' )]
+		packagename = __package__[:__package__.rfind( '.' )]
 		self.layout.prop( context.preferences.addons[packagename].preferences, 'export_manager_basepath' )
 				
 		box = self.layout.box()

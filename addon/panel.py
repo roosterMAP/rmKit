@@ -115,8 +115,9 @@ class VIEW3D_PT_SELECTION( bpy.types.Panel ):
 		r5 = layout.row()
 		r5.alignment = 'EXPAND'
 
-		r5.operator( 'mesh.rm_continuous', text='Set Continuous' ).add = False
-		r5.operator( 'mesh.rm_continuous', text='Add Continuous' ).add = True
+		r5.operator( 'mesh.rm_continuous', text='Set Continuous' ).mode = 'set'
+		r5.operator( 'mesh.rm_continuous', text='Add' ).mode = 'add'
+		r5.operator( 'mesh.rm_continuous', text='Remove' ).mode = 'remove'
 
 		layout.operator( 'mesh.rm_invertcontinuous', text='Invert Continuous' )
 
