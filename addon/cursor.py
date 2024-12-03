@@ -235,13 +235,23 @@ class MESH_OT_origintocursor( bpy.types.Operator ):
 			wld_spc_offset = obj.matrix_world.to_3x3() @ obj_spc_cursor_loc
 			obj.location += wld_spc_offset
 
-		#compensate for change in positions of linked objects
+			for child in context.scene.objects:
+				if child.parent != obj:
+					continue
+				child.location -= wld_spc_offset
+
+		#compensate for change in positions of linked objects (instances)
 		for i, obj in enumerate( unique_objects ):
 			for link_obj in context.scene.objects:
 				if obj == link_obj or link_obj.type != 'MESH' or link_obj.data != obj.data:
 					continue
 				wld_spc_offset = link_obj.matrix_world.to_3x3() @ obj_spc_offsets[i]
 				link_obj.location += wld_spc_offset
+
+				for child in context.scene.objects:
+					if child.parent != link_obj:
+						continue
+					child.location -= wld_spc_offset
 
 		bpy.ops.object.mode_set( mode=prev_mode, toggle=False )
 

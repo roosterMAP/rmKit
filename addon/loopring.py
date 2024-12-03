@@ -30,7 +30,7 @@ def edge_loops( edge, force_boundary=False ):
 		for e in vert.link_edges:
 			if e == edge or e.tag:
 				continue
-			if force_boundary and e.is_boundary :
+			if force_boundary and edge.is_boundary and e.is_boundary:
 				next_edges.append( e )
 				e.tag = True
 				break
@@ -42,9 +42,6 @@ def edge_loops( edge, force_boundary=False ):
 	return next_edges
 
 		
-	
-
-
 def edge_loop( edge, vert, loop, force_boundary=False ):
 	if edge.is_boundary:
 		if not force_boundary and len( vert.link_edges ) != 3:
@@ -339,6 +336,13 @@ class MESH_OT_loop( bpy.types.Operator ):
 		default='set'
 	)
 
+	evaluate_all_selected: bpy.props.BoolProperty(
+		name='Evaluate All Selected',
+		description='When True, all selected edges are loop extended.',
+		default=False,
+		options={ 'HIDDEN' }
+	)
+
 	@classmethod
 	def poll( cls, context ):
 		return ( context.area.type == 'VIEW_3D' and len( context.editable_objects ) > 0 )
@@ -356,7 +360,7 @@ class MESH_OT_loop( bpy.types.Operator ):
 				
 				rmmesh.readonly = True
 
-				if self.mode != 'set' and rmmesh.bmesh.select_history.active is not None and isinstance( rmmesh.bmesh.select_history.active, bmesh.types.BMEdge ):
+				if self.mode != 'set' and rmmesh.bmesh.select_history.active is not None and isinstance( rmmesh.bmesh.select_history.active, bmesh.types.BMEdge ) and not self.evaluate_all_selected:
 					selected_edges = rmlib.rmEdgeSet( [rmmesh.bmesh.select_history.active] )
 				else:
 					selected_edges = rmlib.rmEdgeSet.from_selection( rmmesh )

@@ -626,44 +626,47 @@ def load_hotspot_from_repo( material_name, material_aspect ):
 	return existing_hotspots[hotspot_idx]
 
 
-def material_aspect_from_selection( context ):
-	rmmesh = rmlib.rmMesh.GetActive( context )
-	if rmmesh is None:
-		return None, 1.0
-
-	with rmmesh as rmmesh:
-		rmmesh.readonly = True
-		faces = rmlib.rmPolygonSet.from_selection( rmmesh )
-		if len( faces ) <= 0:
-			return None, 1.0
-		try:
-			material = rmmesh.mesh.materials[ faces[0].material_index ]
-		except IndexError:
-			return None, 1.0
-		
-		material_aspect = 1.0
-		try:
-			material_aspect = material["WorldMappingWidth"] / material["WorldMappingHeight"]
-		except:
-			pass
-
-		return material, material_aspect
-
-
 def get_hotspot( context ):
-	material, material_aspect = material_aspect_from_selection( context )
-
 	if context.scene.use_subrect_atlas:
 		if context.scene.subrect_atlas is None:
 			return None
 		hotspot = Hotspot.from_bmesh( rmlib.rmMesh( context.scene.subrect_atlas ) )
 		hotspot.applymaterialaspect( material_aspect )
 		return hotspot
+
+	rmmesh = rmlib.rmMesh.GetActive( context )
+	if rmmesh is None:
+		return None, None
 	
-	if material is None:
-		return None
+	with rmmesh as rmmesh:
+		rmmesh.readonly = True
+		faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+		if len( faces ) <= 0:
+			return None, None
+		
+		failed_midxs = set()
+		hotspots = {}
+		for f in faces:
+			midx = f.material_index
+			if midx in hotspots or midx in failed_midxs:
+				continue
+
+			material = rmmesh.mesh.materials[ midx ]
+
+			material_aspect = 1.0
+			try:
+				material_aspect = material["WorldMappingWidth"] / material["WorldMappingHeight"]
+			except:
+				pass			
+			
+			hotspot = load_hotspot_from_repo( material.name, material_aspect )
+			if hotspot is None:
+				failed_midxs.add( midx )
+				continue
+
+			hotspots[midx] = hotspot
 	
-	return load_hotspot_from_repo( material.name, material_aspect )
+	return hotspots
 
 
 def image_from_hotspot( hotspot, size=64 ):
@@ -979,13 +982,11 @@ class MESH_OT_moshotspot( bpy.types.Operator ):
 		if not sel_mode[2]:
 			return { 'CANCELLED' }
 
-		hotspot = get_hotspot( context )
-		if hotspot is None:
+		hotspot_dict = get_hotspot( context )
+		if len( hotspot_dict ) < 1:
 			return { 'CANCELLED' }
 
-		use_trim = context.scene.recttype_filter != 'notrim'
-
-		target_bounds = hotspot.nearest( self.mos_uv[0], self.mos_uv[1] ).copy()
+		use_trim = context.scene.recttype_filter != 'notrim'		
 
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		with rmmesh as rmmesh:
@@ -996,6 +997,14 @@ class MESH_OT_moshotspot( bpy.types.Operator ):
 				return { 'CANCELLED' }
 
 			for island in faces.island( uvlayer ):
+				try:
+					hotspot = hotspot_dict[island[0].material_index]
+				except KeyError:
+					self.report( { 'WARNING' }, 'Hotspot atlas not found for {}'.format( rmmesh.mesh.materials[island[0].material_index].name ) )
+					continue
+
+				target_bounds = hotspot.nearest( self.mos_uv[0], self.mos_uv[1] ).copy()
+
 				loops = set()
 				for f in island:
 					for l in f.loops:
@@ -1034,8 +1043,8 @@ class MESH_OT_nrsthotspot( bpy.types.Operator ):
 		if not sel_mode[2]:
 			return { 'CANCELLED' }
 
-		hotspot = get_hotspot( context )
-		if hotspot is None:
+		hotspot_dict = get_hotspot( context )
+		if len( hotspot_dict ) < 1:
 			return { 'CANCELLED' }
 
 		use_trim = context.scene.recttype_filter != 'notrim'
@@ -1049,6 +1058,12 @@ class MESH_OT_nrsthotspot( bpy.types.Operator ):
 				return { 'CANCELLED' }
 
 			for island in faces.island( uvlayer ):
+				try:
+					hotspot = hotspot_dict[island[0].material_index]
+				except KeyError:
+					self.report( { 'WARNING' }, 'Hotspot atlas not found for {}'.format( rmmesh.mesh.materials[island[0].material_index].name ) )
+					continue
+
 				loops = set()
 				for f in island:
 					for l in f.loops:
@@ -1089,8 +1104,8 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 			self.report( { 'WARNING' }, 'Must be in face selection mode.' )
 			return { 'CANCELLED' }
 
-		hotspot = get_hotspot( context )
-		if hotspot is None:
+		hotspot_dict = get_hotspot( context )
+		if len( hotspot_dict ) < 1:
 			self.report( { 'WARNING' }, 'Could not find hotspot atlas!!!' )
 			return { 'CANCELLED' }
 
@@ -1178,11 +1193,17 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 				for pidx_list in islands_as_indexes:
 					island = [ rmmesh.bmesh.faces[pidx] for pidx in pidx_list ]
 
+					try:
+						hotspot = hotspot_dict[island[0].material_index]
+					except KeyError:
+						self.report( { 'WARNING' }, 'Hotspot atlas not found for {}'.format( rmmesh.mesh.materials[island[0].material_index].name ) )
+						continue
+
 					initial_selection += set( island )
-					loops = set()
+					loops = []
 					for f in island:
 						for l in f.loops:
-							loops.add( l )
+							loops.append( l )
 					for i, uvlayer in enumerate( uvlayers ):
 						if not context.scene.use_multiUV or uv_modes[i] == 'hotspot':
 							source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect=hotspot.materialaspect )
@@ -1208,11 +1229,17 @@ class MESH_OT_matchhotspot( bpy.types.Operator ):
 				for pidx_list in islands_as_indexes:					
 					island = [ rmmesh.bmesh.faces[pidx] for pidx in pidx_list ]
 
+					try:
+						hotspot = hotspot_dict[island[0].material_index]
+					except KeyError:
+						self.report( { 'WARNING' }, 'Hotspot atlas not found for {}'.format( rmmesh.mesh.materials[island[0].material_index].name ) )
+						continue
+
 					initial_selection += set( island )
-					loops = set()
+					loops = []
 					for f in island:
 						for l in f.loops:
-							loops.add( l )
+							loops.append( l )
 					source_bounds = Bounds2d.from_loops( loops, uvlayer, materialaspect = hotspot.materialaspect )
 					target_bounds = hotspot.match( source_bounds, tollerance=self.tollerance, trim_filter=context.scene.recttype_filter ).copy()
 					if target_bounds is None:

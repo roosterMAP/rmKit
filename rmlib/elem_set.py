@@ -213,7 +213,7 @@ class rmPolygonSet( list ):
 							e = shared_edge( p, np )
 							if e is None or not e.smooth:
 								continue
-						if use_angle != 180.0:
+						if use_angle != math.pi:
 							if pn.angle( mathutils.Vector( np.normal ) ) >= use_angle:
 								continue
 						if element or np in self:

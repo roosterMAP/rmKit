@@ -258,89 +258,82 @@ class MESH_OT_continuous( bpy.types.Operator ):
 		return ( context.area.type == 'VIEW_3D' and len( context.editable_objects ) > 0 )
 	
 	def invoke( self, context, event ):
-		me = context.object.data
-		bm = bmesh.from_edit_mesh( me )
-		verts_sel = [ v.select for v in bm.verts ]
-		edges_sel = [ e.select for e in bm.edges ]
-		faces_sel = [ f.select for f in bm.faces ]
-		
-		loc = event.mouse_region_x, event.mouse_region_y
-		
-		try:
-			geom = bm.select_history[-1]
-		except IndexError:
-			geom = None
+		me = context.active_object.data
+		bm = bmesh.from_edit_mesh(me)
+		initial_verts_sel = [v.select for v in bm.verts]
+		initial_edges_sel = [e.select for e in bm.edges]
+		initial_faces_sel = [f.select for f in bm.faces]
+
+		prev_history = [ elem for elem in bm.select_history ]
 			
-		ret = bpy.ops.view3d.select( extend=True, location=loc )
-		if ret == {'PASS_THROUGH'}:
-			#self.report( {'INFO'}, "no close-by geom" )
-			return {'CANCELLED'}
+		ret = bpy.ops.view3d.select( extend=False, location=( event.mouse_region_x, event.mouse_region_y ) )
+		if 'CANCELLED' in ret:
+			self.mos_elem = None
+			return self.execute( context )
 		
-		try:
-			geom2 = bm.select_history[-1]
-			#print("geom2 sel 1st", geom2.select)
-		except IndexError:
-			geom2 = None
-
-		if geom is None:
-			geom = geom2
-
 		sel_mode = context.tool_settings.mesh_select_mode[:]
-
-		geom_sel = None
-		bm_geom = None
-		
-		if isinstance( geom, bmesh.types.BMVert ) and sel_mode[0]:
-			geom_sel = verts_sel
-			bm_geom = bm.verts
-		elif isinstance( geom, bmesh.types.BMEdge ) and sel_mode[1]:
-			geom_sel = edges_sel
-			bm_geom = bm.edges
-		elif isinstance( geom, bmesh.types.BMFace ) and sel_mode[2]:
-			geom_sel = faces_sel
-			bm_geom = bm.faces
-
-		if geom_sel is None or bm_geom is None:
+		if sel_mode[0]:
+			initial_geom_sel = initial_verts_sel
+			current_geom_sel = bm.verts
+		elif sel_mode[1]:
+			initial_geom_sel = initial_edges_sel
+			current_geom_sel = bm.edges
+		elif sel_mode[2]:
+			initial_geom_sel = initial_faces_sel
+			current_geom_sel = bm.faces
+		else:
 			return { 'CANCELLED' }
 
-		for sel, g in zip( geom_sel, bm_geom ):
-			if sel != g.select:
+		for sel, g in zip( initial_geom_sel, current_geom_sel ):
+			if g.select:
 				self.mos_elem = g
-				g.select_set( True )
-				bm.select_history.add( g )
-				bm.select_flush_mode()
-				break
+			g.select_set( sel )
+		
+		bm.select_history.clear()
+		for elem in prev_history:
+			bm.select_history.add( elem )
+		bm.select_history.validate()
+
+		bm.select_flush_mode()
 
 		return self.execute( context )
 
 	def execute( self, context ):
-		for rmmesh in rmlib.iter_edit_meshes( context, mode_filter=True ):
-			with rmmesh as rmmesh:
-				sel_mode = context.tool_settings.mesh_select_mode[:]
-				if sel_mode[0]:
-					if self.mos_elem is None:
-						selected_verts = rmlib.rmVertexSet.from_selection( rmmesh )
-					else:
-						selected_verts = rmlib.rmVertexSet( [ self.mos_elem ] )
-					if self.mode == 'set':
-						for v in rmmesh.bmesh.verts:
-							v.select = False
-					for g in selected_verts.group( element=True ):
-						for v in g:
-							v.select = self.mode != 'remove'
-				elif sel_mode[1]:
-					bpy.ops.mesh.rm_loop( force_boundary=True, mode=self.mode )
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		with rmmesh as rmmesh:
+			sel_mode = context.tool_settings.mesh_select_mode[:]
+			if sel_mode[0]:
+				if self.mos_elem is None:
+					selected_verts = rmlib.rmVertexSet.from_selection( rmmesh )
 				else:
-					if self.mos_elem is None:
-						selected_facess = rmlib.rmPolygonSet.from_selection( rmmesh )
-					else:
-						selected_facess = rmlib.rmPolygonSet( [ self.mos_elem ] )
-					if self.mode == 'set':
-						for f in rmmesh.bmesh.faces:
-							f.select = False
-					for g in selected_facess.group( element=True ):
-						for f in g:
-							f.select = self.mode != 'remove'
+					selected_verts = rmlib.rmVertexSet( [ self.mos_elem ] )
+					rmmesh.bmesh.select_history.add( self.mos_elem )
+				if self.mode == 'set':
+					for v in rmmesh.bmesh.verts:
+						v.select = False
+				for g in selected_verts.group( element=True ):
+					for v in g:
+						v.select = self.mode != 'remove'
+			elif sel_mode[1]:
+				if self.mos_elem is not None:
+					self.mos_elem.select_set( True )
+					rmmesh.bmesh.select_history.add( self.mos_elem )
+					rmmesh.bmesh.select_flush_mode()
+				bpy.ops.mesh.rm_loop( force_boundary=True, mode=self.mode, evaluate_all_selected=( self.mos_elem is None ) )
+			else:
+				if self.mos_elem is None:
+					selected_faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+				else:
+					selected_faces = rmlib.rmPolygonSet( [ self.mos_elem ] )
+					rmmesh.bmesh.select_history.add( self.mos_elem )
+				if self.mode == 'set':
+					for f in rmmesh.bmesh.faces:
+						f.select = False
+				for g in selected_faces.group( element=True ):
+					for f in g:
+						f.select = self.mode != 'remove'
+				
+				rmmesh.bmesh.select_flush_mode()
 		return { 'FINISHED' }
 
 
