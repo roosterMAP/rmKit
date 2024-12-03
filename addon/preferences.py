@@ -22,7 +22,7 @@ def register_keyboard_keymap():
 		RM_3DVIEW_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_workplane', 'NONE', 'PRESS' ) ) )
 		RM_3DVIEW_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_cursor_to_selection', 'NONE', 'PRESS' ) ) )
 		RM_3DVIEW_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_unrotate_relative_to_cursor', 'NONE', 'PRESS' ) ) )
-		RM_3DVIEW_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'view3d.rm_origin_to_cursor', 'NONE', 'PRESS' ) ) )
+		RM_3DVIEW_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'object.rm_origin_to_cursor', 'NONE', 'PRESS' ) ) )
 		RM_3DVIEW_KEYMAP.append( ( km_3dview, km_3dview.keymap_items.new( 'mesh.rm_matclearnup', 'NONE', 'PRESS' ) ) )
 
 		kmi = km_3dview.keymap_items.new( 'wm.call_menu_pie', 'NONE', 'PRESS' )

@@ -25,56 +25,24 @@ def edge_loops( edge, force_boundary=False ):
 		if edge.is_boundary:
 			if not force_boundary and len( vert.link_edges ) != 3:
 				continue
-			elif len( edge.link_faces ) == 2 and len( vert.link_edges ) != 4:
-				continue
+		elif len( edge.link_faces ) == 2 and len( vert.link_edges ) != 4:
+			continue
+
 		for e in vert.link_edges:
 			if e == edge or e.tag:
 				continue
-			if force_boundary and edge.is_boundary and e.is_boundary:
-				next_edges.append( e )
-				e.tag = True
-				break
-			if e.other_vert( vert ) not in skip_verts:
-				next_edges.append( e )
-				e.tag = True
-				break
+			if force_boundary and edge.is_boundary:
+				if e.is_boundary:
+					next_edges.append( e )
+					e.tag = True
+					break
+			else:
+				if e.other_vert( vert ) not in skip_verts:
+					next_edges.append( e )
+					e.tag = True
+					break
 
 	return next_edges
-
-		
-def edge_loop( edge, vert, loop, force_boundary=False ):
-	if edge.is_boundary:
-		if not force_boundary and len( vert.link_edges ) != 3:
-			return loop
-	elif len( edge.link_faces ) == 2 and len( vert.link_edges ) != 4:
-		return loop
-
-	skip_verts = rmlib.rmPolygonSet( edge.link_faces ).vertices
-	
-	if force_boundary:
-		for e in vert.link_edges:
-			if e.is_boundary:
-				if e != edge and e in loop:
-					return loop
-				if e == edge or e in loop:
-					continue
-				loop.append( e )
-				e.tag = False
-				v = e.other_vert( vert )
-				edge_loop( e, v, loop, force_boundary )
-				return loop
-				
-	for e in vert.link_edges:
-		if e == edge or e in loop:
-			continue
-		v = e.other_vert( vert )
-		if v not in skip_verts:
-			loop.append( e )
-			e.tag = False
-			edge_loop( e, v, loop, force_boundary )
-			break
-		
-	return loop
 
 
 def edge_loop_alt( edge, vert, loop ):

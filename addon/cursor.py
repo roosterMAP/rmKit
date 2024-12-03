@@ -188,36 +188,36 @@ class MESH_OT_unrotatefromcursor( bpy.types.Operator ):
 		return { 'FINISHED' }
 
 
-class MESH_OT_origintocursor( bpy.types.Operator ):
+class OBJECT_OT_origintocursor( bpy.types.Operator ):
 	"""Move the pivot point of selected objects to the 3D Cursor. All linked meshes xforms are compensated for this transformation."""
-	bl_idname = 'view3d.rm_origin_to_cursor'
+	bl_idname = 'object.rm_origin_to_cursor'
 	bl_label = 'Pivot to Cursor'
 	bl_options = { 'UNDO' }
-	
+
 	@classmethod
 	def poll( cls, context ):
 		#used by blender to test if operator can show up in a menu or as a button in the UI
 		return context.area.type == 'VIEW_3D'
 
 	def execute( self, context ):
-		prev_mode = context.mode
-		if prev_mode == 'EDIT_MESH':
-			prev_mode = 'EDIT'
-		bpy.ops.object.mode_set( mode='OBJECT', toggle=False )
-
-		unique_meshes = set()
+		unique_meshes = []
 		unique_objects = []
 		unique_initial_positions = []
 		for obj in bpy.context.selected_objects:
 			if obj.type != 'MESH':
 				continue
 			if obj.data not in unique_meshes:
-				unique_meshes.add( obj.data )
+				unique_meshes.append( obj.data )
 				unique_objects.append( obj )
 				unique_initial_positions.append( obj.location.copy() )
 
 		if len( unique_objects ) < 1:
 			return { 'CANCELLED' }
+		
+		prev_mode = context.mode
+		if prev_mode == 'EDIT_MESH':
+			prev_mode = 'EDIT'
+		bpy.ops.object.mode_set( mode='OBJECT', toggle=False )
 
 		#move pivot for all unique objects
 		cursor_location = mathutils.Vector( context.scene.cursor.location )
@@ -232,26 +232,26 @@ class MESH_OT_origintocursor( bpy.types.Operator ):
 			with rmmesh as rmmesh:
 				for v in rmmesh.bmesh.verts:
 					v.co -= obj_spc_cursor_loc
-			wld_spc_offset = obj.matrix_world.to_3x3() @ obj_spc_cursor_loc
+			wld_spc_offset = obj.matrix_local.to_3x3() @ obj_spc_cursor_loc
 			obj.location += wld_spc_offset
 
 			for child in context.scene.objects:
 				if child.parent != obj:
 					continue
-				child.location -= wld_spc_offset
+				child.location -= obj_spc_cursor_loc
 
 		#compensate for change in positions of linked objects (instances)
 		for i, obj in enumerate( unique_objects ):
 			for link_obj in context.scene.objects:
 				if obj == link_obj or link_obj.type != 'MESH' or link_obj.data != obj.data:
 					continue
-				wld_spc_offset = link_obj.matrix_world.to_3x3() @ obj_spc_offsets[i]
+				wld_spc_offset = link_obj.matrix_local.to_3x3() @ obj_spc_offsets[i]
 				link_obj.location += wld_spc_offset
 
 				for child in context.scene.objects:
 					if child.parent != link_obj:
 						continue
-					child.location -= wld_spc_offset
+					child.location -= obj_spc_cursor_loc
 
 		bpy.ops.object.mode_set( mode=prev_mode, toggle=False )
 
@@ -276,7 +276,7 @@ class VIEW3D_MT_PIE_cursor( bpy.types.Menu ):
 
 		pie.operator( 'view3d.rm_cursor_to_selection', text='Cursor to Selection and Orient' )
 
-		pie.operator( 'view3d.rm_origin_to_cursor', text='Object Pivot to Cursor' )
+		pie.operator( 'object.rm_origin_to_cursor', text='Object Pivot to Cursor' )
 
 		pie.operator( 'view3d.rm_zerocursor', text='Cursor to Origin' )
 
@@ -287,13 +287,13 @@ class VIEW3D_MT_PIE_cursor( bpy.types.Menu ):
 	
 def register():
 	bpy.utils.register_class( MESH_OT_cursortoselection )
-	bpy.utils.register_class( MESH_OT_origintocursor )
+	bpy.utils.register_class( OBJECT_OT_origintocursor )
 	bpy.utils.register_class( VIEW3D_MT_PIE_cursor )
 	bpy.utils.register_class( MESH_OT_unrotatefromcursor )
 	
 	
 def unregister():
 	bpy.utils.unregister_class( MESH_OT_cursortoselection )
-	bpy.utils.unregister_class( MESH_OT_origintocursor )
+	bpy.utils.unregister_class( OBJECT_OT_origintocursor )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_cursor )
 	bpy.utils.unregister_class( MESH_OT_unrotatefromcursor )
