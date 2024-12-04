@@ -834,20 +834,6 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 		self.report( { 'INFO' }, 'Hotspot Repo Updated!!! {} added'.format( mat_name ) )
 
 		return  {'FINISHED' }
-		
-	
-
-class OBJECT_PT_savehotspotpanel( bpy.types.Panel ):
-	bl_label = "Save Hotspot Panel"
-	bl_idname = "OBJECT_PT_savehotspotpanel"
-	bl_space_type = "VIEW_3D"   
-	bl_region_type = "UI"
-	bl_category = "Tools"
-	bl_context = "objectmode"
-
-	def draw( self, context ):
-		layout = self.layout
-		layout.operator( OBJECT_OT_savehotspot.bl_idname )
 
 
 class OBJECT_OT_repotoascii( bpy.types.Operator ):
@@ -1516,7 +1502,6 @@ class UV_PT_UVHotspotTools( bpy.types.Panel ):
 
 def register():
 	bpy.utils.register_class( OBJECT_OT_savehotspot )
-	bpy.utils.register_class( OBJECT_PT_savehotspotpanel )
 	bpy.utils.register_class( MESH_OT_matchhotspot )
 	bpy.utils.register_class( MESH_OT_nrsthotspot )
 	bpy.utils.register_class( MESH_OT_moshotspot )
@@ -1551,7 +1536,6 @@ def register():
 
 
 def unregister():
-	bpy.utils.unregister_class( OBJECT_PT_savehotspotpanel )
 	bpy.utils.unregister_class( OBJECT_OT_savehotspot )
 	bpy.utils.unregister_class( MESH_OT_matchhotspot )
 	bpy.utils.unregister_class( MESH_OT_nrsthotspot )
