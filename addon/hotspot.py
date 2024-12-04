@@ -707,7 +707,10 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 		self.__pcol.new( 'save_hotspot_thumb' )
 
 	def __del__( self ):
-		self.__pcol.remove()
+		try:
+			self.__pcol.remove()
+		except AttributeError:
+			pass
 
 	@classmethod
 	def poll( cls, context ):
