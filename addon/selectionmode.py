@@ -258,44 +258,35 @@ class MESH_OT_continuous( bpy.types.Operator ):
 		return ( context.area.type == 'VIEW_3D' and len( context.editable_objects ) > 0 )
 	
 	def invoke( self, context, event ):
-		me = context.active_object.data
-		bm = bmesh.from_edit_mesh(me)
-		initial_verts_sel = [v.select for v in bm.verts]
-		initial_edges_sel = [e.select for e in bm.edges]
-		initial_faces_sel = [f.select for f in bm.faces]
+		mouse_pos = mathutils.Vector( ( event.mouse_region_x, event.mouse_region_y ) )
 
-		prev_history = [ elem for elem in bm.select_history ]
-			
-		ret = bpy.ops.view3d.select( extend=False, location=( event.mouse_region_x, event.mouse_region_y ) )
-		if 'CANCELLED' in ret:
-			self.mos_elem = None
-			return self.execute( context )
-		
+		me = context.active_object.data
+		bm = bmesh.from_edit_mesh( me )
+		rmmesh = rmlib.rmMesh.from_bmesh( context.active_object, bm )
+
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 		if sel_mode[0]:
-			initial_geom_sel = initial_verts_sel
-			current_geom_sel = bm.verts
+			try:
+				self.mos_elem = rmlib.rmVertexSet.from_mos( rmmesh, context, mouse_pos )[0]
+			except:
+				self.report( { 'INFO' }, 'No mos vert found.' )
+				return { 'CANCELLED' }
 		elif sel_mode[1]:
-			initial_geom_sel = initial_edges_sel
-			current_geom_sel = bm.edges
-		elif sel_mode[2]:
-			initial_geom_sel = initial_faces_sel
-			current_geom_sel = bm.faces
+			try:
+				self.mos_elem = rmlib.rmEdgeSet.from_mos( rmmesh, context, mouse_pos )[0]
+			except:
+				self.report( { 'INFO' }, 'No mos edge found.' )
+				return { 'CANCELLED' }
 		else:
-			return { 'CANCELLED' }
-
-		for sel, g in zip( initial_geom_sel, current_geom_sel ):
-			if g.select:
-				self.mos_elem = g
-			g.select_set( sel )
-		
-		bm.select_history.clear()
-		for elem in prev_history:
-			bm.select_history.add( elem )
-		bm.select_history.validate()
-
-		bm.select_flush_mode()
-
+			try:
+				self.mos_elem = rmlib.rmPolygonSet.from_mos( rmmesh, context, mouse_pos )[0]
+			except:
+				self.report( { 'INFO' }, 'No mos face found.' )
+				return { 'CANCELLED' }
+			
+		bm.free()
+		del bm
+			
 		return self.execute( context )
 
 	def execute( self, context ):
@@ -314,12 +305,15 @@ class MESH_OT_continuous( bpy.types.Operator ):
 				for g in selected_verts.group( element=True ):
 					for v in g:
 						v.select = self.mode != 'remove'
+				rmmesh.bmesh.select_flush_mode()
+
 			elif sel_mode[1]:
 				if self.mos_elem is not None:
 					self.mos_elem.select_set( True )
 					rmmesh.bmesh.select_history.add( self.mos_elem )
 					rmmesh.bmesh.select_flush_mode()
 				bpy.ops.mesh.rm_loop( force_boundary=True, mode=self.mode, evaluate_all_selected=( self.mos_elem is None ) )
+
 			else:
 				if self.mos_elem is None:
 					selected_faces = rmlib.rmPolygonSet.from_selection( rmmesh )
@@ -331,9 +325,9 @@ class MESH_OT_continuous( bpy.types.Operator ):
 						f.select = False
 				for g in selected_faces.group( element=True ):
 					for f in g:
-						f.select = self.mode != 'remove'
-				
+						f.select = self.mode != 'remove'				
 				rmmesh.bmesh.select_flush_mode()
+
 		return { 'FINISHED' }
 
 

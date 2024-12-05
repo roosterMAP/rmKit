@@ -68,26 +68,26 @@ class rmPolygonSet( list ):
 	def from_mos( cls, rmmesh, context, mouse_pos, ignore_backfacing=True, ignore_hidden=True ):
 		rm_vp = util.rmViewport( context )
 		look_idx, look_vec, axis_vec = rm_vp.get_nearest_direction_vector( 'front' )
+		look_vec_obj = rmmesh.world_transform.to_3x3().inverted() @ look_vec
+		look_vec_obj.normalize()
 
 		xfrm = rmmesh.world_transform
 		view_pos = rm_vp.cam_pos
 
 		wld_spc_vpos = [None] * len( rmmesh.bmesh.verts )
 		active_faces = cls()
-		for f in cls( f for f in rmmesh.bmesh.faces if not ignore_hidden or not f.hide ):
-			f_normal = xfrm.to_3x3() @ f.normal.copy()
-			f_normal.normalize()
-			if ignore_backfacing and f_normal.dot( look_vec ) > 0.0:
+		for f in rmmesh.bmesh.faces:
+			if ignore_hidden and f.hide:
+				continue
+			if ignore_backfacing and f.normal.dot( look_vec_obj ) > 0.0:
 				continue
 			active_faces.append( f )
 			for v in f.verts:
 				if wld_spc_vpos[v.index] is None:
 					wld_spc_vpos[v.index] = xfrm @ v.co.copy()
-		if len( active_faces ) < 1:
-			return active_faces
 
 		min_dist = 999999999.9
-		mos_face = active_faces[0]
+		mos_face = None
 		for tri in rmmesh.bmesh.calc_loop_triangles():
 			if tri[0].face not in active_faces:
 				continue
@@ -103,6 +103,9 @@ class rmPolygonSet( list ):
 				if d < min_dist:
 					min_dist = d
 					mos_face = tri[0].face
+			
+		if mos_face is None:
+			return cls( [] )
 
 		return cls( [mos_face] )
 	
