@@ -200,59 +200,53 @@ class OBJECT_OT_origintocursor( bpy.types.Operator ):
 		return context.area.type == 'VIEW_3D'
 
 	def execute( self, context ):
-		unique_meshes = []
-		unique_objects = []
-		unique_initial_positions = []
-		for obj in bpy.context.selected_objects:
-			if obj.type != 'MESH':
-				continue
-			if obj.data not in unique_meshes:
-				unique_meshes.append( obj.data )
-				unique_objects.append( obj )
-				unique_initial_positions.append( obj.location.copy() )
+		ao = context.active_object
+		if ao.type != 'MESH':
+			self.report( { 'ERROR' }, 'Active Object must be a mesh.' )
+			return
+		
+		cursor_pos = context.scene.cursor.location.copy()
+		cursor_pos_obj = ao.matrix_world.inverted() @ cursor_pos
 
-		if len( unique_objects ) < 1:
-			return { 'CANCELLED' }
+		most_parent_instance = ao
+		p = ao.parent
+		while( p is not None ):
+			if p.type != 'MESH':
+				p = p.parent
+				continue
+			if p.data == ao.data:
+				most_parent_instance = p
+			p = p.parent
+		ao = most_parent_instance
+
+		instances = []
+		for o in context.scene.objects:
+			if o.type != 'MESH' or o == ao:
+				continue
+			if o.data == ao.data:
+				instances.append( o )
 		
 		prev_mode = context.mode
 		if prev_mode == 'EDIT_MESH':
 			prev_mode = 'EDIT'
 		bpy.ops.object.mode_set( mode='OBJECT', toggle=False )
-
-		#move pivot for all unique objects
-		cursor_location = mathutils.Vector( context.scene.cursor.location )
-		obj_spc_offsets = []
-		for obj in unique_objects:
-			if obj.type != 'MESH':
-				continue
-			obj_mat_inv = obj.matrix_world.inverted( mathutils.Matrix.Identity( 4 ) )
-			obj_spc_cursor_loc = obj_mat_inv @ cursor_location
-			obj_spc_offsets.append( obj_spc_cursor_loc )
-			rmmesh = rmlib.rmMesh( obj )
-			with rmmesh as rmmesh:
-				for v in rmmesh.bmesh.verts:
-					v.co -= obj_spc_cursor_loc
-			wld_spc_offset = obj.matrix_local.to_3x3() @ obj_spc_cursor_loc
-			obj.location += wld_spc_offset
-
-			for child in context.scene.objects:
-				if child.parent != obj:
-					continue
-				child.location -= obj_spc_cursor_loc
-
-		#compensate for change in positions of linked objects (instances)
-		for i, obj in enumerate( unique_objects ):
-			for link_obj in context.scene.objects:
-				if obj == link_obj or link_obj.type != 'MESH' or link_obj.data != obj.data:
-					continue
-				wld_spc_offset = link_obj.matrix_local.to_3x3() @ obj_spc_offsets[i]
-				link_obj.location += wld_spc_offset
-
-				for child in context.scene.objects:
-					if child.parent != link_obj:
-						continue
-					child.location -= obj_spc_cursor_loc
-
+			
+		#move the mesh such that its new origin is the cursor position
+		ao.data.transform( mathutils.Matrix.Translation( -cursor_pos_obj ) )
+		
+		#move the obj to compensate for mesh translation
+		delta = ao.matrix_world.to_3x3() @ cursor_pos_obj
+		ao.location += delta
+		
+		for child in ao.children:
+			child.location -= delta
+			
+		for inst in instances:
+			inst_delta = inst.matrix_world.to_3x3() @ cursor_pos_obj
+			inst.location += inst_delta
+			for child in inst.children:
+				child.location -= inst_delta
+				
 		bpy.ops.object.mode_set( mode=prev_mode, toggle=False )
 
 		return { 'FINISHED' }

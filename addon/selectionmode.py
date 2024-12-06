@@ -270,19 +270,16 @@ class MESH_OT_continuous( bpy.types.Operator ):
 				self.mos_elem = rmlib.rmVertexSet.from_mos( rmmesh, context, mouse_pos )[0]
 			except:
 				self.report( { 'INFO' }, 'No mos vert found.' )
-				return { 'CANCELLED' }
 		elif sel_mode[1]:
 			try:
 				self.mos_elem = rmlib.rmEdgeSet.from_mos( rmmesh, context, mouse_pos )[0]
 			except:
 				self.report( { 'INFO' }, 'No mos edge found.' )
-				return { 'CANCELLED' }
 		else:
 			try:
 				self.mos_elem = rmlib.rmPolygonSet.from_mos( rmmesh, context, mouse_pos )[0]
 			except:
 				self.report( { 'INFO' }, 'No mos face found.' )
-				return { 'CANCELLED' }
 			
 		bm.free()
 		del bm
@@ -291,6 +288,7 @@ class MESH_OT_continuous( bpy.types.Operator ):
 
 	def execute( self, context ):
 		rmmesh = rmlib.rmMesh.GetActive( context )
+		
 		with rmmesh as rmmesh:
 			sel_mode = context.tool_settings.mesh_select_mode[:]
 			if sel_mode[0]:
@@ -301,10 +299,10 @@ class MESH_OT_continuous( bpy.types.Operator ):
 					rmmesh.bmesh.select_history.add( self.mos_elem )
 				if self.mode == 'set':
 					for v in rmmesh.bmesh.verts:
-						v.select = False
+						v.select_set( False )
 				for g in selected_verts.group( element=True ):
 					for v in g:
-						v.select = self.mode != 'remove'
+						v.select_set( self.mode != 'remove' )
 				rmmesh.bmesh.select_flush_mode()
 
 			elif sel_mode[1]:
@@ -322,10 +320,10 @@ class MESH_OT_continuous( bpy.types.Operator ):
 					rmmesh.bmesh.select_history.add( self.mos_elem )
 				if self.mode == 'set':
 					for f in rmmesh.bmesh.faces:
-						f.select = False
+						f.select_set( False )
 				for g in selected_faces.group( element=True ):
 					for f in g:
-						f.select = self.mode != 'remove'				
+						f.select_set( self.mode != 'remove' )		
 				rmmesh.bmesh.select_flush_mode()
 
 		return { 'FINISHED' }
