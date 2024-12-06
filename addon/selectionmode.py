@@ -290,6 +290,9 @@ class MESH_OT_continuous( bpy.types.Operator ):
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		
 		with rmmesh as rmmesh:
+
+			rmlib.clear_tags( rmmesh.bmesh )
+
 			sel_mode = context.tool_settings.mesh_select_mode[:]
 			if sel_mode[0]:
 				if self.mos_elem is None:
@@ -325,6 +328,8 @@ class MESH_OT_continuous( bpy.types.Operator ):
 					for f in g:
 						f.select_set( self.mode != 'remove' )		
 				rmmesh.bmesh.select_flush_mode()
+
+			rmlib.clear_tags( rmmesh.bmesh )
 
 		return { 'FINISHED' }
 
