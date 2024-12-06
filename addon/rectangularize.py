@@ -628,6 +628,7 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 				sorted_boundary_loops[middle_idx][uvlayer].pin_uv = False
 
 				#re-tag face tags
+				clear_tags( rmmesh )
 				for f in group:
 					f.tag = True
 
