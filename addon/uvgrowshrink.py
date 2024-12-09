@@ -147,9 +147,9 @@ class MESH_OT_uvgrowshrink( bpy.types.Operator ):
 		sel_mode_uv = context.tool_settings.uv_select_mode	
 		if sel_sync:
 			if self.mode == 'GROW':
-				bpy.ops.uv.select_more( type=sel_mode_uv )
+				bpy.ops.uv.select_more()
 			else:
-				bpy.ops.uv.select_less( type=sel_mode_uv )
+				bpy.ops.uv.select_less()
 		else:				
 			if self.mode == 'GROW':
 				if sel_mode_uv == 'FACE':
@@ -159,7 +159,7 @@ class MESH_OT_uvgrowshrink( bpy.types.Operator ):
 						loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
 						grow_face_loop( uvlayer, loop_selection )
 				else:
-					bpy.ops.uv.select_more( type=sel_mode_uv )
+					bpy.ops.uv.select_more()
 			else:
 				if sel_mode_uv == 'FACE':
 					with rmmesh as rmmesh:
@@ -168,9 +168,9 @@ class MESH_OT_uvgrowshrink( bpy.types.Operator ):
 						loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
 						shrink_face_loop( uvlayer, loop_selection )
 				else:
-					bpy.ops.uv.select_less( type=sel_mode_uv )
+					bpy.ops.uv.select_less()
 
-			return { 'FINISHED' }
+		return { 'FINISHED' }
 
 
 def register():

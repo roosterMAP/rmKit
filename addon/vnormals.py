@@ -266,7 +266,6 @@ def GetSortedLoops( vert ):
 		l.tag = False
 
 	return sorted_loops
-
 	
 class MESH_OT_applyvnorms( bpy.types.Operator ):
 	"""Generated Split Normals based on face membership to this selection set."""
@@ -293,6 +292,43 @@ class MESH_OT_applyvnorms( bpy.types.Operator ):
 				context.active_object is not None and
 				context.active_object.type == 'MESH' and
 				context.object.data.is_editmode )
+	
+	def applyvnorms( self, rmmesh, str_layer ):
+		#set smoothing on mesh object to make custom vnorms visible
+		if bpy.app.version < (4,0,0):
+			rmmesh.mesh.use_auto_smooth = True
+			rmmesh.mesh.create_normals_split()
+		
+		vnorms = [ mathutils.Vector( loop.normal ) for loop in rmmesh.mesh.loops ]
+			
+		#store all pidxs and vertices for this selset
+		vertices = set()
+		selset_pidxs = set()
+
+		for p in GetPolysBySelSet( rmmesh.bmesh, str_layer, self.selset ):
+			vertices |= set( p.verts )
+			selset_pidxs.add( p.index )
+		
+		for v in vertices:					
+			#compute the vnorm for this poly group. a group is all polys that link a vert broken up by sharp edges
+			loop_group = []
+			for loop in GetSortedLoops( v ):
+				if not loop.edge.smooth or loop.edge.is_boundary :
+					nml = loopgroupnormal( loop_group, self.weighted, selset_pidxs )
+					if nml.length > 0.0:
+						for l in loop_group:
+							vnorms[l.index] = nml							
+					loop_group.clear()
+
+				loop_group.append( loop )
+				
+			if len( loop_group ) > 0:
+				nml = loopgroupnormal( loop_group, self.weighted, selset_pidxs )
+				if nml.length > 0.0:
+					for l in loop_group:
+						vnorms[l.index] = nml
+
+		return vnorms
 		
 	def execute( self, context ):
 		if context.object is None or context.mode == 'OBJECT':
@@ -311,47 +347,13 @@ class MESH_OT_applyvnorms( bpy.types.Operator ):
 			
 			#get selset layer
 			str_layer = rmmesh.bmesh.faces.layers.string.get( CUSTOM_VNORM_LAYERNAME, None )
-			if str_layer is None:
-				bpy.ops.object.mode_set( mode='EDIT', toggle=False )
-				return { 'CANCELLED' }
-			
-			#set smoothing on mesh object to make custom vnorms visible
-			if bpy.app.version < (4,0,0):
-				rmmesh.mesh.use_auto_smooth = True
-				rmmesh.mesh.create_normals_split()
-			
-			vnorms = [ mathutils.Vector( loop.normal ) for loop in rmmesh.mesh.loops ]
-				
-			#store all pidxs and vertices for this selset
-			vertices = set()
-			selset_pidxs = set()
+			if str_layer is not None:
+				vnorms = self.applyvnorms( rmmesh, str_layer )	
 
-			for p in GetPolysBySelSet( rmmesh.bmesh, str_layer, self.selset ):
-				vertices |= set( p.verts )
-				selset_pidxs.add( p.index )
-			
-			for v in vertices:					
-				#compute the vnorm for this poly group. a group is all polys that link a vert broken up by sharp edges
-				loop_group = []
-				for loop in GetSortedLoops( v ):
-					if not loop.edge.smooth or loop.edge.is_boundary :
-						nml = loopgroupnormal( loop_group, self.weighted, selset_pidxs )
-						if nml.length > 0.0:
-							for l in loop_group:
-								vnorms[l.index] = nml							
-						loop_group.clear()
-
-					loop_group.append( loop )
-					
-				if len( loop_group ) > 0:
-					nml = loopgroupnormal( loop_group, self.weighted, selset_pidxs )
-					if nml.length > 0.0:
-						for l in loop_group:
-							vnorms[l.index] = nml
-					
-		mesh = context.active_object.data
-		mesh.normals_split_custom_set( vnorms )
-		mesh.update()
+		if len( vnorms ) > 0:
+			mesh = context.active_object.data
+			mesh.normals_split_custom_set( vnorms )
+			mesh.update()
 		
 		bpy.ops.object.mode_set( mode='EDIT', toggle=False )
 		

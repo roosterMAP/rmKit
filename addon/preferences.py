@@ -238,8 +238,6 @@ class RMKITPreferences( bpy.types.AddonPreferences ):
 	packagename = __package__[:__package__.rfind( '.' )]
 	bl_idname = packagename
 
-	print( 'RMKITPreferences :: {}  {}'.format( __package__, bl_idname ) )
-
 	export_manager_basepath: bpy.props.StringProperty(name='BasePath', default='$SceneDir\\$SceneName_$ObjectName', get=get_basepath, set=set_basepath)
 
 	v3d_checkbox: bpy.props.BoolProperty( name="3D View", default=False )

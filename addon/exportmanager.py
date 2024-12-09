@@ -261,7 +261,7 @@ EXPORT_ERROR_CODE  = {
 	
 
 def export_path( context, object ):
-	packagename = __package__[:__package__.index( '.' )]
+	packagename = __package__[:__package__.rfind( '.' )]
 	basePath = bpy.context.preferences.addons[packagename].preferences.export_manager_basepath
 	
 	filepath = bpy.data.filepath

@@ -102,7 +102,7 @@ class rmMesh():
 			self.__bmesh.from_mesh( self.__mesh )
 		return self
 			
-	def __exit__( self ,type, value, traceback ):
+	def __exit__( self, type, value, traceback ):
 		if self.__bmesh.is_wrapped: #True when this mesh is owned by blender (typically the editmode BMesh).
 			bmesh.update_edit_mesh( self.__mesh, loop_triangles=( not self.__readonly ), destructive=( not self.__readonly ) )
 			self.__bmesh.select_flush_mode()
@@ -111,7 +111,8 @@ class rmMesh():
 			if not self.__readonly:
 				self.__bmesh.calc_loop_triangles()   	
 				self.__mesh.update()
-			self.__bmesh.free()		
+			self.__bmesh.free()
+
 		self.__bmesh = None
 		self.__mesh = self.__object.data
 

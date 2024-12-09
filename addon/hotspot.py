@@ -716,7 +716,8 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 	def poll( cls, context ):
 		return ( context.active_object is not None and
 				context.mode == 'OBJECT' and
-				context.active_object.type == 'MESH' )
+				context.active_object.type == 'MESH' and
+				len( context.active_object.data.materials ) > 0 )
 	
 	def draw( self, context ):
 		self.layout.label( text='Save hotspot entry: \"{}\"?'.format( self.matname ) )
@@ -1419,7 +1420,8 @@ class MESH_OT_refhostpot( bpy.types.Operator ):
 	def poll( cls, context ):
 		return ( context.active_object is not None and
 				context.mode in ['OBJECT', 'EDIT_MESH' ] and
-				context.active_object.type == 'MESH' )
+				context.active_object.type == 'MESH' and
+				len( context.active_object.data.materials ) > 0 )
 
 	def execute( self, context ):		
 		img_name = self.my_previews
@@ -1440,10 +1442,16 @@ class MESH_OT_refhostpot( bpy.types.Operator ):
 				except KeyError:
 					self.report( { 'ERROR' }, 'Material index on face out of bounds!!!' )
 					return { 'CANCELLED' }
+				except IndexError:
+					self.report( { 'ERROR' }, 'Material index on face out of bounds!!!' )
+					return { 'CANCELLED' }
 			elif context.mode == 'OBJECT':
 				try:
 					mat_name = rmmesh.mesh.materials[ rmmesh.bmesh.faces[0].material_index ].name
 				except KeyError:
+					self.report( { 'ERROR' }, 'Material index on face out of bounds!!!' )
+					return { 'CANCELLED' }
+				except IndexError:
 					self.report( { 'ERROR' }, 'Material index on face out of bounds!!!' )
 					return { 'CANCELLED' }
 				

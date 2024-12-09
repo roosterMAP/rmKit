@@ -74,9 +74,11 @@ class MESH_OT_createtube( bpy.types.Operator ):
 	@classmethod
 	def poll( cls, context ):
 		return ( context.area.type == 'VIEW_3D' and
+		  		context.object is not None and
 				context.active_object is not None and
 				context.active_object.type == 'MESH' and
-				context.object.data.is_editmode )
+				context.object.data.is_editmode and
+				 not context.tool_settings.mesh_select_mode[:][0] )
 
 	def LocalizeNewBMesh( self ):
 		bm = self.bmesh.copy()
@@ -180,16 +182,7 @@ class MESH_OT_createtube( bpy.types.Operator ):
 		return { 'RUNNING_MODAL' }
 	
 	def invoke( self, context, event ):
-		#ensure a mesh is selected and in edit mode
-		if context.object is None or context.mode == 'OBJECT':
-			return { 'CANCELLED' }
-		if context.object.type != 'MESH':
-			return { 'CANCELLED' }
-
-		#ensure user is in edge or face mode
 		sel_mode = context.tool_settings.mesh_select_mode[:]
-		if not ( sel_mode[1] or sel_mode[2] ):
-			return { 'CANCELLED' }
 
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		if rmmesh is not None:
@@ -331,6 +324,8 @@ class MESH_OT_createtube( bpy.types.Operator ):
 						self._tubes.append( tube )
 
 		if len( self._tubes ) < 1:
+			if sel_mode[2]:
+				self.report( { 'ERROR' }, 'Did not meet requirements for rebuilding selected tube(s). Topology must be all quads and no caps!!!' )
 			return { 'CANCELLED' }
 			
 		context.window_manager.modal_handler_add( self )

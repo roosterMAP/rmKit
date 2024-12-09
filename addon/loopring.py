@@ -220,7 +220,7 @@ class MESH_OT_ring( bpy.types.Operator ):
 
 	@classmethod
 	def poll( cls, context ):
-		return ( context.area.type == 'VIEW_3D' and len( context.editable_objects ) > 0 )
+		return ( len( context.editable_objects ) > 0 and context.mode == 'EDIT_MESH' )
 
 	def execute( self, context ):
 		sel_mode = context.tool_settings.mesh_select_mode[:]
@@ -234,7 +234,7 @@ class MESH_OT_ring( bpy.types.Operator ):
 					p.tag = False
 					
 
-				if sel_mode[1]:
+				if sel_mode[0] or sel_mode[1]:
 					if self.unsel:
 						selected_edges = rmlib.rmEdgeSet( [rmmesh.bmesh.select_history.active] )
 					else:
@@ -313,7 +313,7 @@ class MESH_OT_loop( bpy.types.Operator ):
 
 	@classmethod
 	def poll( cls, context ):
-		return ( context.area.type == 'VIEW_3D' and len( context.editable_objects ) > 0 )
+		return ( len( context.editable_objects ) > 0 and context.mode == 'EDIT_MESH' )
 
 	def execute( self, context ):
 		sel_mode = context.tool_settings.mesh_select_mode[:]
@@ -332,6 +332,9 @@ class MESH_OT_loop( bpy.types.Operator ):
 					selected_edges = rmlib.rmEdgeSet( [rmmesh.bmesh.select_history.active] )
 				else:
 					selected_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
+
+				if len( selected_edges ) < 1:
+					continue
 
 				#selected_edges.tag( True )
 				while( len( selected_edges ) > 0 ):
@@ -367,8 +370,7 @@ class MESH_OT_uvloop( bpy.types.Operator ):
 
 	def execute( self, context ):		
 		rmmesh = rmlib.rmMesh.GetActive( context )
-		with rmmesh as rmmesh:
-			
+		with rmmesh as rmmesh:			
 			sel_sync = context.tool_settings.use_uv_select_sync
 			if sel_sync:
 				bpy.ops.mesh.rm_loop( force_boundary=self.force_boundary )
@@ -431,8 +433,7 @@ class MESH_OT_uvring( bpy.types.Operator ):
 
 	def execute( self, context ):		
 		rmmesh = rmlib.rmMesh.GetActive( context )
-		with rmmesh as rmmesh:
-			
+		with rmmesh as rmmesh:			
 			sel_sync = context.tool_settings.use_uv_select_sync
 			if sel_sync:
 				bpy.ops.mesh.rm_ring()

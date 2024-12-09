@@ -255,7 +255,9 @@ class MESH_OT_continuous( bpy.types.Operator ):
 
 	@classmethod
 	def poll( cls, context ):
-		return ( context.area.type == 'VIEW_3D' and len( context.editable_objects ) > 0 )
+		return ( context.area.type == 'VIEW_3D' and
+				len( context.editable_objects ) > 0 and
+				context.mode == 'EDIT_MESH' )
 	
 	def invoke( self, context, event ):
 		mouse_pos = mathutils.Vector( ( event.mouse_region_x, event.mouse_region_y ) )
@@ -342,7 +344,9 @@ class MESH_OT_invertcontinuous( bpy.types.Operator ):
 	
 	@classmethod
 	def poll( cls, context ):
-		return ( context.area.type == 'VIEW_3D' and len( context.editable_objects ) > 0 )
+		return ( context.area.type == 'VIEW_3D' and
+				len( context.editable_objects ) > 0 and
+				context.mode == 'EDIT_MESH' )
 		
 	def execute( self, context ):
 		#get the selection mode

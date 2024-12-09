@@ -158,6 +158,7 @@ class MESH_OT_rm_matcleanup( bpy.types.Operator ):
 	def poll( cls, context ):
 		return ( context.area.type == 'VIEW_3D' and
 				context.mode == 'OBJECT' and
+				context.object is not None and
 				context.object.type == 'MESH' and
 				context.object is not None )
 		

@@ -137,8 +137,11 @@ class DimensionsManager:
 		DimensionsManager.active = True
 		
 	def stopDraw( self, context ):
-		bpy.types.SpaceView3D.draw_handler_remove( DimensionsManager.handle, 'WINDOW' )
-		bpy.types.SpaceView3D.draw_handler_remove( DimensionsManager.handle_text, 'WINDOW' )
+		try:
+			bpy.types.SpaceView3D.draw_handler_remove( DimensionsManager.handle, 'WINDOW' )		
+			bpy.types.SpaceView3D.draw_handler_remove( DimensionsManager.handle_text, 'WINDOW' )
+		except ValueError:
+			pass
 		DimensionsManager.active = False
 
 		for window in context.window_manager.windows:

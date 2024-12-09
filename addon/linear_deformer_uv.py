@@ -458,6 +458,15 @@ class MESH_OT_Linear_Deformer_UV( bpy.types.Operator ):
 	s_mouse = None
 	s_tool = None
 
+	@classmethod
+	def poll( cls, context ):
+		return ( context.area.type == 'IMAGE_EDITOR' and
+				context.object is not None and
+				context.mode == 'EDIT_MESH' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
+				context.object.data.is_editmode )
+
 	def __init__( self ):
 		self.m_work_loop_data = []
 		
@@ -473,31 +482,27 @@ class MESH_OT_Linear_Deformer_UV( bpy.types.Operator ):
 			self.m_work_loop_data[i] = ( ( self.m_work_loop_data[i][APPLY_VERT_ID], self.m_work_loop_data[i][APPLY_VERT_WEIGHT], uv ) )
 
 	def invoke( self, context, event ):
-		if context.area.type == 'IMAGE_EDITOR':
-			rmmesh = rmlib.rmMesh.GetActive( context )
-			if rmmesh is None:
-				self.report( { 'WARNING' }, 'Active mesh not found' )
-				return { 'CANCELLED' }
-
-			MESH_OT_Linear_Deformer_UV.s_tool = None
-			MESH_OT_Linear_Deformer_UV.s_draw = DrawHandler( context )
-			MESH_OT_Linear_Deformer_UV.s_mouse = MouseState( context )
-			MESH_OT_Linear_Deformer_UV.s_draw.RegisterDrawCallbacks()
-			context.window_manager.modal_handler_add( self )
-			self.s_history.ClearAll()
-
-			if ( mathutils.Vector( list( self.min_wld_pos ) ) - mathutils.Vector( list( self.max_wld_pos ) ) ).length > EPSILON:
-				MESH_OT_Linear_Deformer_UV.s_tool = ToolState()
-				MESH_OT_Linear_Deformer_UV.s_tool.start_point = mathutils.Vector( list( self.min_wld_pos ) )
-				MESH_OT_Linear_Deformer_UV.s_tool.end_point = mathutils.Vector( list( self.max_wld_pos ) )
-				MESH_OT_Linear_Deformer_UV.s_tool.middle_point = mathutils.Vector( ( 0.0, 0.0 ) )
-				MESH_OT_Linear_Deformer_UV.s_tool.RecomputeMiddlePoint()
-				MESH_OT_Linear_Deformer_UV.s_draw.UpdateFromToolState( MESH_OT_Linear_Deformer_UV.s_tool )
-
-			return { 'RUNNING_MODAL' }
-		else:
-			self.report( { 'WARNING' }, 'View3D not found, cannot run operator' )
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		if rmmesh is None:
+			self.report( { 'WARNING' }, 'Active mesh not found' )
 			return { 'CANCELLED' }
+
+		MESH_OT_Linear_Deformer_UV.s_tool = None
+		MESH_OT_Linear_Deformer_UV.s_draw = DrawHandler( context )
+		MESH_OT_Linear_Deformer_UV.s_mouse = MouseState( context )
+		MESH_OT_Linear_Deformer_UV.s_draw.RegisterDrawCallbacks()
+		context.window_manager.modal_handler_add( self )
+		self.s_history.ClearAll()
+
+		if ( mathutils.Vector( list( self.min_wld_pos ) ) - mathutils.Vector( list( self.max_wld_pos ) ) ).length > EPSILON:
+			MESH_OT_Linear_Deformer_UV.s_tool = ToolState()
+			MESH_OT_Linear_Deformer_UV.s_tool.start_point = mathutils.Vector( list( self.min_wld_pos ) )
+			MESH_OT_Linear_Deformer_UV.s_tool.end_point = mathutils.Vector( list( self.max_wld_pos ) )
+			MESH_OT_Linear_Deformer_UV.s_tool.middle_point = mathutils.Vector( ( 0.0, 0.0 ) )
+			MESH_OT_Linear_Deformer_UV.s_tool.RecomputeMiddlePoint()
+			MESH_OT_Linear_Deformer_UV.s_draw.UpdateFromToolState( MESH_OT_Linear_Deformer_UV.s_tool )
+
+		return { 'RUNNING_MODAL' }
 
 	def modal( self, context, event ):
 		context.area.tag_redraw()

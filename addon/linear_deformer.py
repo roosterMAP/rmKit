@@ -389,6 +389,15 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 				apply_tool_verts.append( ( vert_id, value, pos_final ) )
 
 		return apply_tool_verts
+	
+	@classmethod
+	def poll( cls, context ):
+		return ( context.area.type == 'VIEW_3D' and
+				context.object is not None and
+				context.mode == 'EDIT_MESH' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
+				context.object.data.is_editmode )
 
 	def invoke( self, context, event ):
 		self.reset_params()
@@ -402,51 +411,47 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 			self.s_tool.end_point = mathutils.Vector( list( self.max_wld_pos ) )
 			self.s_tool.middle_point = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
 			self.s_tool.UpdateMiddlePoint()
-
-		if context.area.type == 'VIEW_3D':
-			# the arguments we pass the the callbackection
-			args = ( self, context )
-			active_obj = context.active_object
-			bm = bmesh.from_edit_mesh( active_obj.data )
 			
-			self.s_history.CacheInitialVertPositions( bm )
+		# the arguments we pass the the callbackection
+		args = ( self, context )
+		active_obj = context.active_object
+		bm = bmesh.from_edit_mesh( active_obj.data )
+		
+		self.s_history.CacheInitialVertPositions( bm )
 
-			if bm.verts:
-				pre_work_verts = [ v for v in bm.verts if v.select ]
-				if not pre_work_verts:
-					pre_work_verts = [ v for v in bm.verts if v.hide is False ]
+		if bm.verts:
+			pre_work_verts = [ v for v in bm.verts if v.select ]
+			if not pre_work_verts:
+				pre_work_verts = [ v for v in bm.verts if v.hide is False ]
 
-				if pre_work_verts:
-					if self.s_tool is None:
-						self.start_work_center = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
-						for vert in pre_work_verts:
-							self.start_work_center += vert.co
-						self.start_work_center *= 1.0 / len( pre_work_verts )
-						self.start_work_center = active_obj.matrix_world @ self.start_work_center
-					else:
-						self.start_work_center = self.s_tool.middle_point.copy()
-
-					self.work_verts = [ vert.index for vert in pre_work_verts ]
-
-					# add original vert to history
-					self.s_history.AddHistory( pre_work_verts )
-
-					# Add the region OpenGL drawing callback
-					self.s_draw.RegisterDrawCallbacks()
-					
-					context.window_manager.modal_handler_add( self )
-
-					return { 'RUNNING_MODAL' }
-
+			if pre_work_verts:
+				if self.s_tool is None:
+					self.start_work_center = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
+					for vert in pre_work_verts:
+						self.start_work_center += vert.co
+					self.start_work_center *= 1.0 / len( pre_work_verts )
+					self.start_work_center = active_obj.matrix_world @ self.start_work_center
 				else:
-					self.report( { 'WARNING' }, 'No verts!!' )
-					return { 'CANCELLED' }
+					self.start_work_center = self.s_tool.middle_point.copy()
+
+				self.work_verts = [ vert.index for vert in pre_work_verts ]
+
+				# add original vert to history
+				self.s_history.AddHistory( pre_work_verts )
+
+				# Add the region OpenGL drawing callback
+				self.s_draw.RegisterDrawCallbacks()
+				
+				context.window_manager.modal_handler_add( self )
+
+				return { 'RUNNING_MODAL' }
 
 			else:
 				self.report( { 'WARNING' }, 'No verts!!' )
 				return { 'CANCELLED' }
+
 		else:
-			self.report( { 'WARNING' }, 'View3D not found, cannot run operator' )
+			self.report( { 'WARNING' }, 'No verts!!' )
 			return { 'CANCELLED' }
 
 
@@ -797,6 +802,8 @@ class MESH_OT_quicklineardeform( bpy.types.Operator ):
 	def poll( cls, context ):
 		return ( context.area.type == 'VIEW_3D' and
 				context.active_object is not None and
+				context.object is not None and
+				context.mode == 'EDIT_MESH' and
 				context.active_object.type == 'MESH' and
 				context.object.data.is_editmode )
 
@@ -842,10 +849,7 @@ class MESH_OT_quicklineardeform( bpy.types.Operator ):
 
 		return bbox_transform @ bbox_min, bbox_transform @ bbox_max
 
-	def execute( self, context ):
-		if context.object is None or context.mode == 'OBJECT':
-			return { 'CANCELLED' }
-		
+	def execute( self, context ):		
 		co = context.scene.transform_orientation_slots[ 0 ].custom_orientation
 		grid_matrix = mathutils.Matrix.Identity( 3 )
 		if co is not None:
