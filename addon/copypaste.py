@@ -146,63 +146,16 @@ class MESH_OT_rm_paste( bpy.types.Operator ):
 		else:
 			bpy.ops.view3d.pastebuffer()
 		return { 'FINISHED' }
-
-
-class MESH_OT_rm_matcleanup( bpy.types.Operator ):
-	"""Cleanup materials and material_indexes on mesh"""
-	bl_idname = 'mesh.rm_matclearnup'
-	bl_label = 'Material Cleanup'
-	bl_options = { 'UNDO' }
-	
-	@classmethod
-	def poll( cls, context ):
-		return ( context.area.type == 'VIEW_3D' and
-				context.mode == 'OBJECT' and
-				context.object is not None and
-				context.object.type == 'MESH' and
-				context.object is not None )
-		
-	def execute( self, context ):
-		for rmmesh in rmlib.iter_edit_meshes( context, mode_filter=False ):
-			#get mesh material list
-			old_materials = [ m for m in rmmesh.mesh.materials ]
-
-			#remap
-			new_materials = []
-			with rmmesh as rmmesh:
-				overflow_faces = set()
-				for p in rmmesh.bmesh.faces:
-					if p.material_index >= len( old_materials ):
-						overflow_faces.add( p )
-						continue
-
-					idx = p.material_index
-					try:
-						p.material_index = new_materials.index( old_materials[idx] ) #gets rid of duplicates
-					except ValueError:
-						p.material_index = len( new_materials )
-						new_materials.append( old_materials[idx] )
-
-				for f in overflow_faces:
-					f.material_index = len( new_materials ) - 1
-
-				rmmesh.mesh.materials.clear()
-				for m in new_materials:
-					rmmesh.mesh.materials.append( m )
-
-		return { 'FINISHED' }
 	
 
 def register():
 	bpy.utils.register_class( MESH_OT_rm_copy )
-	bpy.utils.register_class( MESH_OT_rm_paste )
-	bpy.utils.register_class( MESH_OT_rm_matcleanup )
+	bpy.utils.register_class( MESH_OT_rm_paste )	
 	
 
 def unregister():
 	bpy.utils.unregister_class( MESH_OT_rm_copy )
 	bpy.utils.unregister_class( MESH_OT_rm_paste )
-	bpy.utils.unregister_class( MESH_OT_rm_matcleanup )
 	
 
 if __name__ == '__main__':

@@ -13,6 +13,54 @@ def validate_material_name( mat_name ):
 			return False
 	return True
 
+
+class MESH_OT_rm_matcleanup( bpy.types.Operator ):
+	"""Cleanup materials and material_indexes on mesh"""
+	bl_idname = 'mesh.rm_matclearnup'
+	bl_label = 'Material Cleanup'
+	bl_options = { 'UNDO' }
+	
+	@classmethod
+	def poll( cls, context ):
+		return ( context.area.type == 'VIEW_3D' and
+				context.mode == 'OBJECT' and
+				context.object is not None and
+				context.object.type == 'MESH' and
+				context.object is not None )
+		
+	def execute( self, context ):
+		for rmmesh in rmlib.iter_edit_meshes( context, mode_filter=False ):
+			#get mesh material list
+			old_materials = [ m for m in rmmesh.mesh.materials ]
+			if len( old_materials ) == 0:
+				continue
+
+			#remap
+			new_materials = []
+			with rmmesh as rmmesh:
+				overflow_faces = set()
+				for p in rmmesh.bmesh.faces:
+					if p.material_index >= len( old_materials ):
+						overflow_faces.add( p )
+						continue
+
+					idx = p.material_index
+					try:
+						p.material_index = new_materials.index( old_materials[idx] ) #gets rid of duplicates
+					except ValueError:
+						p.material_index = len( new_materials )
+						new_materials.append( old_materials[idx] )
+
+				for f in overflow_faces:
+					f.material_index = len( new_materials ) - 1
+
+				rmmesh.mesh.materials.clear()
+				for m in new_materials:
+					rmmesh.mesh.materials.append( m )
+
+		return { 'FINISHED' }
+
+
 class MESH_OT_quickmaterial( bpy.types.Operator ):
 	"""Utility for quickly sampling, modifying, and creating materials for 3d viewport."""
 	bl_idname = 'mesh.rm_quickmaterial'
@@ -188,8 +236,10 @@ def register():
 	bpy.utils.register_class( MESH_OT_quickmaterial )
 	bpy.utils.register_class( QuickMatProps )
 	bpy.types.Scene.quickmatprops = bpy.props.PointerProperty( type=QuickMatProps )
+	bpy.utils.register_class( MESH_OT_rm_matcleanup )
 	
 def unregister():
 	bpy.utils.unregister_class( MESH_OT_quickmaterial )
 	bpy.utils.unregister_class( QuickMatProps )
 	del bpy.types.Scene.quickmatprops
+	bpy.utils.unregister_class( MESH_OT_rm_matcleanup )

@@ -18,16 +18,6 @@ class DimensionsManager:
 	_y_handle = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
 	_z_handle = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
 
-	@staticmethod
-	def Zero():
-		DimensionsManager._joint = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
-		DimensionsManager._x_max = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
-		DimensionsManager._y_max = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
-		DimensionsManager._z_max = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
-		DimensionsManager._x_handle = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
-		DimensionsManager._y_handle = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
-		DimensionsManager._z_handle = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
-
 	def __init__( self, context ):
 		self.factor = 1.0
 		DimensionsManager.shader = gpu.shader.from_builtin( 'POLYLINE_SMOOTH_COLOR' )
@@ -94,7 +84,10 @@ class DimensionsManager:
 		DimensionsManager.batch = batch_for_shader( DimensionsManager.shader, 'LINES', content )
 
 	def draw( self ):
-		if DimensionsManager.batch:			
+		if DimensionsManager.nodraw:
+			return
+		
+		if DimensionsManager.batch:
 			DimensionsManager.shader.bind()
 
 			DimensionsManager.shader.uniform_float( 'lineWidth', 1 )
@@ -104,7 +97,7 @@ class DimensionsManager:
 			DimensionsManager.batch.draw( DimensionsManager.shader )
 
 	def draw_text( self ):
-		if DimensionsManager._x_handle is None:
+		if DimensionsManager.nodraw or DimensionsManager._x_handle is None:
 			return
 
 		blf.color( 0, 1.0, 0.0, 0.0, 1.0 )
@@ -289,31 +282,25 @@ class MESH_OT_dimensions( bpy.types.Operator ):
 			return { 'FINISHED' }
 			
 		if event.type == 'TIMER':
-			bounding_box = GetBoundingBox( context )
-			if bounding_box is None or ( bounding_box[1] - bounding_box[0] ).length < rmlib.util.FLOAT_EPSILON:
-				DimensionsManager.Zero()
-				
-				if not DimensionsManager.nodraw:
+			DimensionsManager.nodraw = False
+			if context.mode == 'OBJECT':
+				objcount = 0
+				for obj in context.selected_objects:
+					if obj.type == 'MESH':
+						objcount += 1
+				if objcount == 0:
 					DimensionsManager.nodraw = True
-					bpy.types.SpaceView3D.draw_handler_remove( DimensionsManager.handle, 'WINDOW' )
-					bpy.types.SpaceView3D.draw_handler_remove( DimensionsManager.handle_text, 'WINDOW' )
-					for window in context.window_manager.windows:
-						for area in window.screen.areas:
-							if area.type == 'VIEW_3D':
-								for region in area.regions:
-									if region.type == 'WINDOW':
-										region.tag_redraw()
+					return { 'PASS_THROUGH' }
 
-			else:
-				DimensionsManager._joint = bounding_box[0]
-				DimensionsManager._x_max = mathutils.Vector( ( bounding_box[1][0], bounding_box[0][1], bounding_box[0][2] ) )
-				DimensionsManager._y_max = mathutils.Vector( ( bounding_box[0][0], bounding_box[1][1], bounding_box[0][2] ) )
-				DimensionsManager._z_max = mathutils.Vector( ( bounding_box[0][0], bounding_box[0][1], bounding_box[1][2] ) )
-
-				if DimensionsManager.nodraw:
-					DimensionsManager.nodraw = False
-					DimensionsManager.handle = bpy.types.SpaceView3D.draw_handler_add( MESH_OT_dimensions.DIMENSIONS_RENDER.draw, (), 'WINDOW', 'POST_VIEW' )
-					DimensionsManager.handle_text = bpy.types.SpaceView3D.draw_handler_add( MESH_OT_dimensions.DIMENSIONS_RENDER.draw_text, (), 'WINDOW', 'POST_PIXEL' )
+			bounding_box = GetBoundingBox( context )
+			if bounding_box is None:
+				DimensionsManager.nodraw = True
+				return { 'PASS_THROUGH' }
+			
+			DimensionsManager._joint = bounding_box[0]
+			DimensionsManager._x_max = mathutils.Vector( ( bounding_box[1][0], bounding_box[0][1], bounding_box[0][2] ) )
+			DimensionsManager._y_max = mathutils.Vector( ( bounding_box[0][0], bounding_box[1][1], bounding_box[0][2] ) )
+			DimensionsManager._z_max = mathutils.Vector( ( bounding_box[0][0], bounding_box[0][1], bounding_box[1][2] ) )
 
 			MESH_OT_dimensions.DIMENSIONS_RENDER.update( context )
 

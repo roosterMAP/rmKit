@@ -108,6 +108,10 @@ def GetLoopGroups( context, rmmesh, uvlayer, local ):
 					visible_loop_selection.append( l )
 			loop_groups = [ visible_loop_selection ]
 
+	for i in range( len( loop_groups ) - 1, -1, -1 ):
+		if len( loop_groups[i] ) == 0:
+			loop_groups.pop( i )
+
 	return loop_groups
 
 
@@ -176,6 +180,9 @@ class MESH_OT_uvmove( bpy.types.Operator ):
 
 			#get loop groups	
 			groups = GetLoopGroups( context, rmmesh, uvlayer, False )
+			if len( groups ) == 0:
+				self.report( { 'ERROR' }, 'Nothing selected in UV View.' )
+				return { 'CANCELLED' }
 
 			#compute offset vec
 			offset = context.scene.uv_uvmove_offset
@@ -276,6 +283,9 @@ class MESH_OT_uvslam( bpy.types.Operator ):
 
 			#get loop groups	
 			groups = GetLoopGroups( context, rmmesh, uvlayer, 'l' in self.dir )
+			if len( groups ) == 0:
+				self.report( { 'ERROR' }, 'Nothing selected in UV View.' )
+				return { 'CANCELLED' }
 			
 			for g in groups:
 				#compute the anchor pos
@@ -369,7 +379,10 @@ class MESH_OT_uvrotate( bpy.types.Operator ):
 
 			#get loop groups	
 			groups = GetLoopGroups( context, rmmesh, uvlayer, 'l' in self.dir )
-			
+			if len( groups ) == 0:
+				self.report( { 'ERROR' }, 'Nothing selected in UV View.' )
+				return { 'CANCELLED' }
+
 			for g in groups:
 				#compute the anchor pos
 				bbmin, bbmax = GetUVBounds( g, uvlayer )
@@ -453,6 +466,9 @@ class MESH_OT_uvscale( bpy.types.Operator ):
 			
 			#get loop groups	
 			groups = GetLoopGroups( context, rmmesh, uvlayer, 'l' in self.dir )
+			if len( groups ) == 0:
+				self.report( { 'ERROR' }, 'Nothing selected in UV View.' )
+				return { 'CANCELLED' }
 			
 			for g in groups:
 				#compute the anchor pos
@@ -524,6 +540,9 @@ class MESH_OT_uvflip( bpy.types.Operator ):
 			
 			#get loop groups	
 			groups = GetLoopGroups( context, rmmesh, uvlayer, 'l' in self.dir )
+			if len( groups ) == 0:
+				self.report( { 'ERROR' }, 'Nothing selected in UV View.' )
+				return { 'CANCELLED' }
 			
 			for g in groups:
 				#compute the anchor pos
@@ -576,13 +595,28 @@ class MESH_OT_uvfitsample( bpy.types.Operator ):
 			uvlayer = rmmesh.active_uv
 			
 			#get loop groups	
-			groups = GetLoopGroups( context, rmmesh, uvlayer, False )			
+			groups = GetLoopGroups( context, rmmesh, uvlayer, False )
+			if len( groups ) == 0:
+				self.report( { 'ERROR' }, 'Nothing selected in UV View.' )
+				return { 'CANCELLED' }
+				
 			for g in groups:
 				#compute the anchor pos
 				bbmin, bbmax = GetUVBounds( g, uvlayer )
 				context.scene.uv_fit_bounds_min = bbmin
 				context.scene.uv_fit_bounds_max = bbmax
 					
+		return { 'FINISHED' }
+	
+
+class MESH_OT_uvclearfitsample( bpy.types.Operator ):
+	"""Reset the uv bounds sample to the unit square."""
+	bl_idname = 'mesh.rm_uvfitsampleclear'
+	bl_label = 'Reset Bounds'
+
+	def execute( self, context ):
+		context.scene.uv_fit_bounds_min = ( 0.0, 0.0 )
+		context.scene.uv_fit_bounds_max = ( 1.0, 1.0 )					
 		return { 'FINISHED' }
 
 
@@ -633,6 +667,10 @@ class MESH_OT_uvfit( bpy.types.Operator ):
 			
 			#get loop groups	
 			groups = GetLoopGroups( context, rmmesh, uvlayer, 'l' in self.dir )
+			if len( groups ) == 0:
+				self.report( { 'ERROR' }, 'Nothing selected in UV View.' )
+				return { 'CANCELLED' }
+
 			for g in groups:
 				#compute the anchor pos
 				bbmin, bbmax = GetUVBounds( g, uvlayer )
@@ -727,6 +765,10 @@ class MESH_OT_uvrandom( bpy.types.Operator ):
 			
 			#get loop groups	
 			groups = GetLoopGroups( context, rmmesh, uvlayer, True )
+			if len( groups ) == 0:
+				self.report( { 'ERROR' }, 'Nothing selected in UV View.' )
+				return { 'CANCELLED' }
+			
 			for g in groups:
 				#compute the anchor pos
 				bbmin, bbmax = GetUVBounds( g, uvlayer )
@@ -951,6 +993,7 @@ class UV_PT_UVTransformTools( bpy.types.Panel ):
 		r1.prop( context.scene, 'uv_fit_moveto' )
 		r2 = layout.row()
 		r2.operator( MESH_OT_uvfitsample.bl_idname )
+		r2.operator( MESH_OT_uvclearfitsample.bl_idname )
 		fit_grid = layout.grid_flow( columns=3, even_columns=True, align=True )
 
 		if context.scene.stateprops.uv_state_ctrl:
@@ -1135,9 +1178,10 @@ def register():
 	bpy.utils.register_class( MESH_OT_uvflip )
 	bpy.utils.register_class( MESH_OT_uvfit )
 	bpy.utils.register_class( MESH_OT_uvfitsample )
+	bpy.utils.register_class( MESH_OT_uvclearfitsample )
 	bpy.utils.register_class( MESH_OT_uvrandom )
 	bpy.types.Scene.uv_uvmove_offset = bpy.props.FloatProperty( name='Offset', default=1.0 )
-	bpy.types.Scene.uv_uvrotation_offset = bpy.props.FloatProperty( name='RotationOffset', default=45.0, min=0.0, max=180.0 )
+	bpy.types.Scene.uv_uvrotation_offset = bpy.props.FloatProperty( name='RotationOffset', default=90.0, min=0.0, max=180.0 )
 	bpy.types.Scene.uv_uvscale_factor = bpy.props.FloatProperty( name='Offset', default=2.0 )
 	bpy.types.Scene.anchor_val_prev = bpy.props.StringProperty( name='Anchor Prev Val', default=ANCHOR_PROP_LIST[4] )
 	bpy.types.Scene.state_val_prev = bpy.props.StringProperty( name='State Prev Val', default='' )
@@ -1165,6 +1209,7 @@ def unregister():
 	bpy.utils.unregister_class( MESH_OT_uvflip )
 	bpy.utils.unregister_class( MESH_OT_uvfit )
 	bpy.utils.unregister_class( MESH_OT_uvfitsample )
+	bpy.utils.unregister_class( MESH_OT_uvclearfitsample )
 	bpy.utils.unregister_class( MESH_OT_uvrandom )
 	del bpy.types.Scene.uv_uvmove_offset
 	del bpy.types.Scene.uv_uvrotation_offset

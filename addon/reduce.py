@@ -185,22 +185,20 @@ class MESH_OT_reduce( bpy.types.Operator ):
 		return ( context.area.type == 'VIEW_3D' and
 				context.active_object is not None and
 				context.active_object.type == 'MESH' and
-				context.object.data.is_editmode )
+				context.active_object.data.is_editmode )
 		
 	def execute( self, context ):
-		#get the selection mode
-		if context.object is None or context.mode == 'OBJECT':
-			return { 'CANCELLED' }
-
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 
-		for rmmesh in rmlib.item.iter_edit_meshes( context ):
-			
+		empty_selection = True
+
+		for rmmesh in rmlib.item.iter_edit_meshes( context ):			
 			if sel_mode[0]: #vert mode
 				with rmmesh as rmmesh:
 					rmmesh.readonly = True
 					sel_verts = rmlib.rmVertexSet.from_selection( rmmesh )
 					if len( sel_verts ) > 0:
+						empty_selection = False
 						if self.reduce_mode == 'DEL':
 							bpy.ops.mesh.delete( type='VERT' )
 						elif self.reduce_mode == 'COL':
@@ -215,6 +213,7 @@ class MESH_OT_reduce( bpy.types.Operator ):
 				with rmmesh as rmmesh:
 					sel_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
 					if len( sel_edges ) > 0:
+						empty_selection = False
 						if self.reduce_mode == 'DEL':
 							lone_edges = [ e for e in sel_edges if len( e.link_faces ) == 0 ]
 							bmesh.ops.delete( rmmesh.bmesh, geom=sel_edges.polygons , context='FACES' )
@@ -239,10 +238,15 @@ class MESH_OT_reduce( bpy.types.Operator ):
 					rmmesh.readonly = True
 					sel_polys = rmlib.rmPolygonSet.from_selection( rmmesh )
 					if len( sel_polys ) > 0:
+						empty_selection = False
 						if self.reduce_mode == 'COL':
 							bpy.ops.mesh.edge_collapse()
 						else:
 							bpy.ops.mesh.delete( type='FACE' )
+							
+		if empty_selection:
+			self.report( { 'INFO' }, 'Empty selection' )
+			return { 'CANCELLED' }
 
 		return { 'FINISHED' }
 	

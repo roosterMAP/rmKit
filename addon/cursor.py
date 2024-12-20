@@ -196,8 +196,9 @@ class OBJECT_OT_origintocursor( bpy.types.Operator ):
 
 	@classmethod
 	def poll( cls, context ):
-		#used by blender to test if operator can show up in a menu or as a button in the UI
-		return context.area.type == 'VIEW_3D'
+		return ( context.area.type == 'VIEW_3D' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' )
 
 	def execute( self, context ):
 		ao = context.active_object

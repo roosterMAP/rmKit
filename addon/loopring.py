@@ -225,14 +225,15 @@ class MESH_OT_ring( bpy.types.Operator ):
 	def execute( self, context ):
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 
+		emptyselection = True
+
 		for rmmesh in rmlib.iter_edit_meshes( context, mode_filter=True ):
 			with rmmesh as rmmesh:
 				rmmesh.readonly = True
 				for e in rmmesh.bmesh.edges:
 					e.tag = False
 				for p in rmmesh.bmesh.faces:
-					p.tag = False
-					
+					p.tag = False					
 
 				if sel_mode[0] or sel_mode[1]:
 					if self.unsel:
@@ -257,6 +258,9 @@ class MESH_OT_ring( bpy.types.Operator ):
 				else:
 					return { 'CANCELLED' }
 				
+				if len( selected_edges ) > 0:
+					emptyselection = False
+				
 				for e in selected_edges:
 					if e.tag:
 						continue
@@ -279,6 +283,10 @@ class MESH_OT_ring( bpy.types.Operator ):
 					e.tag = False
 				for p in rmmesh.bmesh.faces:
 					p.tag = False
+
+		if emptyselection:
+			self.report( { 'ERROR' }, 'Selection is empty!' )
+			return { 'CANCELLED' }
 
 		return { 'FINISHED' }
 
@@ -318,8 +326,14 @@ class MESH_OT_loop( bpy.types.Operator ):
 	def execute( self, context ):
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 		if not sel_mode[1]:
-			bpy.ops.mesh.rm_ring()
+			try:
+				bpy.ops.mesh.rm_ring()
+			except Exception as e:
+				self.report( { 'ERROR' }, str( e ) )
+				return { 'CANCELLED' }
 			return { 'FINISHED' }
+		
+		emptyselection = True
 				
 		for rmmesh in rmlib.iter_edit_meshes( context, mode_filter=True ):
 			with rmmesh as rmmesh:
@@ -335,6 +349,7 @@ class MESH_OT_loop( bpy.types.Operator ):
 
 				if len( selected_edges ) < 1:
 					continue
+				emptyselection = False
 
 				#selected_edges.tag( True )
 				while( len( selected_edges ) > 0 ):
@@ -345,6 +360,10 @@ class MESH_OT_loop( bpy.types.Operator ):
 					
 				for e in rmmesh.bmesh.edges:
 					e.tag = False
+
+		if emptyselection:
+			self.report( { 'ERROR' }, 'Selection is empty!' )
+			return { 'CANCELLED' }
 
 		return { 'FINISHED' }
 

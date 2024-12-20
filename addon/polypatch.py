@@ -22,26 +22,20 @@ class MESH_OT_polypatch( bpy.types.Operator ):
 		return ( context.area.type == 'VIEW_3D' and
 				context.active_object is not None and
 				context.active_object.type == 'MESH' and
-				context.object.data.is_editmode )
+				context.active_object.data.is_editmode )
 						
 	def execute( self, context ):
-		#get the selection mode
-		if context.object is None or context.mode == 'OBJECT':
-			return { 'CANCELLED' }
-		
-		#get the current object type
-		if context.object.type != 'MESH':
-			return { 'CANCELLED' }
-
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		if rmmesh is None:
-			return { 'CANCELLED' }		
+			self.report( { 'ERROR' }, 'Could not get active mesh.' )
+			return { 'CANCELLED' }
 
 		if sel_mode[0]:
 			with rmmesh as rmmesh:
 				sel_verts = rmlib.rmVertexSet.from_selection( rmmesh )
 				if len( sel_verts ) < 2:
+					self.report( { 'INFO' }, 'Must have two or more verts selected!!!' )
 					return { 'CANCELLED' }							
 				slice_edges = bmesh.ops.connect_verts( rmmesh.bmesh, verts=sel_verts, check_degenerate=False )
 
@@ -56,8 +50,10 @@ class MESH_OT_polypatch( bpy.types.Operator ):
 						open_edges.append( e )
 					elif e.is_contiguous:
 						closed_edges.append( e )
+
+				somethinghappened = False
 				
-				if len( open_edges ) > 0:				
+				if len( open_edges ) > 0:
 					vchains = open_edges.chain()
 
 					#break up vchains into edge sets of open and closed loops
@@ -75,6 +71,7 @@ class MESH_OT_polypatch( bpy.types.Operator ):
 
 					#close loops get capped
 					if len( closed_loops ) > 0:
+						somethinghappened = True
 						bpy.ops.mesh.select_all( action = 'DESELECT' )
 						for loop in closed_loops:
 							loop.select( False )
@@ -82,6 +79,7 @@ class MESH_OT_polypatch( bpy.types.Operator ):
 
 					#if there are two open loops, then bridge
 					if len( open_loops ) == 2:
+						somethinghappened = True
 						bpy.ops.mesh.select_all( action = 'DESELECT' )
 						for loop in open_loops:
 							loop.select( False )
@@ -89,6 +87,7 @@ class MESH_OT_polypatch( bpy.types.Operator ):
 
 					#otherwise just face_add
 					elif len( open_loops ) > 0:
+						somethinghappened = True
 						bpy.ops.mesh.select_all( action = 'DESELECT' )
 						for loop in open_loops:
 							loop.select( False )
@@ -96,8 +95,13 @@ class MESH_OT_polypatch( bpy.types.Operator ):
 						
 				#closed edges get rotated
 				if len( closed_edges ) > 0:
+					somethinghappened = True
 					closed_edges.select( True )
 					bpy.ops.mesh.edge_rotate( use_ccw=True )
+
+				if not somethinghappened:
+					self.report( { 'INFO' }, 'No actionable edge selection found.' )
+					return { 'CANCELLED' }
 	
 		elif sel_mode[2]:
 			with rmmesh as rmmesh:
@@ -106,6 +110,9 @@ class MESH_OT_polypatch( bpy.types.Operator ):
 				groups = sel_polys.group()
 				if len( groups ) == 2:
 					bpy.ops.mesh.bridge_edge_loops()
+				else:
+					self.report( { 'INFO' }, 'Exactly two face groups must be selected in order to bridge.' )
+					return { 'CANCELLED' }
 
 		return { 'FINISHED' }
 	
