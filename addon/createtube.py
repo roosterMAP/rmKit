@@ -56,7 +56,6 @@ class MESH_OT_createtube( bpy.types.Operator ):
 	def __init__( self ):
 		self.bmesh = None
 		self._tubes = []
-		self.bbox_dist = 0.0
 
 	def __del__( self ):
 		try:
@@ -169,8 +168,20 @@ class MESH_OT_createtube( bpy.types.Operator ):
 		if event.type == 'LEFTMOUSE':
 			return { 'FINISHED' }
 		elif event.type == 'MOUSEMOVE':
-			delta_x = float( event.mouse_prev_press_x - event.mouse_x ) / context.region.width
-			self.radius = 0.1 + ( delta_x * self.bbox_dist * 10.0 )
+			mouse_current_2d = mathutils.Vector( ( event.mouse_region_x, event.mouse_region_y ) )
+			rmvp = rmlib.rmViewport( context )
+			mouse_pos_current = rmvp.get_mouse_on_plane( context, mathutils.Vector(), self.dir_vec, mouse_current_2d )
+			vOffset = rmlib.util.ProjectVector( mouse_pos_current - self.mouse_pos_prev, self.mouse_pos_prev - self.mouse_pos_start )
+			fSign = 1.0
+			if mouse_current_2d.x < self.mouse_prev_2d.x:
+				fSign = -1.0			
+			fDelta = vOffset.length * fSign
+			if event.shift:
+				fDelta *= 0.05
+			self.mouse_pos_prev = mouse_pos_current
+			self.mouse_prev_2d = mouse_current_2d
+			self.radius += fDelta
+			self.radius = max( 0.001, self.radius )
 			self.execute( context )
 		elif event.type == 'WHEELUPMOUSE':
 			self.level = min( self.level + 1, 128 )
@@ -182,7 +193,12 @@ class MESH_OT_createtube( bpy.types.Operator ):
 		return { 'RUNNING_MODAL' }
 	
 	def invoke( self, context, event ):
+		self.radius = 0.001
 		sel_mode = context.tool_settings.mesh_select_mode[:]
+
+		self.mouse_prev_2d = mathutils.Vector( ( event.mouse_region_x, event.mouse_region_y ) )
+		rmvp = rmlib.rmViewport( context )
+		row_idx, self.dir_vec, foovec = rmvp.get_nearest_direction_vector( 'front' )
 
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		if rmmesh is not None:
@@ -196,21 +212,21 @@ class MESH_OT_createtube( bpy.types.Operator ):
 
 				self.bmesh = rmmesh.bmesh.copy()
 
+				vAvg = mathutils.Vector()
+				nSelCount = 0
+				for v in rmmesh.bmesh.verts:
+					if v.select:
+						nSelCount += 1
+						vAvg += v.co
+				vAvg *= 1.0 / nSelCount
+				vAvg = rmmesh.world_transform @ vAvg
+
+				self.mouse_pos_prev = rmvp.get_mouse_on_plane( context, vAvg, self.dir_vec, self.mouse_prev_2d )
+				self.mouse_pos_start = self.mouse_pos_prev.copy()
+
 				#cache Tube objects for edge selection
 				if sel_mode[1]:
-					edges = rmlib.rmEdgeSet.from_selection( rmmesh )
-					
-					#init bbox_dist for haul sensitivity
-					verts = edges.vertices
-					min = verts[0].co.copy()
-					max = verts[0].co.copy()
-					for v in verts:
-						for i in range( 3 ):
-							if v.co[i] < min[i]:
-								min[i] = v.co[i]
-							if v.co[i] > max[i]:
-								max[i] = v.co[i]
-					self.bbox_dist = ( max - min ).length
+					edges = rmlib.rmEdgeSet.from_selection( rmmesh )					
 					
 					chains = edges.chain()
 					for i, chain in enumerate( chains ):
