@@ -678,6 +678,8 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 				orig_vec = orig_pos - start_pos
 				move_vec = ( mouse_pos_3d - start_pos ) - orig_vec
 
+				xfrm = active_obj.matrix_world
+				xfrm_inv = xfrm.inverted()
 				for vert_data in self.apply_tool_verts:
 					move_value = vert_data[ APPLY_VERT_WEIGHT ]
 					new_vec = ( move_vec * move_value )
@@ -686,7 +688,8 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 							new_vec = new_vec - rmlib.util.ProjectVector( new_vec, mathutils.Matrix.Identity( 3 )[ self.s_tool.constrain_axis_idx ] )
 						else:
 							new_vec = rmlib.util.ProjectVector( new_vec, mathutils.Matrix.Identity( 3 )[ self.s_tool.constrain_axis_idx ] )
-					bm.verts[ vert_data[ APPLY_VERT_ID ] ].co = vert_data[ APPLY_VERT_POSITION ] + new_vec
+					vpos_wld = xfrm @ vert_data[ APPLY_VERT_POSITION ]
+					bm.verts[ vert_data[ APPLY_VERT_ID ] ].co = xfrm_inv @ ( vpos_wld + new_vec )
 
 				bm.normal_update()
 				bmesh.update_edit_mesh( active_obj.data )
