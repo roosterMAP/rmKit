@@ -118,18 +118,22 @@ class rmViewport():
 				
 		return ( row_idx, dir_vec, input_rot[row_idx] * n )
 
-
-	def get_nearest_direction_vector_from_mouse( self, context, mouse_start, mouse_end, input_rot=mathutils.Matrix.Identity( 3 ) ):
+	def get_nearest_direction_vector_from_mouse( self, context, mouse_start, mouse_end, offset, input_rot=mathutils.Matrix.Identity( 3 ) ):
 		region = context.region
 		rv3d = context.region_data
-
-		depth_pos = self.cam_pos + self.look_dir
-		start_3d = view3d_utils.region_2d_to_location_3d( region, rv3d, mouse_start, depth_pos )
-		end_3d = view3d_utils.region_2d_to_location_3d( region, rv3d, mouse_end, depth_pos )
-		vec_3d = ( end_3d - start_3d ).normalized()
-		x_dot = abs( vec_3d.dot( input_rot[0] ) )
-		y_dot = abs( vec_3d.dot( input_rot[1] ) )
-		z_dot = abs( vec_3d.dot( input_rot[2] ) )
+		
+		x2d = view3d_utils.location_3d_to_region_2d( region, rv3d, offset + input_rot[0] )
+		y2d = view3d_utils.location_3d_to_region_2d( region, rv3d, offset + input_rot[1] )
+		z2d = view3d_utils.location_3d_to_region_2d( region, rv3d, offset + input_rot[2] )
+		c2d = view3d_utils.location_3d_to_region_2d( region, rv3d, offset )
+		x2d = ( x2d - c2d ).normalized()
+		y2d = ( y2d - c2d ).normalized()
+		z2d = ( z2d - c2d ).normalized()
+		
+		mv = ( mouse_start - mouse_end ).normalized()	
+		x_dot = abs( mv.dot( x2d ) )
+		y_dot = abs( mv.dot( y2d ) )
+		z_dot = abs( mv.dot( z2d ) )
 
 		if x_dot > y_dot and x_dot > z_dot:
 			return 0

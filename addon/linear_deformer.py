@@ -489,7 +489,7 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 			elif event.value == 'RELEASE':
 				self.start_point_2d = None
 		if self.start_point_2d is not None:
-			self.s_tool.constrain_axis_idx = rm_vp.get_nearest_direction_vector_from_mouse( context, self.start_point_2d, self.s_mouse.m_mouse_current_2d )
+			self.s_tool.constrain_axis_idx = rm_vp.get_nearest_direction_vector_from_mouse( context, self.start_point_2d, self.s_mouse.m_mouse_current_2d, self.start_work_center )
 			xdelta = abs( self.s_mouse.m_mouse_current_2d.x - self.s_mouse.m_mmb_start_2d.x )
 			ydelta = abs( self.s_mouse.m_mouse_current_2d.y - self.s_mouse.m_mmb_start_2d.y )
 			self.s_tool.contrain_axis_2d = CONSTRAIN_AXIS_HORIZONTAL if xdelta > ydelta else CONSTRAIN_AXIS_VERTICAL
