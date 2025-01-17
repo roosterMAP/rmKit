@@ -103,8 +103,11 @@ class MESH_OT_scaleislandrelative( bpy.types.Operator ):
 				island_3darea = 0.0
 				for f in island:
 					island_3darea += f.calc_area()
-
-				densities.append( island_uvarea / island_3darea )
+					
+				try:
+					densities.append( island_uvarea / island_3darea )
+				except ZeroDivisionError:
+					densities.append( 1.0 )
 
 			#compute a target density from self.relative mode
 			target_density = densities[0]

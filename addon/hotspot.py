@@ -260,6 +260,10 @@ class Bounds2d():
 
 	def transform( self, other, skip_rot=False, trim=False, inset=0.0 ):
 		#compute the 3x3 matrix that transforms bound 'other' to self
+
+		if self.width < rmlib.util.FLOAT_EPSILON or self.height < rmlib.util.FLOAT_EPSILON:
+			return mathutils.Matrix.Identity( 3 )
+
 		trans_mat = mathutils.Matrix.Identity( 3 )
 		trans_mat[0][2] = self.center[0] * -1.0
 		trans_mat[1][2] = self.center[1] * -1.0

@@ -171,7 +171,10 @@ class MESH_OT_createtube( bpy.types.Operator ):
 			mouse_current_2d = mathutils.Vector( ( event.mouse_region_x, event.mouse_region_y ) )
 			rmvp = rmlib.rmViewport( context )
 			mouse_pos_current = rmvp.get_mouse_on_plane( context, mathutils.Vector(), self.dir_vec, mouse_current_2d )
-			vOffset = rmlib.util.ProjectVector( mouse_pos_current - self.mouse_pos_prev, self.mouse_pos_prev - self.mouse_pos_start )
+			try:
+				vOffset = rmlib.util.ProjectVector( mouse_pos_current - self.mouse_pos_prev, self.mouse_pos_prev - self.mouse_pos_start )
+			except ZeroDivisionError:
+				vOffset = mathutils.Vector()
 			fSign = 1.0
 			if mouse_current_2d.x < self.mouse_prev_2d.x:
 				fSign = -1.0			
