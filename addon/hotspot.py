@@ -631,16 +631,39 @@ def load_hotspot_from_repo( material_name, material_aspect ):
 
 
 def get_hotspot( context ):
-	if context.scene.use_subrect_atlas:
-		if context.scene.subrect_atlas is None:
-			return None
-		hotspot = Hotspot.from_bmesh( rmlib.rmMesh( context.scene.subrect_atlas ) )
-		hotspot.applymaterialaspect( material_aspect )
-		return hotspot
-
 	rmmesh = rmlib.rmMesh.GetActive( context )
 	if rmmesh is None:
 		return None, None
+
+	if context.scene.use_subrect_atlas:
+		if context.scene.subrect_atlas is None:
+			return None
+		hotspots = {}
+		h = Hotspot.from_bmesh( rmlib.rmMesh( context.scene.subrect_atlas ) )
+
+		material_aspect = 1.0
+		try:
+			d = list( context.scene.subrect_atlas.dimensions )			
+			if d[0] < d[1] and d[0] < d[2]:
+				material_aspect = d[1] / d[2]
+			elif d[1] < d[0] and d[1] < d[2]:
+				material_aspect = d[0] / d[2]
+			else:
+				material_aspect = d[0] / d[1]
+		except ZeroDivisionError:
+			pass
+
+		h.applymaterialaspect( material_aspect )
+
+		hotspots = {}
+		with rmmesh as rmmesh:
+			rmmesh.readonly = True
+			for f in rmmesh.bmesh.faces:
+				if f.material_index not in hotspots:
+					hotspots[f.material_index] = h
+
+		return hotspots
+
 	
 	with rmmesh as rmmesh:
 		rmmesh.readonly = True
