@@ -74,7 +74,10 @@ class MESH_OT_extrudealongpath( bpy.types.Operator ):
 							boundary_edges.append( e )
 						continue
 					
-					vchain = boundary_edges.vert_chain()[0]
+					try:
+						vchain = boundary_edges.vert_chain()[0]
+					except IndexError:
+						continue
 					
 					profile = [ v.co.copy() for v in vchain ]	
 					

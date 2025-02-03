@@ -86,8 +86,10 @@ def arc_adjust( bm, scale ):
 def ComputePlane( chain ):
 	a, b = ScaleLine( chain[0].co.copy(), chain[1].co.copy(), 10000.0 )
 	c, d = ScaleLine( chain[-1].co.copy(), chain[-2].co.copy() , 10000.0 )
-	p0, p1 = mathutils.geometry.intersect_line_line( a, b, c, d )
-	plane_pos = ( p0 + p1 ) * 0.5
+	result = mathutils.geometry.intersect_line_line( a, b, c, d )
+	if result is None:
+		return None, None
+	plane_pos = ( result[0] + result[1] ) * 0.5
 	
 	start_vec = chain[1].co - plane_pos
 	start_vec.normalize()
@@ -103,6 +105,8 @@ def ComputePlane( chain ):
 
 def ComputeCircleCenter( chain ):
 	plane_pos, plane_normal = ComputePlane( chain )
+	if plane_pos is None:
+		return None, None
 	
 	start_vec = plane_pos - chain[1].co
 	start_vec.normalize()
@@ -241,7 +245,12 @@ class MESH_OT_arcadjust( bpy.types.Operator ):
 	
 	@classmethod
 	def poll( cls, context ):
-		return ( context.area.type == 'VIEW_3D' and len( context.editable_objects ) > 0 )
+		return ( context.area.type == 'VIEW_3D' and
+		  len( context.editable_objects ) > 0 and 
+		  context.object is not None and
+		  context.mode == 'EDIT_MESH' and
+		  context.object.type == 'MESH' and
+		  context.tool_settings.mesh_select_mode[:][1] )
 		
 	def execute( self, context ):
 		bpy.ops.object.mode_set( mode='OBJECT', toggle=False )
@@ -252,14 +261,14 @@ class MESH_OT_arcadjust( bpy.types.Operator ):
 			if self.radial:
 				success = radial_arc_adjust( bm, self.scale - 1.0 )
 				if not success:
-					self.report( { 'WARNING' }, 'Invalid edge selection!!!' )
+					self.report( { 'WARNING' }, 'Radial Arc Adjust failed!!!' )
 					bpy.ops.object.mode_set( mode='EDIT', toggle=False )
 					bm.free()
 					continue
 			else:
 				result = arc_adjust( bm, self.scale )
 				if not result:
-					self.report( { 'WARNING' }, 'Invalid edge selection!!!' )
+					self.report( { 'WARNING' }, 'Arc Adjust failed!!!' )
 					bpy.ops.object.mode_set( mode='EDIT', toggle=False )
 					bm.free()
 					continue
@@ -290,22 +299,30 @@ class MESH_OT_arcadjust( bpy.types.Operator ):
 
 		return { 'RUNNING_MODAL' }
 	
-	def invoke( self, context, event ):
-		if context.object is None or context.mode == 'OBJECT':
-			return { 'CANCELLED' }
-		
-		if context.object.type != 'MESH':
-			return { 'CANCELLED' }
-
-		sel_mode = context.tool_settings.mesh_select_mode[:]
-		if not sel_mode[1]:
-			return { 'CANCELLED' }
+	def invoke( self, context, event ):		
+		includes_invalid_selection = False
 
 		for rmmesh in rmlib.iter_edit_meshes( context ):
 			with rmmesh as rmmesh:
+
+				edges = rmlib.rmEdgeSet.from_selection( rmmesh )
+				chains = edges.chain()
+				for chain in chains:
+					if len( chain ) <= 2:
+						includes_invalid_selection = True
+						break
+					if chain[0][0] == chain[-1][-1]:
+						includes_invalid_selection = True
+						break
+
+
 				rmmesh.readme = True
 				self.meshList.append( rmmesh.mesh )
 				self.bmList.append( rmmesh.bmesh.copy() )
+
+		if includes_invalid_selection:
+			self.report( { 'WARNING' }, 'Includes invalid edge selection. Selected loops must not be closed ang be longer than 2 edges each.' )
+			return { 'CANCELLED' }
 				
 		context.window_manager.modal_handler_add( self )
 		return { 'RUNNING_MODAL' }
