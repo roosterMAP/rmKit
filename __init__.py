@@ -3,6 +3,9 @@ bl_info = {
 	"author": "Timothee Yeramian",
 	"location": "View3D > Sidebar",
 	"description": "Collection of Tools",
+    "category": "",
+    "blender": ( 3, 3, 1),
+    "warning": "",
 	"doc_url": "https://rmkit.readthedocs.io/en/latest/",
 }
 
