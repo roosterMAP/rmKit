@@ -157,7 +157,7 @@ def BBoxFromPoints( points ):
 	return bbmin, bbmax
 
 
-def FitToBBox( faces, initial_bbmin, initial_bbmax, uvlayer ):
+def FitToBBox( faces, initial_bbmin, initial_bbmax, uvlayer, uniform=False ):
 	final_uvcoords = []
 	for f in faces:
 		for l in f.loops:
@@ -189,6 +189,9 @@ def FitToBBox( faces, initial_bbmin, initial_bbmax, uvlayer ):
 	'''
 	scl_mat[0][0] = target_bounds_width / final_width
 	scl_mat[1][1] = target_bounds_height / final_height
+
+	if uniform:
+		scl_mat[1][1] = scl_mat[0][0]
 
 	mat = trans_mat @ scl_mat @ trans_mat_inv
 	for f in faces:
@@ -252,7 +255,6 @@ def GetBoundaryLoops( faces ):
 				bounary_loops.add( l )
 	return bounary_loops
 
-'''
 class RelaxVertex():
 	all_verts = []
 
@@ -334,7 +336,7 @@ def DoubleTriangleArea( p1, p2, p3 ):
 	return ( p1[0] * p2[1] - p1[1] * p2[0] ) + ( p2[0] * p3[1] - p2[1] * p3[0] ) + ( p3[0] * p1[1] - p3[1] * p1[0] )
 
 
-def lscm( faces, uvlayer ):
+def lscm( faces, uvlayer, axisidx ):
 	RelaxVertex.all_verts.clear()
 	for patch in lscm_patches( faces ):
 		#gather input 3dcoords, uvcoords, tri index mappings, and loops
@@ -349,16 +351,29 @@ def lscm( faces, uvlayer ):
 			for i in range( len( rlxPoly ) - 2 ):
 				tris += [ root_vert._idx, rlxPoly[i+1]._idx, rlxPoly[i+2]._idx ]
 
+		all_uv_coords = []
+		for rv in RelaxVertex.all_verts:
+			for l in rv._v.link_loops:
+				if l.face not in rv._polygons:
+					continue
+				else:
+					all_uv_coords.append( mathutils.Vector( l[uvlayer].uv.copy() ) )
+					break
+
 		pinned_indexes = []
-		pinned_uv_coords = []
+		pinned_uv_coords = []		
 		for i, rv in enumerate( RelaxVertex.all_verts ):
+			pinned_loop = False
 			for l in rv._v.link_loops:
 				if l.face not in rv._polygons:
 					continue
 				if l[uvlayer].pin_uv:
 					pinned_indexes.append( RelaxVertex.all_verts[i]._idx )
 					pinned_uv_coords.append( mathutils.Vector( l[uvlayer].uv.copy() ) )
+					pinned_loop = True
 					break
+			
+
 		if len( pinned_indexes ) < 2:
 			pinned_indexes.clear()
 			pinned_uv_coords.clear()
@@ -376,6 +391,9 @@ def lscm( faces, uvlayer ):
 		Mr_p = np.zeros( ( tcount, pinned_vcount ) )
 		Mi_p = np.zeros( ( tcount, pinned_vcount ) )
 		b = np.zeros( ( pinned_vcount * 2 ) )
+
+		constrained = np.zeros( ( vcount ) )
+		constrain_axis = 1
 		
 		#compute coefficients
 		for i in range( tcount ):
@@ -399,8 +417,7 @@ def lscm( faces, uvlayer ):
 			ws = []
 			for j in range( 3 ):
 				vec = proj_tri[j-1] - proj_tri[j-2]
-				w = vec / math.sqrt( a )
-				ws.append( w )
+				ws.append( vec * ( 1.0 / a ) )
 				
 			#build A (free) and B (pinned) block matrices as well as pinned uv vector ( b )
 			for j, vidx in enumerate( [ idx1, idx2, idx3 ] ):
@@ -419,21 +436,36 @@ def lscm( faces, uvlayer ):
 							pin_count += 1
 					Mr_f[i][vidx-pin_count] = ws[j][0]
 					Mi_f[i][vidx-pin_count] = ws[j][1]
+
+					constrained[vidx-pin_count] = all_uv_coords[vidx][constrain_axis]
 					
-		A = np.block( [
-			[ Mr_f, Mi_f * -1.0 ],
-			[ Mi_f, Mr_f ] ] )
+		if constrain_axis == 0:
+			bi = b[pinned_vcount:]
+			r = Mr_p @ bi
+			arxr = Mr_f @ constrained
+			x = np.linalg.lstsq( Mi_f, -r + arxr, rcond=None )[0]
+
+		elif constrain_axis == 1:
+			br = b[:pinned_vcount]
+			r = Mr_p @ br
+			aixi = Mi_f @ constrained
+			x = np.linalg.lstsq( Mr_f, r + aixi, rcond=None )[0]
+
+		else:
+			A = np.block( [
+				[ Mr_f, Mi_f * -1.0 ],
+				[ Mi_f, Mr_f ] ] )
+				
+			B = np.block( [
+				[ Mr_p, Mi_p * -1.0 ],
+				[ Mi_p, Mr_p ] ] )
 			
-		B = np.block( [
-			[ Mr_p, Mi_p * -1.0 ],
-			[ Mi_p, Mr_p ] ] )
+			#compute r = -(B * b)
+			r = B @ b
+			r = r * -1.0
 			
-		#compute r = -(B * b)
-		r = B @ b
-		r = r * -1.0
-		
-		#solve for x inf Ax=b
-		x = np.linalg.lstsq( A, r, rcond=None )[0]
+			#solve for x inf Ax=b
+			x = np.linalg.lstsq( A, r, rcond=None )[0]
 
 		#assign new uv values
 		for vidx, v in enumerate( verts ):
@@ -445,8 +477,12 @@ def lscm( faces, uvlayer ):
 				continue
 			for l in verts[vidx].link_loops:
 				if l.face in RelaxVertex.all_verts[vidx]._polygons:
-					l[uvlayer].uv = mathutils.Vector( ( x[vidx-count], x[(vidx-count+vcount)] ) )
-'''
+					if constrain_axis == 0:
+						l[uvlayer].uv[1] = x[vidx-count]
+					elif constrain_axis == 1:
+						l[uvlayer].uv[0] = x[vidx-count]
+					else:
+						l[uvlayer].uv = mathutils.Vector( ( x[vidx-count], x[(vidx-count+vcount)] ) )
 
 def GetUnsyncUVVisibleFaces( rmmesh, sel_mode ):
 	visible_faces = rmlib.rmPolygonSet()
@@ -730,11 +766,111 @@ class MESH_OT_uvrectangularize( bpy.types.Operator ):
 						l[uvlayer].select_edge = True
 
 		return { 'FINISHED' }
+	
+
+class MESH_OT_lscm( bpy.types.Operator ):
+	"""Map the selection to a box."""
+	bl_idname = 'mesh.rm_lscm'
+	bl_label = 'LSCM'
+	bl_options = { 'UNDO' }
+
+	@classmethod
+	def poll( cls, context ):
+		return ( ( context.area.type == 'VIEW_3D' or context.area.type == 'IMAGE_EDITOR' ) and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
+				context.object.data.is_editmode )
+
+	def execute( self, context ):
+		rmmesh = rmlib.rmMesh.GetActive( context )
+		if rmmesh is None:
+			return { 'CANCELLED' }
+			
+		with rmmesh as rmmesh:
+			uvlayer = rmmesh.active_uv
+			clear_tags( rmmesh )
+
+			#get selection of faces
+			faces = rmlib.rmPolygonSet()
+			groups = []
+			override_corners = []
+			sel_sync = context.tool_settings.use_uv_select_sync
+			sel_mode = context.tool_settings.mesh_select_mode[:]
+			uv_sel_mode = context.tool_settings.uv_select_mode
+			if sel_sync or context.area.type == 'VIEW_3D':				
+				if sel_mode[2]:
+					faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+					groups = faces.group( use_seam=True )
+				else:
+					self.report( { 'ERROR' }, 'Must be in face mode.' )
+					return { 'CANCELLED' }
+			else:
+				if uv_sel_mode == 'VERTEX':
+					loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+					override_corners = loop_selection.border_loops()
+					if len( override_corners ) != 4:
+						self.report( { 'ERROR' }, 'Must have exactly 4 uvverts selected. All must be on the boundary of the same uvisland.' )
+						return { 'CANCELLED' }
+					vertgroups = loop_selection.group_vertices( element=True )
+					if len( vertgroups ) != 1:
+						self.report( { 'ERROR' }, 'Corner uvverts must all be members of the same uvisland.' )
+						return { 'CANCELLED' }
+					visible_faces = GetUnsyncUVVisibleFaces( rmmesh, sel_mode )
+					for l in vertgroups[0]:
+						if l.face in visible_faces and l.face not in faces:
+							faces.append( l.face )
+					groups = [faces]
+				elif uv_sel_mode == 'FACE':
+					visible_faces = GetUnsyncUVVisibleFaces( rmmesh, sel_mode )
+					loop_selection = rmlib.rmUVLoopSet.from_selection( rmmesh=rmmesh, uvlayer=uvlayer )
+					for l in loop_selection:
+						if l.face in visible_faces and l.face not in faces:
+							faces.append( l.face )
+					groups = faces.group( use_seam=True )
+				else:
+					self.report( { 'ERROR' }, 'Must be in uvvert or uvface mode.' )
+					return { 'CANCELLED' }
+
+			if len( faces ) < 1:
+				self.report({'ERROR'}, 'Could not find more than one face to operate on!!!' )
+				return { 'CANCELLED' }
+			
+			#clear loop selection
+			if sel_sync or context.area.type == 'VIEW_3D':
+				for f in faces:
+					f.select = False
+			else:
+				for f in rmmesh.bmesh.faces:
+					for l in f.loops:
+						l[uvlayer].select = False
+						l[uvlayer].select_edge = False
+
+			for group in groups:
+				clear_tags( rmmesh )
+				
+				#unpin boundary loops so they dont interfere and store initial bbox
+				initial_uvcoords = []
+				for f in group:
+					for l in f.loops:
+						initial_uvcoords.append( l[uvlayer].uv.copy() )
+				initial_bbmin, initial_bbmax = BBoxFromPoints( initial_uvcoords )
+
+				lscm( group, uvlayer, 2 )
+
+				#if context.area.type == 'VIEW_3D':
+				#	FitToBBox( group, mathutils.Vector( ( 0.0, 0.0 ) ), mathutils.Vector( ( 1.0, 1.0 ) ), uvlayer, True )
+				#else:
+				#	FitToBBox( group, initial_bbmin, initial_bbmax, uvlayer, True )
+
+			clear_tags( rmmesh )
+
+		return { 'FINISHED' }
 
 
 def register():
 	bpy.utils.register_class( MESH_OT_uvrectangularize )
-	
+	bpy.utils.register_class( MESH_OT_lscm )
 
 def unregister():
 	bpy.utils.unregister_class( MESH_OT_uvrectangularize )
+	bpy.utils.unregister_class( MESH_OT_lscm )
