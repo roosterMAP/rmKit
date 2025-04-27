@@ -71,16 +71,10 @@ class MESH_OT_thicken( bpy.types.Operator ):
 		default=False
 	)
 
-	def __init__( self ):
-		self.bmesh = None
-		self.prev_delta = 0
-
-	def __del__( self ):
-		try:
+	def cancel( self, context ):
+		if hasattr( self, 'bmesh' ):
 			if self.bmesh is not None:
 				self.bmesh.free()
-		except AttributeError:
-			pass
 	
 	@classmethod
 	def poll( cls, context ):
@@ -156,6 +150,9 @@ class MESH_OT_thicken( bpy.types.Operator ):
 		return { 'RUNNING_MODAL' }
 	
 	def invoke( self, context, event ):
+		self.bmesh = None
+		self.prev_delta = 0
+
 		if context.object is None or context.mode == 'OBJECT':
 			return { 'CANCELLED' }
 		

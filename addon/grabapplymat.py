@@ -10,10 +10,6 @@ class MESH_OT_grabapplymat( bpy.types.Operator ):
 	bl_idname = 'mesh.rm_grabapplymat'
 	bl_label = 'GrabApplyMat (MOS)'
 	bl_options = { 'UNDO' } #tell blender that we support the undo/redo pannel
-
-	def __init__( self ):
-		self.m_x = 0
-		self.m_y = 0
 	
 	@classmethod
 	def poll( cls, context ):
@@ -210,10 +206,6 @@ class MESH_OT_grabapplyvcolor( bpy.types.Operator ):
 	bl_idname = 'mesh.rm_grabapplyvcolor'
 	bl_label = 'GrabApplyVertColor (MOS)'
 	bl_options = { 'UNDO' } #tell blender that we support the undo/redo pannel
-
-	def __init__( self ):
-		self.m_x = 0
-		self.m_y = 0
 	
 	@classmethod
 	def poll( cls, context ):
@@ -312,7 +304,7 @@ class MESH_OT_grabapplyvcolor( bpy.types.Operator ):
 		
 		return { 'CANCELLED' }
 
-	def invoke( self, context, event ):
+	def invoke( self, context, event ):		
 		self.m_x, self.m_y = event.mouse_region_x, event.mouse_region_y
 		return self.execute( context )
 

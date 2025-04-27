@@ -465,10 +465,7 @@ class MESH_OT_Linear_Deformer_UV( bpy.types.Operator ):
 				context.mode == 'EDIT_MESH' and
 				context.active_object is not None and
 				context.active_object.type == 'MESH' and
-				context.object.data.is_editmode )
-
-	def __init__( self ):
-		self.m_work_loop_data = []
+				context.object.data.is_editmode )		
 		
 	def InitWorkLoops( self, loops, uvlayer ):
 		self.m_work_loop_data.clear()
@@ -482,6 +479,8 @@ class MESH_OT_Linear_Deformer_UV( bpy.types.Operator ):
 			self.m_work_loop_data[i] = ( ( self.m_work_loop_data[i][APPLY_VERT_ID], self.m_work_loop_data[i][APPLY_VERT_WEIGHT], uv ) )
 
 	def invoke( self, context, event ):
+		self.m_work_loop_data = []
+
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		if rmmesh is None:
 			self.report( { 'WARNING' }, 'Active mesh not found' )

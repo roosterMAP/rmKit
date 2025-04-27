@@ -727,18 +727,6 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 
 	matname: bpy.props.StringProperty( name='Name' )
 
-	def __init__( self ):
-		self.__save_thumb = []
-		self.__trim_count = 0
-		self.__pcol = bpy.utils.previews.new()
-		self.__pcol.new( 'save_hotspot_thumb' )
-
-	def __del__( self ):
-		try:
-			self.__pcol.remove()
-		except AttributeError:
-			pass
-
 	@classmethod
 	def poll( cls, context ):
 		return ( context.active_object is not None and
@@ -757,6 +745,11 @@ class OBJECT_OT_savehotspot( bpy.types.Operator ):
 		self.layout.label( text='note: trim rects will have a very red hue in the thumbnail.' )
 
 	def invoke(self, context, event):
+		self.__save_thumb = []
+		self.__trim_count = 0
+		self.__pcol = bpy.utils.previews.new()
+		self.__pcol.new( 'save_hotspot_thumb' )
+
 		rmmesh = rmlib.rmMesh.GetActive( context )
 		with rmmesh as rmmesh:
 			rmmesh.readonly = True
@@ -915,9 +908,6 @@ class MESH_OT_grabapplyuvbounds( bpy.types.Operator ):
 	bl_label = 'GrabApplyUVBounds (MOS)'
 	bl_options = { 'UNDO' }
 
-	def __init__( self ):
-		self.mos = ( 0.0, 0.0 )
-
 	@classmethod
 	def poll( cls, context ):
 		return ( context.area.type == 'VIEW_3D' and
@@ -983,9 +973,6 @@ class MESH_OT_moshotspot( bpy.types.Operator ):
 	bl_idname = 'mesh.moshotspot'
 	bl_label = 'Hotspot (MOS)'
 	bl_options = { 'UNDO' }
-
-	def __init__( self ):
-		self.mos_uv = ( 0.0, 0.0 )
 
 	@classmethod
 	def poll( cls, context ):
@@ -1286,17 +1273,10 @@ class MESH_OT_uvaspectscale( bpy.types.Operator ):
 		default=0.0
 	)
 
-	def __init__( self ):
-		self.bmesh = None
-		self.prev_delta = 0
-		self.shift_sensitivity = False
-
-	def __del__( self ):
-		try:
+	def cancel( self, context ):
+		if hasattr( self, 'bmesh' ):
 			if self.bmesh is not None:
 				self.bmesh.free()
-		except AttributeError:
-			pass
 	
 	@classmethod
 	def poll( cls, context ):
@@ -1388,6 +1368,10 @@ class MESH_OT_uvaspectscale( bpy.types.Operator ):
 		return { 'RUNNING_MODAL' }
 	
 	def invoke( self, context, event ):
+		self.bmesh = None
+		self.prev_delta = 0
+		self.shift_sensitivity = False
+
 		if context.object is None or context.mode == 'OBJECT':
 			return { 'CANCELLED' }
 		

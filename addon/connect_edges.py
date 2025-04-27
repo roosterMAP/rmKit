@@ -497,23 +497,6 @@ class MESH_OT_connect_edge( bpy.types.Operator ):
 		min=0.0,
 		max=2.0
 	)
-
-	def __init__( self ):
-		"""
-		Declare cached bmesh member
-		"""
-		self.bmesh = None
-
-	def __del__( self ):
-		"""
-		Clear static members and free memory of cached bmesh
-		"""
-		CEPoly.ClearStaticMembers()
-		try:
-			if self.bmesh is not None:
-				self.bmesh.free()
-		except AttributeError:
-			pass
 	
 	@classmethod
 	def poll( cls, context ):
@@ -541,6 +524,14 @@ class MESH_OT_connect_edge( bpy.types.Operator ):
 		for v in CEPoly.ALLCEVerts:
 			v.vert = bm.verts[v.index]
 		return bm
+
+	def cancel( self, context ):
+		"""
+		Clear static members and free memory of cached bmesh
+		"""
+		CEPoly.ClearStaticMembers()
+		if hasattr(self, "bmesh"):
+			self.bmesh.free()
 		
 	def execute( self, context ):
 		"""
@@ -632,6 +623,8 @@ class MESH_OT_connect_edge( bpy.types.Operator ):
 			context (bpy.types.context): Blender context for operation
 			event (bpy.types.event): Event input for operation
 		"""
+
+		self.bmesh = None
 
 		#ensure correct state
 		if context.object is None or context.mode == 'OBJECT':

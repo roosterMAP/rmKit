@@ -53,22 +53,14 @@ class MESH_OT_createtube( bpy.types.Operator ):
 		max=180.0
 	)
 
-	def __init__( self ):
-		self.bmesh = None
-		self._tubes = []
-
-	def __del__( self ):
-		try:
+	def cancel( self, context ):
+		if hasattr( self, 'bmesh' ):
 			if self.bmesh is not None:
 				self.bmesh.free()
 				self.bmesh = None
-		except AttributeError:
-			pass
 
-		try:
+		if hasattr( self, '_tubes' ):
 			self._tubes.clear()
-		except AttributeError:
-			pass		
 	
 	@classmethod
 	def poll( cls, context ):
@@ -196,6 +188,9 @@ class MESH_OT_createtube( bpy.types.Operator ):
 		return { 'RUNNING_MODAL' }
 	
 	def invoke( self, context, event ):
+		self.bmesh = None
+		self._tubes = []
+
 		self.radius = 0.001
 		sel_mode = context.tool_settings.mesh_select_mode[:]
 

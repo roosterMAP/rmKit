@@ -228,20 +228,6 @@ class MESH_OT_arcadjust( bpy.types.Operator ):
 		name='Radial',
 		default=False
 	)
-
-	def __init__( self ):
-		self.meshList = []
-		self.bmList = []
-
-	def __del__( self ):
-		try:
-			if len( self.bmList ) != 0:
-				for bm in self.bmList:
-					bm.free()
-			self.meshList.clear()
-			self.bmList.clear()
-		except AttributeError:
-			pass
 	
 	@classmethod
 	def poll( cls, context ):
@@ -251,6 +237,17 @@ class MESH_OT_arcadjust( bpy.types.Operator ):
 		  context.mode == 'EDIT_MESH' and
 		  context.object.type == 'MESH' and
 		  context.tool_settings.mesh_select_mode[:][1] )
+
+	def cleanup( self ):
+			if hasattr(self, "bmList"):
+				for bm in self.bmList:
+					bm.free()
+			self.bmList.clear()
+			if hasattr(self, "meshList"):
+				self.meshList.clear()
+
+	def cancel( self, context ):
+		self.cleanup()
 		
 	def execute( self, context ):
 		bpy.ops.object.mode_set( mode='OBJECT', toggle=False )
@@ -299,7 +296,10 @@ class MESH_OT_arcadjust( bpy.types.Operator ):
 
 		return { 'RUNNING_MODAL' }
 	
-	def invoke( self, context, event ):		
+	def invoke( self, context, event ):
+		self.meshList = []
+		self.bmList = []
+
 		includes_invalid_selection = False
 
 		for rmmesh in rmlib.iter_edit_meshes( context ):

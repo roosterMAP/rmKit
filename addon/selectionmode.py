@@ -250,7 +250,10 @@ class MESH_OT_continuous( bpy.types.Operator ):
 		default='set'
 	)
 
-	def __init__( self ):
+	def __init__( self, *args, **kwargs ):
+		if bpy.app.version >= ( 4, 4, 0 ):
+			super().__init__( *args, **kwargs )
+
 		self.mos_elem = None
 
 	@classmethod
