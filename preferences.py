@@ -179,9 +179,6 @@ class RMKITPreferences( bpy.types.AddonPreferences ):
 		layout = self.layout
 
 		box = layout.box()
-		box.prop( self, 'export_manager_basepath', text='Export Manager Path' )
-
-		box = layout.box()
 
 		row_view3d = box.row()
 		row_view3d.prop( self, 'v3d_checkbox', icon='TRIA_DOWN' if self.v3d_checkbox else 'TRIA_RIGHT', icon_only=True, emboss=False )

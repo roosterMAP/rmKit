@@ -106,26 +106,16 @@ class rmKitPannel_parent( bpy.types.Panel ):
 		layout.operator(RMLIB_OT_DownloadPrompt.bl_idname, text=button_label) #Add the button with the dynamic label
 
 
-def operator_exists(idname):
-	names = idname.split(".")
-	a = bpy.ops
-	for prop in names:
-		a = getattr(a, prop)
-		
-	try:
-		name = a.__repr__()
-	except Exception as e:
-		print(e)
-		return False
-
-	return True
-
-
 def register():
-	if not operator_exists( RMLIB_OT_RestartPrompt.bl_idname ):
+	try:
 		bpy.utils.register_class(RMLIB_OT_RestartPrompt)
-	if not operator_exists( RMLIB_OT_DownloadPrompt.bl_idname ):	
+	except ValueError:
+		pass #registered by another rm addon
+	
+	try:
 		bpy.utils.register_class(RMLIB_OT_DownloadPrompt)
+	except ValueError:
+		pass #registered by another rm addon
 
 	bpy.utils.register_class( rmKitPannel_parent )
 
@@ -166,7 +156,6 @@ def register():
 		quickboolean,
 		naming,
 		linear_deformer,
-		exportmanager,
 	)
 	
 	polypatch.register()
@@ -197,20 +186,56 @@ def register():
 	dimensions.register()
 	quickboolean.register()
 	preferences.register()
-	exportmanager.register()
 	naming.register()
 
 def unregister():
-	if operator_exists( RMLIB_OT_RestartPrompt.bl_idname ):
+	try:
 		bpy.utils.unregister_class(RMLIB_OT_RestartPrompt)
-	if operator_exists( RMLIB_OT_DownloadPrompt.bl_idname ):
+	except ValueError:
+		pass #registered by another rm addon
+	
+	try:
 		bpy.utils.unregister_class(RMLIB_OT_DownloadPrompt)
+	except ValueError:
+		pass #registered by another rm addon
 
 	bpy.utils.unregister_class( rmKitPannel_parent )
 
 	global RMLIB
 	if not RMLIB:
 		return
+	
+	from . import (
+		polypatch,
+		reduce,
+		context_bevel,
+		loopring,
+		move_to_furthest,
+		knifescreen,
+		extrudealongpath,
+		connect_edges,
+		arcadjust,
+		targetweld,
+		createtube,
+		vnormals,
+		copypaste,
+		cursor,
+		workplane,
+		screenreflect,
+		selectionmode,
+		radial_align,
+		edgeweight,
+		grabapplymat,
+		extend,
+		quickmaterial,
+		thicken,
+		panel,
+		dimensions,
+		preferences,
+		quickboolean,
+		naming,
+		linear_deformer,
+	)
 		
 	polypatch.unregister()
 	reduce.unregister()
@@ -240,5 +265,4 @@ def unregister():
 	dimensions.unregister()
 	quickboolean.unregister()
 	preferences.unregister()
-	exportmanager.unregister()
 	naming.unregister()
