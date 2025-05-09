@@ -110,33 +110,33 @@ class VIEW3D_MT_PIE_setedgeweight_crease( bpy.types.Menu ):
 		
 		op_w = pie.operator( MESH_OT_setedgeweight.bl_idname, text='100%' )
 		op_w.weight = 1.0
-		op_w.weight_type = context.object.ew_weight_type_crease
+		op_w.weight_type = context.scene.rmkit_props.edgeweightprops.ew_weight_type_crease
 		
 		op_e = pie.operator( MESH_OT_setedgeweight.bl_idname, text='30%' )
 		op_e.weight = 0.3
-		op_e.weight_type = context.object.ew_weight_type_crease
+		op_e.weight_type = context.scene.rmkit_props.edgeweightprops.ew_weight_type_crease
 		
 		op_s = pie.operator( MESH_OT_setedgeweight.bl_idname, text='60%' )
 		op_s.weight = 0.6
-		op_s.weight_type = context.object.ew_weight_type_crease
+		op_s.weight_type = context.scene.rmkit_props.edgeweightprops.ew_weight_type_crease
 		
 		op_n = pie.operator( MESH_OT_setedgeweight.bl_idname, text='0%' )
 		op_n.weight = 0.0
-		op_n.weight_type = context.object.ew_weight_type_crease
+		op_n.weight_type = context.scene.rmkit_props.edgeweightprops.ew_weight_type_crease
 
 		pie.operator( 'wm.call_menu_pie', text='Bevel Weight' ).name = 'VIEW3D_MT_PIE_setedgeweight_bevel'
 
 		op_ne = pie.operator( MESH_OT_setedgeweight.bl_idname, text='20%' )
 		op_ne.weight = 0.2
-		op_ne.weight_type = context.object.ew_weight_type_crease
+		op_ne.weight_type = context.scene.rmkit_props.edgeweightprops.ew_weight_type_crease
 
 		op_sw = pie.operator( MESH_OT_setedgeweight.bl_idname, text='80%' )
 		op_sw.weight = 0.8
-		op_sw.weight_type = context.object.ew_weight_type_crease
+		op_sw.weight_type = context.scene.rmkit_props.edgeweightprops.ew_weight_type_crease
 
 		op_se = pie.operator( MESH_OT_setedgeweight.bl_idname, text='40%' )
 		op_se.weight = 0.4
-		op_se.weight_type = context.object.ew_weight_type_crease	
+		op_se.weight_type = context.scene.rmkit_props.edgeweightprops.ew_weight_type_crease	
 
 
 class VIEW3D_MT_PIE_setedgeweight_bevel( bpy.types.Menu ):
@@ -151,58 +151,42 @@ class VIEW3D_MT_PIE_setedgeweight_bevel( bpy.types.Menu ):
 		
 		op_w = pie.operator( MESH_OT_setedgeweight.bl_idname, text='100%' )
 		op_w.weight = 1.0
-		op_w.weight_type = context.object.ew_weight_type_bevel_weight
+		op_w.weight_type = context.scene.rmkit_props.edgeweightprops.ew_weight_type_bevel_weight
 		
 		op_e = pie.operator( MESH_OT_setedgeweight.bl_idname, text='30%' )
 		op_e.weight = 0.3
-		op_e.weight_type = context.object.ew_weight_type_bevel_weight
+		op_e.weight_type = context.scene.rmkit_props.edgeweightprops.ew_weight_type_bevel_weight
 		
 		op_s = pie.operator( MESH_OT_setedgeweight.bl_idname, text='60%' )
 		op_s.weight = 0.6
-		op_s.weight_type = context.object.ew_weight_type_bevel_weight
+		op_s.weight_type = context.scene.rmkit_props.edgeweightprops.ew_weight_type_bevel_weight
 		
 		op_n = pie.operator( MESH_OT_setedgeweight.bl_idname, text='0%' )
 		op_n.weight = 0.0
-		op_n.weight_type = context.object.ew_weight_type_bevel_weight
+		op_n.weight_type = context.scene.rmkit_props.edgeweightprops.ew_weight_type_bevel_weight
 
 		pie.operator( 'wm.call_menu_pie', text='Crease' ).name = 'VIEW3D_MT_PIE_setedgeweight_crease'
 
 		op_ne = pie.operator( MESH_OT_setedgeweight.bl_idname, text='20%' )
 		op_ne.weight = 0.2
-		op_ne.weight_type = context.object.ew_weight_type_bevel_weight
+		op_ne.weight_type = context.scene.rmkit_props.edgeweightprops.ew_weight_type_bevel_weight
 
 		op_sw = pie.operator( MESH_OT_setedgeweight.bl_idname, text='80%' )
 		op_sw.weight = 0.8
-		op_sw.weight_type = context.object.ew_weight_type_bevel_weight
+		op_sw.weight_type = context.scene.rmkit_props.edgeweightprops.ew_weight_type_bevel_weight
 
 		op_se = pie.operator( MESH_OT_setedgeweight.bl_idname, text='40%' )
 		op_se.weight = 0.4
-		op_se.weight_type = context.object.ew_weight_type_bevel_weight
+		op_se.weight_type = context.scene.rmkit_props.edgeweightprops.ew_weight_type_bevel_weight
 
 
 def register():
 	bpy.utils.register_class( MESH_OT_setedgeweight )
 	bpy.utils.register_class( VIEW3D_MT_PIE_setedgeweight_crease )
 	bpy.utils.register_class( VIEW3D_MT_PIE_setedgeweight_bevel )
-	bpy.types.Object.ew_weight_type_crease = bpy.props.EnumProperty(
-		items=[ ( "crease", "Crease", "", 1 ),
-				( "bevel_weight", "Bevel Weight", "", 2 ),
-				( "sharp", "Sharp", "", 3 ) ],
-		name="Weight Type",
-		default="crease"
-	)
-	bpy.types.Object.ew_weight_type_bevel_weight = bpy.props.EnumProperty(
-		items=[ ( "crease", "Crease", "", 1 ),
-				( "bevel_weight", "Bevel Weight", "", 2 ),
-				( "sharp", "Sharp", "", 3 ) ],
-		name="Weight Type",
-		default="bevel_weight"
-	)
 
 
 def unregister():
 	bpy.utils.unregister_class( MESH_OT_setedgeweight )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_setedgeweight_crease )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_setedgeweight_bevel )
-	del bpy.types.Object.ew_weight_type_crease
-	del bpy.types.Object.ew_weight_type_bevel_weight

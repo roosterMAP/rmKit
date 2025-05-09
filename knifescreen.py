@@ -154,31 +154,31 @@ class VIEW3D_MT_knifescreen( bpy.types.Menu ):
 		if sel_mode[0]:
 			op_vhg = layout.operator( MESH_OT_knifescreen.bl_idname, text='Vertex :: Grid :: Horizontal' )
 			op_vhg.str_dir = 'horizontal'
-			op_vhg.alignment = context.object.ks_alignment_grid
+			op_vhg.alignment = context.scene.rmkit_props.knifescreenprops.ks_alignment_grid
 
 			op_vht = layout.operator( MESH_OT_knifescreen.bl_idname, text='Vertex :: Screen :: Horizontal' )
 			op_vht.str_dir = 'horizontal'
-			op_vht.alignment = context.object.ks_alignment_screen
+			op_vht.alignment = context.scene.rmkit_props.knifescreenprops.ks_alignment_screen
 			
 			layout.separator()
 
 			op_vvg = layout.operator( MESH_OT_knifescreen.bl_idname, text='Vertex :: Grid :: Vertical' )
 			op_vvg.str_dir = 'vertical'
-			op_vvg.alignment = context.object.ks_alignment_grid
+			op_vvg.alignment = context.scene.rmkit_props.knifescreenprops.ks_alignment_grid
 			
 			op_vvt = layout.operator( MESH_OT_knifescreen.bl_idname, text='Vertex :: Screen :: Vertical' )
 			op_vvt.str_dir = 'vertical'
-			op_vvt.alignment = context.object.ks_alignment_screen
+			op_vvt.alignment = context.scene.rmkit_props.knifescreenprops.ks_alignment_screen
 					
 		elif sel_mode[1]:
 			op_et = layout.operator( MESH_OT_knifescreen.bl_idname, text='Edge :: Topo' )
-			op_et.alignment = context.object.ks_alignment_topo
+			op_et.alignment = context.scene.rmkit_props.knifescreenprops.ks_alignment_topo
 			
 			op_eg = layout.operator( MESH_OT_knifescreen.bl_idname, text='Edge :: Grid' )
-			op_eg.alignment = context.object.ks_alignment_grid
+			op_eg.alignment = context.scene.rmkit_props.knifescreenprops.ks_alignment_grid
 			
 			op_eg = layout.operator( MESH_OT_knifescreen.bl_idname, text='Edge :: Screen' )
-			op_eg.alignment = context.object.ks_alignment_screen
+			op_eg.alignment = context.scene.rmkit_props.knifescreenprops.ks_alignment_screen
 
 
 class MESH_OT_knifescreenmenu( bpy.types.Operator ):
@@ -214,33 +214,9 @@ def register():
 	bpy.utils.register_class( MESH_OT_knifescreen )
 	bpy.utils.register_class( VIEW3D_MT_knifescreen )
 	bpy.utils.register_class( MESH_OT_knifescreenmenu )
-	bpy.types.Object.ks_alignment_topo = bpy.props.EnumProperty(
-		items=[ ( "topology", "Topology", "", 1 ),
-				( "grid", "Grid", "", 2 ),
-				( "screen", "Screen", "", 3 ) ],
-		name="Alignment",
-		default="topology"
-	)
-	bpy.types.Object.ks_alignment_grid = bpy.props.EnumProperty(
-		items=[ ( "topology", "Topology", "", 1 ),
-				( "grid", "Grid", "", 2 ),
-				( "screen", "Screen", "", 3 ) ],
-		name="Alignment",
-		default="grid"
-	)
-	bpy.types.Object.ks_alignment_screen = bpy.props.EnumProperty(
-		items=[ ( "topology", "Topology", "", 1 ),
-				( "grid", "Grid", "", 2 ),
-				( "screen", "Screen", "", 3 ) ],
-		name="Alignment",
-		default="screen"
-	)
 	
 	
 def unregister():
 	bpy.utils.unregister_class( MESH_OT_knifescreen )
 	bpy.utils.unregister_class( VIEW3D_MT_knifescreen )
 	bpy.utils.unregister_class( MESH_OT_knifescreenmenu )
-	del bpy.types.Object.ks_alignment_topo
-	del bpy.types.Object.ks_alignment_grid
-	del bpy.types.Object.ks_alignment_screen

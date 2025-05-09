@@ -175,19 +175,19 @@ class VIEW3D_MT_PIE_screenreflect( bpy.types.Menu ):
 		
 		op_l = pie.operator( MESH_OT_screenreflect.bl_idname, text='Left' )
 		op_l.str_dir = 'left'
-		op_l.mode = context.object.sr_0
+		op_l.mode = context.scene.rmkit_props.screenreflectprops.sr_0
 		
 		op_r = pie.operator( MESH_OT_screenreflect.bl_idname, text='Right' )
 		op_r.str_dir = 'right'
-		op_r.mode = context.object.sr_0
+		op_r.mode = context.scene.rmkit_props.screenreflectprops.sr_0
 		
 		op_d = pie.operator( MESH_OT_screenreflect.bl_idname, text='Down' )
 		op_d.str_dir = 'down'
-		op_d.mode = context.object.sr_0
+		op_d.mode = context.scene.rmkit_props.screenreflectprops.sr_0
 		
 		op_u = pie.operator( MESH_OT_screenreflect.bl_idname, text='Up' )
 		op_u.str_dir = 'up'
-		op_u.mode = context.object.sr_0
+		op_u.mode = context.scene.rmkit_props.screenreflectprops.sr_0
 		
 		pie.operator( 'view3d.snap_cursor_to_selected', text='Set Cursor' )
 
@@ -210,19 +210,19 @@ class VIEW3D_MT_PIE_screenreflect_slice( bpy.types.Menu ):
 		
 		op_l = pie.operator( MESH_OT_screenreflect.bl_idname, text='Left' )
 		op_l.str_dir = 'left'
-		op_l.mode = context.object.sr_1
+		op_l.mode = context.scene.rmkit_props.screenreflectprops.sr_1
 		
 		op_r = pie.operator( MESH_OT_screenreflect.bl_idname, text='Right' )
 		op_r.str_dir = 'right'
-		op_r.mode = context.object.sr_1
+		op_r.mode = context.scene.rmkit_props.screenreflectprops.sr_1
 		
 		op_d = pie.operator( MESH_OT_screenreflect.bl_idname, text='Down' )
 		op_d.str_dir = 'down'
-		op_d.mode = context.object.sr_1
+		op_d.mode = context.scene.rmkit_props.screenreflectprops.sr_1
 		
 		op_u = pie.operator( MESH_OT_screenreflect.bl_idname, text='Up' )
 		op_u.str_dir = 'up'
-		op_u.mode = context.object.sr_1
+		op_u.mode = context.scene.rmkit_props.screenreflectprops.sr_1
 
 
 class VIEW3D_MT_PIE_screenreflect_noslice( bpy.types.Menu ):
@@ -237,19 +237,19 @@ class VIEW3D_MT_PIE_screenreflect_noslice( bpy.types.Menu ):
 		
 		op_l = pie.operator( MESH_OT_screenreflect.bl_idname, text='Left' )
 		op_l.str_dir = 'left'
-		op_l.mode = context.object.sr_2
+		op_l.mode = context.scene.rmkit_props.screenreflectprops.sr_2
 		
 		op_r = pie.operator( MESH_OT_screenreflect.bl_idname, text='Right' )
 		op_r.str_dir = 'right'
-		op_r.mode = context.object.sr_2
+		op_r.mode = context.scene.rmkit_props.screenreflectprops.sr_2
 		
 		op_d = pie.operator( MESH_OT_screenreflect.bl_idname, text='Down' )
 		op_d.str_dir = 'down'
-		op_d.mode = context.object.sr_2
+		op_d.mode = context.scene.rmkit_props.screenreflectprops.sr_2
 		
 		op_u = pie.operator( MESH_OT_screenreflect.bl_idname, text='Up' )
 		op_u.str_dir = 'up'
-		op_u.mode = context.object.sr_2
+		op_u.mode = context.scene.rmkit_props.screenreflectprops.sr_2
 	
 	
 def register():
@@ -257,9 +257,6 @@ def register():
 	bpy.utils.register_class( VIEW3D_MT_PIE_screenreflect )
 	bpy.utils.register_class( VIEW3D_MT_PIE_screenreflect_slice )
 	bpy.utils.register_class( VIEW3D_MT_PIE_screenreflect_noslice )
-	bpy.types.Object.sr_0 = bpy.props.IntProperty( default=0 )
-	bpy.types.Object.sr_1 = bpy.props.IntProperty( default=1 )
-	bpy.types.Object.sr_2 = bpy.props.IntProperty( default=2 )
 	
 	
 def unregister():
@@ -267,6 +264,3 @@ def unregister():
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_screenreflect )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_screenreflect_slice )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_screenreflect_noslice )
-	del bpy.types.Object.sr_0
-	del bpy.types.Object.sr_1
-	del bpy.types.Object.sr_2

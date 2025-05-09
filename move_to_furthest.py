@@ -194,23 +194,23 @@ class VIEW3D_MT_PIE_movetofurthest( bpy.types.Menu ):
 		
 		op_l = pie.operator( 'mesh.rm_movetofurthest', text='Left' )
 		op_l.str_dir = 'left'
-		op_l.local = context.object.mtf_prop_off
-		op_l.constrain = context.object.mtf_prop_off
+		op_l.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
+		op_l.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
 		
 		op_r = pie.operator( 'mesh.rm_movetofurthest', text='Right' )
 		op_r.str_dir = 'right'
-		op_r.local = context.object.mtf_prop_off
-		op_r.constrain = context.object.mtf_prop_off
+		op_r.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
+		op_r.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
 		
 		op_d = pie.operator( 'mesh.rm_movetofurthest', text='Down' )
 		op_d.str_dir = 'down'
-		op_d.local = context.object.mtf_prop_off
-		op_d.constrain = context.object.mtf_prop_off
+		op_d.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
+		op_d.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
 		
 		op_u = pie.operator( 'mesh.rm_movetofurthest', text='Up' )
 		op_u.str_dir = 'up'
-		op_u.local = context.object.mtf_prop_off
-		op_u.constrain = context.object.mtf_prop_off
+		op_u.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
+		op_u.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
 		
 		pie.operator( 'wm.call_menu_pie', text='Con' ).name = 'VIEW3D_MT_PIE_movetofurthest_constrain'
 		
@@ -218,13 +218,13 @@ class VIEW3D_MT_PIE_movetofurthest( bpy.types.Menu ):
 		
 		op_h = pie.operator( 'mesh.rm_movetofurthest', text='Horizontal' )
 		op_h.str_dir = 'vertical'
-		op_h.local = context.object.mtf_prop_off
-		op_h.constrain = context.object.mtf_prop_off
+		op_h.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
+		op_h.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
 				
 		op_v = pie.operator( 'mesh.rm_movetofurthest', text='Vertical' )
 		op_v.str_dir = 'horizontal'
-		op_v.local = context.object.mtf_prop_off
-		op_v.constrain = context.object.mtf_prop_off
+		op_v.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
+		op_v.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
 		
 		
 class VIEW3D_MT_PIE_movetofurthest_local( bpy.types.Menu ):
@@ -238,23 +238,23 @@ class VIEW3D_MT_PIE_movetofurthest_local( bpy.types.Menu ):
 		pie = layout.menu_pie()
 		op_l = pie.operator( 'mesh.rm_movetofurthest', text='Left' )
 		op_l.str_dir = 'left'
-		op_l.local = context.object.mtf_prop_on
-		op_l.constrain = context.object.mtf_prop_off
+		op_l.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
+		op_l.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
 		
 		op_r = pie.operator( 'mesh.rm_movetofurthest', text='Right' )
 		op_r.str_dir = 'right'
-		op_r.local = context.object.mtf_prop_on
-		op_r.constrain = context.object.mtf_prop_off
+		op_r.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
+		op_r.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
 		
 		op_d = pie.operator( 'mesh.rm_movetofurthest', text='Down' )
 		op_d.str_dir = 'down'
-		op_d.local = context.object.mtf_prop_on
-		op_d.constrain = context.object.mtf_prop_off
+		op_d.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
+		op_d.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
 		
 		op_u = pie.operator( 'mesh.rm_movetofurthest', text='Up' )
 		op_u.str_dir = 'up'
-		op_u.local = context.object.mtf_prop_on
-		op_u.constrain = context.object.mtf_prop_off
+		op_u.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
+		op_u.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
 		
 		pie.operator( 'wm.call_menu_pie', text='Constrain' ).name = 'VIEW3D_MT_PIE_movetofurthest_both'
 		
@@ -262,13 +262,13 @@ class VIEW3D_MT_PIE_movetofurthest_local( bpy.types.Menu ):
 		
 		op_h = pie.operator( 'mesh.rm_movetofurthest', text='Horizontal' )
 		op_h.str_dir = 'vertical'
-		op_h.local = context.object.mtf_prop_on
-		op_h.constrain = context.object.mtf_prop_off
+		op_h.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
+		op_h.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
 				
 		op_v = pie.operator( 'mesh.rm_movetofurthest', text='Vertical' )
 		op_v.str_dir = 'horizontal'
-		op_v.local = context.object.mtf_prop_on
-		op_v.constrain = context.object.mtf_prop_off
+		op_v.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
+		op_v.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
 		
 	
 class VIEW3D_MT_PIE_movetofurthest_constrain( bpy.types.Menu ):
@@ -282,23 +282,23 @@ class VIEW3D_MT_PIE_movetofurthest_constrain( bpy.types.Menu ):
 		pie = layout.menu_pie()
 		op_l = pie.operator( 'mesh.rm_movetofurthest', text='Left' )
 		op_l.str_dir = 'left'
-		op_l.local = context.object.mtf_prop_off
-		op_l.constrain = context.object.mtf_prop_on
+		op_l.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
+		op_l.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
 		
 		op_r = pie.operator( 'mesh.rm_movetofurthest', text='Right' )
 		op_r.str_dir = 'right'
-		op_r.local = context.object.mtf_prop_off
-		op_r.constrain = context.object.mtf_prop_on
+		op_r.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
+		op_r.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
 		
 		op_d = pie.operator( 'mesh.rm_movetofurthest', text='Down' )
 		op_d.str_dir = 'down'
-		op_d.local = context.object.mtf_prop_off
-		op_d.constrain = context.object.mtf_prop_on
+		op_d.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
+		op_d.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
 		
 		op_u = pie.operator( 'mesh.rm_movetofurthest', text='Up' )
 		op_u.str_dir = 'up'
-		op_u.local = context.object.mtf_prop_off
-		op_u.constrain = context.object.mtf_prop_on
+		op_u.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
+		op_u.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
 		
 		pie.separator()
 		
@@ -306,13 +306,13 @@ class VIEW3D_MT_PIE_movetofurthest_constrain( bpy.types.Menu ):
 		
 		op_h = pie.operator( 'mesh.rm_movetofurthest', text='Horizontal' )
 		op_h.str_dir = 'vertical'
-		op_h.local = context.object.mtf_prop_off
-		op_h.constrain = context.object.mtf_prop_on
+		op_h.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
+		op_h.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
 				
 		op_v = pie.operator( 'mesh.rm_movetofurthest', text='Vertical' )
 		op_v.str_dir = 'horizontal'
-		op_v.local = context.object.mtf_prop_off
-		op_v.constrain = context.object.mtf_prop_on
+		op_v.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_off
+		op_v.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
 		
 		
 class VIEW3D_MT_PIE_movetofurthest_both( bpy.types.Menu ):
@@ -326,23 +326,23 @@ class VIEW3D_MT_PIE_movetofurthest_both( bpy.types.Menu ):
 		pie = layout.menu_pie()
 		op_l = pie.operator( 'mesh.rm_movetofurthest', text='Left' )
 		op_l.str_dir = 'left'
-		op_l.local = context.object.mtf_prop_on
-		op_l.constrain = context.object.mtf_prop_on
+		op_l.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
+		op_l.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
 		
 		op_r = pie.operator( 'mesh.rm_movetofurthest', text='Right' )
 		op_r.str_dir = 'right'
-		op_r.local = context.object.mtf_prop_on
-		op_r.constrain = context.object.mtf_prop_on
+		op_r.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
+		op_r.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
 		
 		op_d = pie.operator( 'mesh.rm_movetofurthest', text='Down' )
 		op_d.str_dir = 'down'
-		op_d.local = context.object.mtf_prop_on
-		op_d.constrain = context.object.mtf_prop_on
+		op_d.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
+		op_d.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
 		
 		op_u = pie.operator( 'mesh.rm_movetofurthest', text='Up' )
 		op_u.str_dir = 'up'
-		op_u.local = context.object.mtf_prop_on
-		op_u.constrain = context.object.mtf_prop_on
+		op_u.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
+		op_u.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
 		
 		pie.separator()
 		
@@ -350,13 +350,13 @@ class VIEW3D_MT_PIE_movetofurthest_both( bpy.types.Menu ):
 		
 		op_h = pie.operator( 'mesh.rm_movetofurthest', text='Horizontal' )
 		op_h.str_dir = 'vertical'
-		op_h.local = context.object.mtf_prop_on
-		op_h.constrain = context.object.mtf_prop_on
+		op_h.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
+		op_h.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
 				
 		op_v = pie.operator( 'mesh.rm_movetofurthest', text='Vertical' )
 		op_v.str_dir = 'horizontal'
-		op_v.local = context.object.mtf_prop_on
-		op_v.constrain = context.object.mtf_prop_on
+		op_v.local = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
+		op_v.constrain = context.scene.rmkit_props.movetofurthestprops.mtf_prop_on
 
 
 def register():
@@ -365,8 +365,6 @@ def register():
 	bpy.utils.register_class( VIEW3D_MT_PIE_movetofurthest_local )
 	bpy.utils.register_class( VIEW3D_MT_PIE_movetofurthest_constrain )
 	bpy.utils.register_class( VIEW3D_MT_PIE_movetofurthest_both )
-	bpy.types.Object.mtf_prop_on = bpy.props.BoolProperty( default=True	)
-	bpy.types.Object.mtf_prop_off = bpy.props.BoolProperty( default=False )	
 	
 
 def unregister():
@@ -375,5 +373,3 @@ def unregister():
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_movetofurthest_local )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_movetofurthest_constrain )
 	bpy.utils.unregister_class( VIEW3D_MT_PIE_movetofurthest_both )
-	del bpy.types.Object.mtf_prop_on
-	del bpy.types.Object.mtf_prop_off

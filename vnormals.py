@@ -204,25 +204,6 @@ class MESH_OT_selectvnormselset( bpy.types.Operator ):
 		return { 'FINISHED' }
 
 
-class MESH_OT_applyall( bpy.types.Operator ):
-	"""Generated Split Normals based on face membership to all selection sets."""
-	bl_idname = 'mesh.rm_applyall'
-	bl_label = 'Apply All'
-	bl_options = { 'UNDO' } #tell blender that we support the undo/redo pannel
-	
-	@classmethod
-	def poll( cls, context ):
-		return ( context.area.type == 'VIEW_3D' and
-				context.active_object is not None and
-				context.active_object.type == 'MESH' and
-				context.object.data.is_editmode )
-		
-	def execute( self, context ):
-		bpy.ops.mesh.rm_applyvnorms( selset='SELSET1' )
-		bpy.ops.mesh.rm_applyvnorms( selset='SELSET2' )
-		bpy.ops.mesh.rm_applyvnorms( selset='SELSET3' )
-		return { 'FINISHED' }
-
 def GetSortedLoops( vert ):
 	vert_loops = list( vert.link_loops )
 	for l in vert_loops:
@@ -266,6 +247,69 @@ def GetSortedLoops( vert ):
 		l.tag = False
 
 	return sorted_loops
+
+def ApplyVNorms( context, selset ):
+	if context.object is None or context.mode == 'OBJECT':
+		return { 'CANCELLED' }
+	
+	if context.object.type != 'MESH':
+		return { 'CANCELLED' }
+
+	bpy.ops.object.mode_set( mode='OBJECT', toggle=False )
+
+	weighted = context.scene.rmkit_props.vn_selsetweighted
+	
+	#use rmmesh interface to init vnorms
+	vnorms = []
+	rmmesh = rmlib.rmMesh.GetActive( context )
+	with rmmesh as rmmesh:
+		rmmesh.readonly = True
+		
+		#get selset layer
+		str_layer = rmmesh.bmesh.faces.layers.string.get( CUSTOM_VNORM_LAYERNAME, None )
+		if str_layer is not None:
+			#set smoothing on mesh object to make custom vnorms visible
+			if bpy.app.version < (4,0,0):
+				rmmesh.mesh.use_auto_smooth = True
+				rmmesh.mesh.create_normals_split()
+			
+			vnorms = [ mathutils.Vector( loop.normal ) for loop in rmmesh.mesh.loops ]
+				
+			#store all pidxs and vertices for this selset
+			vertices = set()
+			selset_pidxs = set()
+
+			for p in GetPolysBySelSet( rmmesh.bmesh, str_layer, selset ):
+				vertices |= set( p.verts )
+				selset_pidxs.add( p.index )
+			
+			for v in vertices:					
+				#compute the vnorm for this poly group. a group is all polys that link a vert broken up by sharp edges
+				loop_group = []
+				for loop in GetSortedLoops( v ):
+					if not loop.edge.smooth or loop.edge.is_boundary :
+						nml = loopgroupnormal( loop_group, weighted, selset_pidxs )
+						if nml.length > 0.0:
+							for l in loop_group:
+								vnorms[l.index] = nml							
+						loop_group.clear()
+
+					loop_group.append( loop )
+					
+				if len( loop_group ) > 0:
+					nml = loopgroupnormal( loop_group, weighted, selset_pidxs )
+					if nml.length > 0.0:
+						for l in loop_group:
+							vnorms[l.index] = nml
+
+	if len( vnorms ) > 0:
+		mesh = context.active_object.data
+		mesh.normals_split_custom_set( vnorms )
+		mesh.update()
+	
+	bpy.ops.object.mode_set( mode='EDIT', toggle=False )
+
+	return { 'FINISHED' }
 	
 class MESH_OT_applyvnorms( bpy.types.Operator ):
 	"""Generated Split Normals based on face membership to this selection set."""
@@ -281,10 +325,21 @@ class MESH_OT_applyvnorms( bpy.types.Operator ):
 		default="SELSET1"
 	)
 	
-	weighted: bpy.props.BoolProperty(
-		name='Weighted Normals',
-		default=False
-	)
+	@classmethod
+	def poll( cls, context ):
+		return ( context.area.type == 'VIEW_3D' and
+				context.active_object is not None and
+				context.active_object.type == 'MESH' and
+				context.object.data.is_editmode )
+		
+	def execute( self, context ):
+		return ApplyVNorms( context, self.selset )
+	
+class MESH_OT_applyall( bpy.types.Operator ):
+	"""Generated Split Normals based on face membership to all selection sets."""
+	bl_idname = 'mesh.rm_applyall'
+	bl_label = 'Apply All'
+	bl_options = { 'UNDO' } #tell blender that we support the undo/redo pannel
 	
 	@classmethod
 	def poll( cls, context ):
@@ -292,72 +347,26 @@ class MESH_OT_applyvnorms( bpy.types.Operator ):
 				context.active_object is not None and
 				context.active_object.type == 'MESH' and
 				context.object.data.is_editmode )
-	
-	def applyvnorms( self, rmmesh, str_layer ):
-		#set smoothing on mesh object to make custom vnorms visible
-		if bpy.app.version < (4,0,0):
-			rmmesh.mesh.use_auto_smooth = True
-			rmmesh.mesh.create_normals_split()
-		
-		vnorms = [ mathutils.Vector( loop.normal ) for loop in rmmesh.mesh.loops ]
-			
-		#store all pidxs and vertices for this selset
-		vertices = set()
-		selset_pidxs = set()
-
-		for p in GetPolysBySelSet( rmmesh.bmesh, str_layer, self.selset ):
-			vertices |= set( p.verts )
-			selset_pidxs.add( p.index )
-		
-		for v in vertices:					
-			#compute the vnorm for this poly group. a group is all polys that link a vert broken up by sharp edges
-			loop_group = []
-			for loop in GetSortedLoops( v ):
-				if not loop.edge.smooth or loop.edge.is_boundary :
-					nml = loopgroupnormal( loop_group, self.weighted, selset_pidxs )
-					if nml.length > 0.0:
-						for l in loop_group:
-							vnorms[l.index] = nml							
-					loop_group.clear()
-
-				loop_group.append( loop )
-				
-			if len( loop_group ) > 0:
-				nml = loopgroupnormal( loop_group, self.weighted, selset_pidxs )
-				if nml.length > 0.0:
-					for l in loop_group:
-						vnorms[l.index] = nml
-
-		return vnorms
 		
 	def execute( self, context ):
-		if context.object is None or context.mode == 'OBJECT':
-			return { 'CANCELLED' }
-		
-		if context.object.type != 'MESH':
-			return { 'CANCELLED' }
-
-		bpy.ops.object.mode_set( mode='OBJECT', toggle=False )
-		
-		#use rmmesh interface to init vnorms
-		vnorms = []
-		rmmesh = rmlib.rmMesh.GetActive( context )
-		with rmmesh as rmmesh:
-			rmmesh.readonly = True
-			
-			#get selset layer
-			str_layer = rmmesh.bmesh.faces.layers.string.get( CUSTOM_VNORM_LAYERNAME, None )
-			if str_layer is not None:
-				vnorms = self.applyvnorms( rmmesh, str_layer )	
-
-		if len( vnorms ) > 0:
-			mesh = context.active_object.data
-			mesh.normals_split_custom_set( vnorms )
-			mesh.update()
-		
-		bpy.ops.object.mode_set( mode='EDIT', toggle=False )
-		
+		ApplyVNorms( context, 'SELSET1' )
+		ApplyVNorms( context, 'SELSET2' )
+		ApplyVNorms( context, 'SELSET3' )
 		return { 'FINISHED' }
+	
+def FaceSurfaceArea( f ):
+	area = 0.0
+	verts = f.verts
+	if len(verts) < 3:
+		return area
+
+	# Calculate the area using the shoelace formula for polygons
+	for i in range(len(verts)):
+		v1 = verts[i].co
+		v2 = verts[(i + 1) % len(verts)].co
+		area += v1.cross(v2).length / 2.0
+
+	return area
 
 def loopgroupnormal( loops, weighted, member_pidxs ):
 	avg = mathutils.Vector( ( 0.0, 0.0, 0.0 ) )
@@ -366,7 +375,7 @@ def loopgroupnormal( loops, weighted, member_pidxs ):
 		if f.index not in member_pidxs:
 			continue
 		if weighted:
-			avg += f.normal.copy() * f.area
+			avg += f.normal.copy() * FaceSurfaceArea( f )
 		else:
 			avg += f.normal.copy()
 	return avg.normalized()
@@ -392,7 +401,7 @@ class VIEW3D_PT_VNORMS( bpy.types.Panel ):
 		box = layout.box()
 
 		row_override = box.row()
-		row_override.prop( context.scene, 'vn_selsetweighted', toggle=1 )
+		row_override.prop( context.scene.rmkit_props, 'vn_selsetweighted', toggle=1 )
 		row_override.alignment = 'LEFT'
 
 		row_selset1 = box.row()
@@ -408,7 +417,6 @@ class VIEW3D_PT_VNORMS( bpy.types.Panel ):
 		op.override = False
 
 		row_selset1.operator( MESH_OT_removevnormselset.bl_idname, text='-' ).selset = 'SELSET1'
-		#row_selset1.operator( MESH_OT_applyvnorms.bl_idname, text='Apply' ).selset = 'SELSET1'
 
 		row_selset2 = box.row()
 		row_selset2.operator( MESH_OT_selectvnormselset.bl_idname, text='SEL2' ).selset = 'SELSET2'
@@ -422,7 +430,6 @@ class VIEW3D_PT_VNORMS( bpy.types.Panel ):
 		op.override = False
 
 		row_selset2.operator( MESH_OT_removevnormselset.bl_idname, text='-' ).selset = 'SELSET2'
-		#row_selset2.operator( MESH_OT_applyvnorms.bl_idname, text='Apply' ).selset = 'SELSET2'
 
 		row_selset3 = box.row()
 		row_selset3.operator( MESH_OT_selectvnormselset.bl_idname, text='SEL3' ).selset = 'SELSET3'
@@ -436,7 +443,6 @@ class VIEW3D_PT_VNORMS( bpy.types.Panel ):
 		op.override = False
 
 		row_selset3.operator( MESH_OT_removevnormselset.bl_idname, text='-' ).selset = 'SELSET3'
-		#row_selset3.operator( MESH_OT_applyvnorms.bl_idname, text='Apply' ).selset = 'SELSET3'
 
 		row_applyall = box.row()
 		row_applyall.operator( MESH_OT_applyall.bl_idname, text='APPLY' )
@@ -449,10 +455,6 @@ def register():
 	bpy.utils.register_class( MESH_OT_selectvnormselset )
 	bpy.utils.register_class( MESH_OT_applyvnorms )
 	bpy.utils.register_class( MESH_OT_applyall )
-	bpy.types.Scene.vn_selsetweighted = bpy.props.BoolProperty(
-		name="Area Weights",
-		default=False
-	)
 	bpy.utils.register_class( VIEW3D_PT_VNORMS )
 	
 
@@ -462,5 +464,4 @@ def unregister():
 	bpy.utils.unregister_class( MESH_OT_selectvnormselset )
 	bpy.utils.unregister_class( MESH_OT_applyvnorms )
 	bpy.utils.unregister_class( MESH_OT_applyall )
-	del bpy.types.Scene.vn_selsetweighted
 	bpy.utils.unregister_class( VIEW3D_PT_VNORMS )

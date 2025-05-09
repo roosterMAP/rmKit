@@ -16,6 +16,8 @@ import sys
 import zipfile
 import urllib.request
 
+from . import propertygroup
+
 
 RMLIB_URL = "https://github.com/roosterMAP/rmlib/archive/refs/heads/main.zip"
 RMLIB_DIR = os.path.join(bpy.utils.script_path_user(), "modules", "rmlib")
@@ -118,6 +120,7 @@ def register():
 		pass #registered by another rm addon
 
 	bpy.utils.register_class( rmKitPannel_parent )
+	propertygroup.register()
 
 	global RMLIB
 	RMLIB = os.path.exists( RMLIB_DIR )
@@ -200,6 +203,7 @@ def unregister():
 		pass #registered by another rm addon
 
 	bpy.utils.unregister_class( rmKitPannel_parent )
+	propertygroup.unregister()
 
 	global RMLIB
 	if not RMLIB:

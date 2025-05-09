@@ -28,7 +28,7 @@ class VIEW3D_PT_UTILS( bpy.types.Panel ):
 		layout.separator()
 		
 		layout.operator( 'view3d.rm_dimensions', text='Toggle Dimensions' )
-		layout.prop( context.scene, 'dimensions_use_background_face_selection' )
+		layout.prop( context.scene.rmkit_props, 'dimensions_use_background_face_selection' )
 
 		layout.separator()
 

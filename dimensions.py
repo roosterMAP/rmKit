@@ -210,7 +210,7 @@ def GetBoundingBox( context ):
 						return bounding_box
 					verts = edges.vertices
 
-				if sel_mode[2] or context.scene.dimensions_use_background_face_selection:
+				if sel_mode[2] or context.scene.rmkit_props.dimensions_use_background_face_selection:
 					if sel_mode[2]:
 						faces = rmlib.rmPolygonSet.from_selection( rmmesh )
 					else:
@@ -320,10 +320,8 @@ class MESH_OT_dimensions( bpy.types.Operator ):
 
 
 def register():
-	bpy.types.Scene.dimensions_use_background_face_selection = bpy.props.BoolProperty( name='Use Background Face Sel' )
 	bpy.utils.register_class( MESH_OT_dimensions )
 	
 
 def unregister():
-	del bpy.types.Scene.dimensions_use_background_face_selection
 	bpy.utils.unregister_class( MESH_OT_dimensions )
