@@ -1,6 +1,6 @@
 schema_version = "1.0.0"
 id = "rmKit"
-version = "1.0.5"
+version = "1.0.6"
 name = "rmKit"
 tagline = "Collection of Tools"
 maintainer = "Timothee Yeramian <lead.acrysoft@gmail.com>"
