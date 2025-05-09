@@ -1,6 +1,6 @@
 schema_version = "1.0.0"
 id = "rmKit"
-version = "1.0.6"
+version = "1.0.7"
 name = "rmKit"
 tagline = "Collection of Tools"
 maintainer = "Timothee Yeramian <lead.acrysoft@gmail.com>"
@@ -15,8 +15,11 @@ tags = ["Modeling", "Material", "Import-Export", "UV"]
 
 blender_version_min = "4.2.0"
 
+platforms = ["windows-x64", "macos-arm64", "linux-x64"]
+
 [permissions]
-files = "Export FBXs and saving Hotspot config to disk"
+files = "install rmlib module and read/write hotspots to disk"
+network = "download rmlib module from within blender"
 
 
 
