@@ -1,6 +1,6 @@
 schema_version = "1.0.0"
 id = "rmKit"
-version = "1.0.7"
+version = "1.0.8"
 name = "rmKit"
 tagline = "Collection of Tools"
 maintainer = "Timothee Yeramian <lead.acrysoft@gmail.com>"
@@ -11,17 +11,13 @@ license = [
 ]
 
 website = "https://rmkit.readthedocs.io/en/latest/"
-tags = ["Modeling", "Material", "Import-Export", "UV"]
+tags = ["3D View", "Modeling", "Mesh", "Object", "Material"]
 
 blender_version_min = "4.2.0"
 
-platforms = ["windows-x64", "macos-arm64", "linux-x64"]
-
-[permissions]
-files = "install rmlib module and read/write hotspots to disk"
-network = "download rmlib module from within blender"
-
-
+wheels = [
+  "./wheels/rmlib-0.1.0-py3-none-any.whl"
+]
 
 [build]
 paths_exclude_pattern = [
