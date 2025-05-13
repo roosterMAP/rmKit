@@ -100,8 +100,8 @@ class MESH_OT_quickmaterial( bpy.types.Operator ):
 			bsdf = nodes.get('Principled BSDF') 
 			if bsdf:
 				bsdf.inputs[0].default_value = bpy.context.scene.quickmatprops['prop_col']
+				bsdf.inputs[2].default_value = bpy.context.scene.quickmatprops['prop_rog']
 				bsdf.inputs[6].default_value = bpy.context.scene.quickmatprops['prop_met']
-				bsdf.inputs[9].default_value = bpy.context.scene.quickmatprops['prop_rog']
 			
 		if not context.object.data.is_editmode:
 			return { 'FINISHED' }

@@ -1,8 +1,8 @@
 schema_version = "1.0.0"
 id = "rmKit"
-version = "1.0.8"
+version = "1.0.9"
 name = "rmKit"
-tagline = "Collection of Tools"
+tagline = "Tools and Utils for Modeling and GameWorkflows"
 maintainer = "Timothee Yeramian <lead.acrysoft@gmail.com>"
 type = "add-on"
 

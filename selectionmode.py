@@ -318,7 +318,11 @@ class MESH_OT_continuous( bpy.types.Operator ):
 					self.mos_elem.select_set( True )
 					rmmesh.bmesh.select_history.add( self.mos_elem )
 					rmmesh.bmesh.select_flush_mode()
-				bpy.ops.mesh.rm_loop( force_boundary=True, mode=self.mode, evaluate_all_selected=( self.mos_elem is None ) )
+					bpy.ops.mesh.rm_loop( force_boundary=True, mode=self.mode, evaluate_all_selected=False )
+				else:
+					selected_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
+					if len( selected_edges ) > 0:
+						bpy.ops.mesh.rm_loop( force_boundary=True, mode=self.mode, evaluate_all_selected=True )
 
 			else:
 				if self.mos_elem is None:

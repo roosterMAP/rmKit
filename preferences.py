@@ -185,14 +185,14 @@ class RMKITPreferences( bpy.types.AddonPreferences ):
 		row_view3d.label( text='3D View' )
 		if self.v3d_checkbox:
 			col = box.column( align=True )
-			self.draw_keymap_items( col, '3D View', RM_3DVIEW_KEYMAP, {'KEYBOARD'}, False )
+			self.draw_keymap_items( col, '3D View', RM_3DVIEW_KEYMAP, {'ACTIONZONE', 'KEYBOARD', 'MOUSE', 'NDOF'}, False )
 
 		row_mesh = box.row()
 		row_mesh.prop( self, 'mesh_checkbox', icon='TRIA_DOWN' if self.mesh_checkbox else 'TRIA_RIGHT', icon_only=True, emboss=False )
 		row_mesh.label( text='Mesh' )
 		if self.mesh_checkbox:
 			col = box.column( align=True )
-			self.draw_keymap_items( col, 'Mesh', RM_MESH_KEYMAP, {'KEYBOARD'}, False )
+			self.draw_keymap_items( col, 'Mesh', RM_MESH_KEYMAP, {'ACTIONZONE', 'KEYBOARD', 'MOUSE', 'NDOF'}, False )
 
 
 	@staticmethod
