@@ -62,14 +62,7 @@ def register_keyboard_keymap():
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_targetweld', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_thicken', 'NONE', 'PRESS' ) ) )
 		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_knifescreenmenu', 'NONE', 'PRESS' ) ) )
-
-		kmi = km_mesh.keymap_items.new( 'mesh.rm_extrudealongpath', 'NONE', 'PRESS' )
-		kmi.properties.offsetonly = True
-		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
-
-		kmi = km_mesh.keymap_items.new( 'mesh.rm_extrudealongpath', 'NONE', 'PRESS' )
-		kmi.properties.offsetonly = False
-		RM_MESH_KEYMAP.append( ( km_mesh, kmi ) )
+		RM_MESH_KEYMAP.append( ( km_mesh, km_mesh.keymap_items.new( 'mesh.rm_extrudealongpath', 'NONE', 'PRESS' ) ) )
 
 		kmi = km_mesh.keymap_items.new( 'mesh.rm_remove', 'NONE', 'PRESS' )
 		kmi.properties.reduce_mode = 'DIS'
