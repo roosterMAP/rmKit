@@ -285,60 +285,54 @@ class MESH_OT_continuous( bpy.types.Operator ):
 				self.mos_elem = rmlib.rmPolygonSet.from_mos( rmmesh, context, mouse_pos )[0]
 			except:
 				self.report( { 'INFO' }, 'No mos face found.' )
-			
+
+		rmlib.clear_tags( rmmesh.bmesh )
+
+		sel_mode = context.tool_settings.mesh_select_mode[:]
+		if sel_mode[0]:
+			if self.mos_elem is None:
+				selected_verts = rmlib.rmVertexSet.from_selection( rmmesh )
+			else:
+				selected_verts = rmlib.rmVertexSet( [ self.mos_elem ] )
+				rmmesh.bmesh.select_history.add( self.mos_elem )
+			if self.mode == 'set':
+				for v in rmmesh.bmesh.verts:
+					v.select_set( False )
+			for g in selected_verts.group( element=True ):
+				for v in g:
+					v.select_set( self.mode != 'remove' )
+			rmmesh.bmesh.select_flush_mode()
+
+		elif sel_mode[1]:
+			if self.mos_elem is not None:
+				self.mos_elem.select_set( True )
+				rmmesh.bmesh.select_history.add( self.mos_elem )
+				rmmesh.bmesh.select_flush_mode()
+				bpy.ops.mesh.rm_loop( force_boundary=True, mode=self.mode, evaluate_all_selected=False )
+			else:
+				selected_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
+				if len( selected_edges ) > 0:
+					bpy.ops.mesh.rm_loop( force_boundary=True, mode=self.mode, evaluate_all_selected=True )
+
+		else:
+			if self.mos_elem is None:
+				selected_faces = rmlib.rmPolygonSet.from_selection( rmmesh )
+			else:
+				selected_faces = rmlib.rmPolygonSet( [ self.mos_elem ] )
+				rmmesh.bmesh.select_history.add( self.mos_elem )
+			if self.mode == 'set':
+				for f in rmmesh.bmesh.faces:
+					f.select_set( False )
+			for g in selected_faces.group( element=True ):
+				for f in g:
+					f.select_set( self.mode != 'remove' )		
+			rmmesh.bmesh.select_flush_mode()
+
+		rmlib.clear_tags( rmmesh.bmesh )
+
+		bmesh.update_edit_mesh( me, loop_triangles=False, destructive=False )
 		bm.free()
 		del bm
-			
-		return self.execute( context )
-
-	def execute( self, context ):
-		rmmesh = rmlib.rmMesh.GetActive( context )
-		
-		with rmmesh as rmmesh:
-
-			rmlib.clear_tags( rmmesh.bmesh )
-
-			sel_mode = context.tool_settings.mesh_select_mode[:]
-			if sel_mode[0]:
-				if self.mos_elem is None:
-					selected_verts = rmlib.rmVertexSet.from_selection( rmmesh )
-				else:
-					selected_verts = rmlib.rmVertexSet( [ self.mos_elem ] )
-					rmmesh.bmesh.select_history.add( self.mos_elem )
-				if self.mode == 'set':
-					for v in rmmesh.bmesh.verts:
-						v.select_set( False )
-				for g in selected_verts.group( element=True ):
-					for v in g:
-						v.select_set( self.mode != 'remove' )
-				rmmesh.bmesh.select_flush_mode()
-
-			elif sel_mode[1]:
-				if self.mos_elem is not None:
-					self.mos_elem.select_set( True )
-					rmmesh.bmesh.select_history.add( self.mos_elem )
-					rmmesh.bmesh.select_flush_mode()
-					bpy.ops.mesh.rm_loop( force_boundary=True, mode=self.mode, evaluate_all_selected=False )
-				else:
-					selected_edges = rmlib.rmEdgeSet.from_selection( rmmesh )
-					if len( selected_edges ) > 0:
-						bpy.ops.mesh.rm_loop( force_boundary=True, mode=self.mode, evaluate_all_selected=True )
-
-			else:
-				if self.mos_elem is None:
-					selected_faces = rmlib.rmPolygonSet.from_selection( rmmesh )
-				else:
-					selected_faces = rmlib.rmPolygonSet( [ self.mos_elem ] )
-					rmmesh.bmesh.select_history.add( self.mos_elem )
-				if self.mode == 'set':
-					for f in rmmesh.bmesh.faces:
-						f.select_set( False )
-				for g in selected_faces.group( element=True ):
-					for f in g:
-						f.select_set( self.mode != 'remove' )		
-				rmmesh.bmesh.select_flush_mode()
-
-			rmlib.clear_tags( rmmesh.bmesh )
 
 		return { 'FINISHED' }
 
