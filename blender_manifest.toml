@@ -16,7 +16,7 @@ tags = ["3D View", "Modeling", "Mesh", "Object", "Material"]
 blender_version_min = "4.2.0"
 
 wheels = [
-  "./wheels/rmlib-0.1.1-py3-none-any.whl"
+  "./wheels/rmlib-0.1.2-py3-none-any.whl"
 ]
 
 [build]
