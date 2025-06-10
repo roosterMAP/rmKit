@@ -190,6 +190,7 @@ class ToolHistory():
 
 class DrawHandler():
 	def __init__( self, context ):
+		self.m_context = context
 		self.m_region = context.region
 		self.m_rv3d = context.region_data
 		self.m_shader3d = gpu.shader.from_builtin( 'UNIFORM_COLOR' )
@@ -227,15 +228,26 @@ class DrawHandler():
 
 		if self.m_toolState.constrain_axis_idx < 0:
 			return
+		
+		coords = [ mathutils.Vector( ( 0.0, 0.0, 0.0 ) ), mathutils.Vector( ( 0.0, 0.0, 0.0 ) ) ]
+		coords[0][self.m_toolState.constrain_axis_idx] = -999999.9
+		coords[1][self.m_toolState.constrain_axis_idx] = 999999.9
 
-		coords = ( ( 0.0, 0.0, -999999.9 ), ( 0.0, 0.0, 999999.9 ) )
-		color = ( 0.0, 0.0, 1.0, 1.0 )
-		if self.m_toolState.constrain_axis_idx == 0:
-			coords = ( ( -999999.9, 0.0, 0.0 ), ( 999999.9, 0.0, 0.0 ) )
-			color = ( 1.0, 0.0, 0.0, 1.0 )
-		elif self.m_toolState.constrain_axis_idx == 1:
-			coords = ( ( 0.0, -999999.9, 0.0 ), ( 0.0, 999999.9, 0.0 ) )
-			color = ( 0.0, 1.0, 0.0, 1.0 )
+		rm_wp = rmlib.rmCustomOrientation.from_selection( self.m_context )
+		coords[0] = rm_wp.matrix @ coords[0]
+		coords[1] = rm_wp.matrix @ coords[1]
+
+		midpt = ( self.m_toolState.start_point + self.m_toolState.end_point ) * 0.5
+		coords[0] += midpt
+		coords[1] += midpt
+
+		color = mathutils.Vector( ( 0.0, 0.0, 0.0, 1.0 ) )
+		color[self.m_toolState.constrain_axis_idx] = 1.0
+
+		if rm_wp.matrix != mathutils.Matrix.Identity( 3 ):
+			temp = color[0]
+			color[0] = color[1]
+			color[1] = temp
 
 		gpu.state.line_width_set( LINE_WIDTH_SIZE )
 		gpu.state.point_size_set( ENDPOINT_HANDLE_SIZE )
@@ -478,7 +490,8 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 		keys_pass = event.type in pass_keys
 
 		rm_vp = rmlib.rmViewport( context )
-
+		rm_wp = rmlib.rmCustomOrientation.from_selection( context )
+		
 		# axis constraints
 		if self.tool_mode != 'IDLE' and event.type == 'MIDDLEMOUSE':
 			if event.value == 'PRESS':
@@ -489,7 +502,7 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 			elif event.value == 'RELEASE':
 				self.start_point_2d = None
 		if self.start_point_2d is not None:
-			self.s_tool.constrain_axis_idx = rm_vp.get_nearest_direction_vector_from_mouse( context, self.start_point_2d, self.s_mouse.m_mouse_current_2d, self.start_work_center )
+			self.s_tool.constrain_axis_idx = rm_vp.get_nearest_direction_vector_from_mouse( context, self.start_point_2d, self.s_mouse.m_mouse_current_2d, self.start_work_center, rm_wp.matrix.transposed() )
 			xdelta = abs( self.s_mouse.m_mouse_current_2d.x - self.s_mouse.m_mmb_start_2d.x )
 			ydelta = abs( self.s_mouse.m_mouse_current_2d.y - self.s_mouse.m_mmb_start_2d.y )
 			self.s_tool.contrain_axis_2d = CONSTRAIN_AXIS_HORIZONTAL if xdelta > ydelta else CONSTRAIN_AXIS_VERTICAL
@@ -646,10 +659,16 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 								sclMat[ 1 ].y = vScaleAxis.y * lerp_scale if vScaleAxis.y else 1.0
 								sclMat[ 2 ].z = vScaleAxis.z * lerp_scale if vScaleAxis.z else 1.0
 
+							rotMat = rm_wp.matrix
+							rotMat.resize_4x4()
+
+							rotMat_inv = rm_wp.matrix.transposed()
+							rotMat_inv.resize_4x4()
+
 							offsetMat = mathutils.Matrix.Translation( self.s_tool.transform_origin )
 							offsetMat_inv = mathutils.Matrix.Translation( self.s_tool.transform_origin * -1.0 )
 
-							bm.verts[ vert_data[ APPLY_VERT_ID ] ].co = ( xfrm_inv @ offsetMat @ sclMat @ offsetMat_inv @ xfrm ) @ vert_data[ APPLY_VERT_POSITION ]
+							bm.verts[ vert_data[ APPLY_VERT_ID ] ].co = ( xfrm_inv @ offsetMat @ rotMat @ sclMat @ rotMat_inv @ offsetMat_inv @ xfrm ) @ vert_data[ APPLY_VERT_POSITION ]
 
 						bm.normal_update()
 						bmesh.update_edit_mesh( active_obj.data )
@@ -685,9 +704,9 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 					new_vec = ( move_vec * move_value )
 					if self.s_tool.constrain_axis_idx >= 0:
 						if self.mmb_plane_axis:
-							new_vec = new_vec - rmlib.util.ProjectVector( new_vec, mathutils.Matrix.Identity( 3 )[ self.s_tool.constrain_axis_idx ] )
+							new_vec = new_vec - rmlib.util.ProjectVector( new_vec, rm_wp.matrix.transposed()[ self.s_tool.constrain_axis_idx ] )
 						else:
-							new_vec = rmlib.util.ProjectVector( new_vec, mathutils.Matrix.Identity( 3 )[ self.s_tool.constrain_axis_idx ] )
+							new_vec = rmlib.util.ProjectVector( new_vec, rm_wp.matrix.transposed()[ self.s_tool.constrain_axis_idx ] )
 					vpos_wld = xfrm @ vert_data[ APPLY_VERT_POSITION ]
 					bm.verts[ vert_data[ APPLY_VERT_ID ] ].co = xfrm_inv @ ( vpos_wld + new_vec )
 
@@ -737,7 +756,13 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 							offsetMat = mathutils.Matrix.Translation( self.s_tool.transform_origin )
 							offsetMat_inv = mathutils.Matrix.Translation( self.s_tool.transform_origin * -1.0 )
 
-							bm.verts[ vert_data[ APPLY_VERT_ID ] ].co = ( xfrm_inv @ offsetMat @ rotMat @ offsetMat_inv @ xfrm ) @ vert_data[ APPLY_VERT_POSITION ]
+							wpMat = rm_wp.matrix
+							wpMat.resize_4x4()
+
+							wpMat_inv = rm_wp.matrix.transposed()
+							wpMat_inv.resize_4x4()
+
+							bm.verts[ vert_data[ APPLY_VERT_ID ] ].co = ( xfrm_inv @ offsetMat @ wpMat @ rotMat @ wpMat_inv @ offsetMat_inv @ xfrm ) @ vert_data[ APPLY_VERT_POSITION ]
 
 						bm.normal_update()
 						bmesh.update_edit_mesh( active_obj.data )
