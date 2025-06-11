@@ -1,6 +1,6 @@
 schema_version = "1.0.0"
 id = "rmKit"
-version = "1.0.11"
+version = "1.0.12"
 name = "rmKit"
 tagline = "Tools and Utils for Modeling and GameWorkflows"
 maintainer = "Timothee Yeramian <lead.acrysoft@gmail.com>"
@@ -16,7 +16,7 @@ tags = ["3D View", "Modeling", "Mesh", "Object", "Material"]
 blender_version_min = "4.2.0"
 
 wheels = [
-  "./wheels/rmlib-0.1.2-py3-none-any.whl"
+  "./wheels/rmlib-0.1.3-py3-none-any.whl"
 ]
 
 [build]
