@@ -1,9 +1,5 @@
-from operator import inv
-from re import T
-import bpy
-import bmesh
+import bpy, bmesh, mathutils
 import rmlib
-import mathutils
 import math
 
 class Tube():
