@@ -3,24 +3,39 @@ import rmlib
 
 BACKGROUND_LAYERNAME = 'rm_background'
 
-def SetSelsetMembership( bm, type, elems, layername ):	
+def SetSelsetMembership(bm, type, elems, layername):
+
 	if type == 'VERT':
 		intlayers = bm.verts.layers.int
-		selset = intlayers.get( layername, None )
-		for v in bm.verts:
-			v[selset] = v in elems
 	elif type == 'EDGE':
 		intlayers = bm.edges.layers.int
-		selset = intlayers.get( layername, None )
-		for e in bm.edges:
-			e[selset] = e in elems
 	elif type == 'FACE':
 		intlayers = bm.faces.layers.int
-		selset = intlayers.get( layername, None )
-		for f in bm.faces:
-			f[selset] = f in elems
 	else:
 		return
+
+	selset = intlayers.get(layername)
+
+	# Blender 5.1+: layer lookup may return None and indexing now errors
+	if selset is None and bpy.app.version >= (5, 1, 0):
+		selset = intlayers.new(layername)
+
+	if selset is None:
+		return
+
+	elems = set(elems)
+
+	if type == 'VERT':
+		for v in bm.verts:
+			v[selset] = int(v in elems)
+
+	elif type == 'EDGE':
+		for e in bm.edges:
+			e[selset] = int(e in elems)
+
+	else:
+		for f in bm.faces:
+			f[selset] = int(f in elems)
 		
 def GetSelsetMembership( bm, type, layername):
 	if type == 'VERT':
