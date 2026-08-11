@@ -129,31 +129,20 @@ class DimensionsManager:
 		DimensionsManager.handle_text = bpy.types.SpaceView3D.draw_handler_add( self.draw_text, (), 'WINDOW', 'POST_PIXEL' )
 		DimensionsManager.active = True
 		
-	def stopDraw(self, context):
-
-		wm = context.window_manager
-
+	def stopDraw( self, context ):
 		try:
-			if hasattr(self, "_timer"):
-				wm.event_timer_remove(self._timer)
-		except:
-			pass
-
-		try:
-			bpy.types.SpaceView3D.draw_handler_remove(
-				DimensionsManager.handle,
-				'WINDOW'
-			)
-
-			bpy.types.SpaceView3D.draw_handler_remove(
-				DimensionsManager.handle_text,
-				'WINDOW'
-			)
-
+			bpy.types.SpaceView3D.draw_handler_remove( DimensionsManager.handle, 'WINDOW' )		
+			bpy.types.SpaceView3D.draw_handler_remove( DimensionsManager.handle_text, 'WINDOW' )
 		except ValueError:
 			pass
-
 		DimensionsManager.active = False
+
+		for window in context.window_manager.windows:
+			for area in window.screen.areas:
+				if area.type == 'VIEW_3D':
+					for region in area.regions:
+						if region.type == 'WINDOW':
+							region.tag_redraw()
 
 
 def GetWorldSpaceBounds( rmmesh, bounds ):
@@ -315,7 +304,7 @@ class MESH_OT_dimensions( bpy.types.Operator ):
 
 			MESH_OT_dimensions.DIMENSIONS_RENDER.update( context )
 
-		return {'PASS_THROUGH', 'RUNNING_MODAL'}
+		return { 'PASS_THROUGH' }
 
 	def execute( self, context ):
 		if MESH_OT_dimensions.DIMENSIONS_RENDER is None:

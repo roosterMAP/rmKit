@@ -477,6 +477,53 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 			return { 'CANCELLED' }
 
 
+	def get_constraint_axis_from_mouse(self, context, start_2d, current_2d, origin, orientation):
+		delta = current_2d - start_2d
+
+		if delta.length < 2.0:
+			return -1
+
+		delta.normalize()
+
+		best_axis = -1
+		best_dot = 0.0
+
+		for axis_idx in range(3):
+			axis_3d = orientation[axis_idx].normalized()
+
+			p0 = bpy_extras.view3d_utils.location_3d_to_region_2d(
+				context.region,
+				context.region_data,
+				origin
+			)
+
+			p1 = bpy_extras.view3d_utils.location_3d_to_region_2d(
+				context.region,
+				context.region_data,
+				origin + axis_3d
+			)
+
+			if p0 is None or p1 is None:
+				continue
+
+			axis_2d = p1 - p0
+
+			# This axis points into/out of the screen.
+			if axis_2d.length < 0.0001:
+				continue
+
+			axis_2d.normalize()
+
+			# Axis has no inherent screen direction, so use abs().
+			score = abs(delta.dot(axis_2d))
+
+			if score > best_dot:
+				best_dot = score
+				best_axis = axis_idx
+
+		return best_axis
+
+
 	def modal( self, context, event ):
 		context.area.tag_redraw()
 
@@ -512,7 +559,15 @@ class MESH_OT_Linear_Deformer( bpy.types.Operator ):
 			elif event.value == 'RELEASE':
 				self.start_point_2d = None
 		if self.start_point_2d is not None:
-			axis = rm_vp.get_nearest_direction_vector_from_mouse(
+			#axis = rm_vp.get_nearest_direction_vector_from_mouse(
+			#	context,
+			#	self.start_point_2d,
+			#	self.s_mouse.m_mouse_current_2d,
+			#	self.start_work_center,
+			#	rm_wp.matrix.transposed()
+			#)
+
+			axis = self.get_constraint_axis_from_mouse(
 				context,
 				self.start_point_2d,
 				self.s_mouse.m_mouse_current_2d,
