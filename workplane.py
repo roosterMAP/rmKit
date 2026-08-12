@@ -92,6 +92,7 @@ class GridRenderManager:
 			gpu.matrix.load_matrix( GridRenderManager.matrix )			
 			gpu.matrix.push_projection()    
 			gpu.matrix.load_projection_matrix( bpy.context.region_data.perspective_matrix )
+			gpu.state.blend_set('ALPHA')
 			
 			GridRenderManager.shader.bind()
 			GridRenderManager.shader.uniform_float( 'lineWidth', 1 )
@@ -102,6 +103,7 @@ class GridRenderManager:
 
 			gpu.matrix.pop()
 			gpu.matrix.pop_projection()
+			gpu.state.blend_set('NONE')
 
 	def doDraw( self ):
 		GridRenderManager.handle = bpy.types.SpaceView3D.draw_handler_add( self.draw, (), 'WINDOW', 'POST_VIEW' )
