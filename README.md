@@ -1,3 +1,35 @@
+
+<div align="right">
+  <details>
+    <summary >🌐 Language</summary>
+    <div>
+      <div align="center">
+        <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=en">English</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=zh-CN">简体中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=zh-TW">繁體中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=ja">日本語</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=ko">한국어</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=hi">हिन्दी</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=th">ไทย</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=fr">Français</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=de">Deutsch</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=es">Español</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=it">Italiano</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=ru">Русский</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=pt">Português</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=nl">Nederlands</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=pl">Polski</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=ar">العربية</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=fa">فارسی</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=tr">Türkçe</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=vi">Tiếng Việt</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=id">Bahasa Indonesia</a>
+        | <a href="https://openaitx.github.io/view.html?user=roosterMAP&project=rmKit&lang=as">অসমীয়া</
+      </div>
+    </div>
+  </details>
+</div>
+
 # rmKit
 
 **rmKit** is a feature-rich Blender addon designed to enhance your 3D modeling workflow with a wide array of tools and utilities. It provides advanced functionality for mesh editing, precision modeling, and material management, making it an essential toolkit for both professionals and hobbyists.
